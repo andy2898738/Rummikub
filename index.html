@@ -680,7 +680,7 @@
                   <span>🔑</span> 加入好友房間
                 </h3>
                 <p class="text-xs text-emerald-200/75 mt-1">
-                  輸入房主提供的 6 碼房間代碼即可加入對局。
+                  輸入房主提供的 6 碼房間代碼即可加入對局（支援 4G/5G 與不同 Wi-Fi 跨網連線）。
                 </p>
               </div>
               <div class="space-y-2">
@@ -692,6 +692,12 @@
                 </button>
               </div>
             </div>
+          </div>
+
+          <!-- Connection Diagnostic / Status Strip -->
+          <div id="online-status-banner" class="hidden bg-sky-950/80 border border-sky-500/40 rounded-xl px-3.5 py-2 text-xs text-sky-200 flex items-center justify-between gap-2">
+            <span id="online-status-text">正在連線至對戰伺服器...</span>
+            <button onclick="cancelOnlineAttempt()" class="text-amber-300 hover:underline font-bold shrink-0">取消</button>
           </div>
 
           <!-- Waiting Room Panel -->
@@ -1305,37 +1311,504 @@
     }
 
     /*************************************************************************
-     * 4. LOBBY UI & URL INVITE PARSING
+     * 4. LOBBY UI & NICKNAME HELPERS
      *************************************************************************/
-    const RANDOM_NAMES = ['神機妙算', '拉密大師', '破冰先鋒', '數字魔術師', '幸運鬼牌', '牌桌軍師', '順子之王', '淡定玩家'];
+    const RANDOM_NAMES = [
+      '拉密小天才', '百搭大師', '破冰先鋒', '數字魔術師',
+      '桌遊王者', '順子達人', '金黃幸運星', '快手神算'
+    ];
 
     function randomizeName() {
+      const input = document.getElementById('player-name-input');
+      if (!input) return;
       const pick = RANDOM_NAMES[Math.floor(Math.random() * RANDOM_NAMES.length)];
       const num = Math.floor(10 + Math.random() * 89);
-      document.getElementById('player-name-input').value = `${pick}${num}`;
+      input.value = `${pick}${num}`;
     }
 
     function getMyName() {
-      const val = document.getElementById('player-name-input').value.trim();
-      return val || '玩家';
+      const input = document.getElementById('player-name-input');
+      const val = input ? input.value.trim() : '';
+      return val || '拉密玩家';
     }
 
     function switchLobbyTab(tab) {
+      const soloTab = document.getElementById('lobby-tab-solo');
+      const onlineTab = document.getElementById('lobby-tab-online');
       const soloBtn = document.getElementById('tab-btn-solo');
       const onlineBtn = document.getElementById('tab-btn-online');
-      const soloPanel = document.getElementById('lobby-tab-solo');
-      const onlinePanel = document.getElementById('lobby-tab-online');
 
       if (tab === 'solo') {
+        soloTab.classList.remove('hidden');
+        onlineTab.classList.add('hidden');
         soloBtn.className = 'py-2.5 px-3 rounded-xl font-bold text-sm sm:text-base transition bg-amber-500 text-emerald-950 shadow';
         onlineBtn.className = 'py-2.5 px-3 rounded-xl font-bold text-sm sm:text-base transition text-emerald-200 hover:bg-emerald-900/60';
-        soloPanel.classList.remove('hidden');
-        onlinePanel.classList.add('hidden');
       } else {
+        soloTab.classList.add('hidden');
+        onlineTab.classList.remove('hidden');
         onlineBtn.className = 'py-2.5 px-3 rounded-xl font-bold text-sm sm:text-base transition bg-amber-500 text-emerald-950 shadow';
         soloBtn.className = 'py-2.5 px-3 rounded-xl font-bold text-sm sm:text-base transition text-emerald-200 hover:bg-emerald-900/60';
-        onlinePanel.classList.remove('hidden');
-        soloPanel.classList.add('hidden');
+      }
+    }
+
+    /*************************************************************************
+     * 6. HYBRID MULTIPLAYER ENGINE (PeerJS WebRTC + Same-Browser Tab Relay)
+     *************************************************************************/
+    const PEER_ICE_CONFIG = {
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: 'stun:global.stun.twilio.com:3478' },
+        {
+          urls: 'turn:openrelay.metered.ca:80',
+          username: 'openrelayproject',
+          credential: 'openrelayproject'
+        },
+        {
+          urls: 'turn:openrelay.metered.ca:443',
+          username: 'openrelayproject',
+          credential: 'openrelayproject'
+        },
+        {
+          urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+          username: 'openrelayproject',
+          credential: 'openrelayproject'
+        }
+      ],
+      iceCandidatePoolSize: 10
+    };
+
+    let onlineConnectTimeout = null;
+    let joinHandshakeInterval = null;
+    let localRoomChannel = null; // BroadcastChannel fallback when WebSocket/WebRTC is sandboxed
+    let usingLocalRelay = false;
+
+    function isSandboxWebSocketBlocked() {
+      // Detect sandboxed iframes (e.g., Canvas preview) where wss:// throws SecurityError
+      try {
+        if (window.self !== window.top && (window.location.protocol === 'about:' || window.location.protocol === 'blob:' || !window.location.hostname)) {
+          return true;
+        }
+      } catch (e) {
+        return true;
+      }
+      return false;
+    }
+
+    function setOnlineStatusBanner(msg, show = true) {
+      const banner = document.getElementById('online-status-banner');
+      const textEl = document.getElementById('online-status-text');
+      if (!banner || !textEl) return;
+      if (show && msg) {
+        textEl.textContent = msg;
+        banner.classList.remove('hidden');
+      } else {
+        banner.classList.add('hidden');
+      }
+    }
+
+    function cancelOnlineAttempt() {
+      clearTimeout(onlineConnectTimeout);
+      clearInterval(joinHandshakeInterval);
+      leaveOnlineRoom();
+      const createBtn = document.getElementById('btn-create-room');
+      const joinBtn = document.getElementById('btn-join-room');
+      if (createBtn) {
+        createBtn.disabled = false;
+        createBtn.textContent = '建立房間';
+      }
+      if (joinBtn) {
+        joinBtn.disabled = false;
+        joinBtn.textContent = '加入對戰';
+      }
+      setOnlineStatusBanner('', false);
+    }
+
+    function generateRoomCode() {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      let code = '';
+      for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+      return code;
+    }
+
+    function setupLocalBroadcastRelay(code, asHost) {
+      if (localRoomChannel) {
+        try { localRoomChannel.close(); } catch (e) {}
+        localRoomChannel = null;
+      }
+      if (typeof BroadcastChannel === 'undefined') return false;
+
+      usingLocalRelay = true;
+      localRoomChannel = new BroadcastChannel(`RUMMIKUB_LOCAL_${code}`);
+
+      localRoomChannel.onmessage = (ev) => {
+        const packet = ev.data;
+        if (!packet || packet.senderId === myPlayerId) return;
+        if (packet.targetId && packet.targetId !== myPlayerId) return;
+
+        if (asHost) {
+          handleHostReceiveData(packet.senderId, packet.msg);
+        } else {
+          handleGuestReceiveData(packet.msg);
+        }
+      };
+      return true;
+    }
+
+    function sendViaLocalRelay(msg, targetId = null) {
+      if (!localRoomChannel) return;
+      localRoomChannel.postMessage({
+        senderId: myPlayerId,
+        targetId,
+        msg
+      });
+    }
+
+    function activateHostWaitingUI(code, isFallbackRelay = false) {
+      clearTimeout(onlineConnectTimeout);
+      setOnlineStatusBanner('', false);
+      const btn = document.getElementById('btn-create-room');
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = '建立房間';
+      }
+
+      waitingRoomPlayers = [{ id: myPlayerId, name: getMyName(), isHost: true }];
+      guestConns = {};
+
+      document.getElementById('online-entry-panel').classList.add('hidden');
+      document.getElementById('online-waiting-panel').classList.remove('hidden');
+      document.getElementById('display-room-code').textContent = code;
+      document.getElementById('host-start-controls').classList.remove('hidden');
+      document.getElementById('fill-bots-label').classList.remove('hidden');
+      document.getElementById('guest-waiting-msg').classList.add('hidden');
+
+      renderWaitingRoom();
+      if (isFallbackRelay) {
+        showToast(`已建立本機同瀏覽器分頁房間 ${code}（預覽環境阻擋外部 WebSocket；部署至 GitHub Pages 後即可跨裝置連線）`, 'warn');
+      } else {
+        showToast(`房間 ${code} 已建立！快複製連結邀請好友`, 'success');
+      }
+    }
+
+    function createOnlineRoom() {
+      if (peer) {
+        try { peer.destroy(); } catch (e) {}
+        peer = null;
+      }
+      usingLocalRelay = false;
+
+      const btn = document.getElementById('btn-create-room');
+      btn.disabled = true;
+      btn.textContent = '建立中...';
+      setOnlineStatusBanner('⏳ 正在建立線上對戰房間...', true);
+
+      appMode = 'online';
+      isHost = true;
+      onlineRoomCode = generateRoomCode();
+      const peerId = `RUMMIKUB_TW_V2_${onlineRoomCode}`;
+
+      // If sandbox iframe blocks wss:// WebSockets, immediately switch to local multi-tab relay without throwing SecurityError
+      if (typeof Peer === 'undefined' || isSandboxWebSocketBlocked()) {
+        myPlayerId = `local_host_${Date.now()}`;
+        setupLocalBroadcastRelay(onlineRoomCode, true);
+        activateHostWaitingUI(onlineRoomCode, true);
+        return;
+      }
+
+      try {
+        peer = new Peer(peerId, {
+          debug: 0,
+          config: PEER_ICE_CONFIG
+        });
+      } catch (secErr) {
+        myPlayerId = `local_host_${Date.now()}`;
+        setupLocalBroadcastRelay(onlineRoomCode, true);
+        activateHostWaitingUI(onlineRoomCode, true);
+        return;
+      }
+
+      clearTimeout(onlineConnectTimeout);
+      onlineConnectTimeout = setTimeout(() => {
+        if (!peer || !peer.open) {
+          try { if (peer) peer.destroy(); } catch (e) {}
+          peer = null;
+          myPlayerId = `local_host_${Date.now()}`;
+          setupLocalBroadcastRelay(onlineRoomCode, true);
+          activateHostWaitingUI(onlineRoomCode, true);
+        }
+      }, 6000);
+
+      peer.on('open', (id) => {
+        myPlayerId = id;
+        activateHostWaitingUI(onlineRoomCode, false);
+      });
+
+      peer.on('connection', (conn) => {
+        conn.on('open', () => {
+          if (Object.keys(guestConns).length >= 3 || (gameState && gameState.phase === 'playing')) {
+            conn.send({ type: 'REJECT', reason: '房間已滿或遊戲已開始' });
+            setTimeout(() => conn.close(), 300);
+            return;
+          }
+          guestConns[conn.peer] = conn;
+          conn.send({ type: 'WAITING_LIST', players: waitingRoomPlayers });
+        });
+
+        conn.on('data', (data) => handleHostReceiveData(conn.peer, data));
+
+        conn.on('close', () => {
+          delete guestConns[conn.peer];
+          waitingRoomPlayers = waitingRoomPlayers.filter(p => p.id !== conn.peer);
+          broadcastWaitingRoom();
+          if (gameState && gameState.phase === 'playing') {
+            const leftPlayer = gameState.players.find(p => p.id === conn.peer);
+            if (leftPlayer) {
+              leftPlayer.isBot = true;
+              leftPlayer.difficulty = 'challenge';
+              leftPlayer.name += ' (AI接管)';
+              showToast(`${leftPlayer.name} 已由 AI 接管`, 'warn');
+              broadcastGameState();
+              renderAll();
+              checkIfBotTurn();
+            }
+          }
+        });
+      });
+
+      peer.on('disconnected', () => {
+        if (peer && !peer.destroyed) {
+          try { peer.reconnect(); } catch (e) {}
+        }
+      });
+
+      peer.on('error', (err) => {
+        clearTimeout(onlineConnectTimeout);
+        if (err && err.type === 'unavailable-id') {
+          createOnlineRoom();
+          return;
+        }
+        // Fallback smoothly to local multi-tab relay if WebSocket/network is blocked
+        try { if (peer) peer.destroy(); } catch (e) {}
+        peer = null;
+        myPlayerId = `local_host_${Date.now()}`;
+        setupLocalBroadcastRelay(onlineRoomCode, true);
+        activateHostWaitingUI(onlineRoomCode, true);
+      });
+    }
+
+    function activateGuestWaitingUI(code, sendFn) {
+      clearTimeout(onlineConnectTimeout);
+      setOnlineStatusBanner('', false);
+      const btn = document.getElementById('btn-join-room');
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = '加入對戰';
+      }
+
+      sendFn({ type: 'JOIN_REQ', name: getMyName() });
+      clearInterval(joinHandshakeInterval);
+      let retries = 0;
+      joinHandshakeInterval = setInterval(() => {
+        retries++;
+        if (waitingRoomPlayers.some(p => p.id === myPlayerId) || retries >= 5) {
+          clearInterval(joinHandshakeInterval);
+        } else {
+          sendFn({ type: 'JOIN_REQ', name: getMyName() });
+        }
+      }, 600);
+
+      document.getElementById('online-entry-panel').classList.add('hidden');
+      document.getElementById('online-waiting-panel').classList.remove('hidden');
+      document.getElementById('display-room-code').textContent = code;
+      document.getElementById('host-start-controls').classList.add('hidden');
+      document.getElementById('fill-bots-label').classList.add('hidden');
+      document.getElementById('guest-waiting-msg').classList.remove('hidden');
+      showToast(`成功連入房間 ${code}！`, 'success');
+    }
+
+    function joinOnlineRoom() {
+      const code = document.getElementById('join-room-code-input').value.trim().toUpperCase();
+      if (code.length !== 6) {
+        showToast('請輸入正確的 6 碼房間代碼', 'error');
+        return;
+      }
+
+      if (peer) {
+        try { peer.destroy(); } catch (e) {}
+        peer = null;
+      }
+      usingLocalRelay = false;
+
+      const btn = document.getElementById('btn-join-room');
+      btn.disabled = true;
+      btn.textContent = '連線中...';
+      setOnlineStatusBanner(`⏳ 正在尋找房間 ${code}...`, true);
+
+      appMode = 'online';
+      isHost = false;
+      onlineRoomCode = code;
+      let joinedConfirmed = false;
+
+      // Sandbox iframe fallback: connect via BroadcastChannel to another tab in the same browser
+      if (typeof Peer === 'undefined' || isSandboxWebSocketBlocked()) {
+        myPlayerId = `local_guest_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`;
+        setupLocalBroadcastRelay(code, false);
+        activateGuestWaitingUI(code, (m) => sendViaLocalRelay(m));
+        return;
+      }
+
+      try {
+        peer = new Peer({
+          debug: 0,
+          config: PEER_ICE_CONFIG
+        });
+      } catch (secErr) {
+        myPlayerId = `local_guest_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`;
+        setupLocalBroadcastRelay(code, false);
+        activateGuestWaitingUI(code, (m) => sendViaLocalRelay(m));
+        return;
+      }
+
+      clearTimeout(onlineConnectTimeout);
+      onlineConnectTimeout = setTimeout(() => {
+        if (!joinedConfirmed) {
+          cancelOnlineAttempt();
+          showToast(`無法連入房間 ${code}：請確認房號是否正確或房主仍在待機畫面中`, 'error');
+        }
+      }, 12000);
+
+      peer.on('open', (id) => {
+        myPlayerId = id;
+        const hostPeerId = `RUMMIKUB_TW_V2_${code}`;
+        setOnlineStatusBanner(`🔗 正在與房主 (${code}) 建立連線...`, true);
+
+        hostConn = peer.connect(hostPeerId, {
+          reliable: true,
+          serialization: 'json'
+        });
+
+        hostConn.on('open', () => {
+          joinedConfirmed = true;
+          activateGuestWaitingUI(code, (m) => {
+            if (hostConn && hostConn.open) hostConn.send(m);
+          });
+        });
+
+        hostConn.on('data', (data) => handleGuestReceiveData(data));
+
+        hostConn.on('close', () => {
+          clearInterval(joinHandshakeInterval);
+          showToast('與房主的連線已中斷', 'error');
+          leaveOnlineRoom();
+        });
+
+        hostConn.on('error', () => {
+          if (!joinedConfirmed) {
+            cancelOnlineAttempt();
+            showToast('與房主建立點對點通道失敗，請再試一次', 'error');
+          }
+        });
+      });
+
+      peer.on('error', (err) => {
+        clearTimeout(onlineConnectTimeout);
+        clearInterval(joinHandshakeInterval);
+        setOnlineStatusBanner('', false);
+        btn.disabled = false;
+        btn.textContent = '加入對戰';
+        if (err && err.type === 'peer-unavailable') {
+          showToast(`找不到房間「${code}」，請確認房號是否輸入正確或房主尚未建立房間`, 'error');
+        } else {
+          // Fallback to local multi-tab relay if WebSocket is blocked
+          try { if (peer) peer.destroy(); } catch (e) {}
+          peer = null;
+          myPlayerId = `local_guest_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`;
+          setupLocalBroadcastRelay(code, false);
+          activateGuestWaitingUI(code, (m) => sendViaLocalRelay(m));
+        }
+      });
+    }
+
+    function sendToHost(msg) {
+      if (usingLocalRelay) {
+        sendViaLocalRelay(msg);
+      } else if (hostConn && hostConn.open) {
+        hostConn.send(msg);
+      }
+    }
+
+    function sendToGuest(guestId, msg) {
+      if (usingLocalRelay) {
+        sendViaLocalRelay(msg, guestId);
+      } else {
+        const conn = guestConns[guestId];
+        if (conn && conn.open) conn.send(msg);
+      }
+    }
+
+    function handleHostReceiveData(senderId, msg) {
+      if (msg.type === 'JOIN_REQ') {
+        if (!waitingRoomPlayers.some(p => p.id === senderId)) {
+          if (waitingRoomPlayers.length >= 4 || (gameState && gameState.phase === 'playing')) {
+            sendToGuest(senderId, { type: 'REJECT', reason: '房間已滿或遊戲已開始' });
+            return;
+          }
+          waitingRoomPlayers.push({ id: senderId, name: msg.name || '好友玩家', isHost: false });
+        }
+        broadcastWaitingRoom();
+      } else if (msg.type === 'ACTION_END_TURN') {
+        if (!gameState || gameState.players[gameState.currentTurnIdx].id !== senderId) return;
+        const validation = verifySubmittedTurn(senderId, msg.tableMelds, msg.rack, msg.turnStartTable, msg.turnStartRack);
+        if (validation.ok) {
+          applyValidatedTurn(senderId, msg.tableMelds, msg.rack, validation.brokeIceNow);
+        } else {
+          sendToGuest(senderId, { type: 'ACTION_REJECTED', reason: validation.reason });
+        }
+      } else if (msg.type === 'ACTION_DRAW') {
+        if (!gameState || gameState.players[gameState.currentTurnIdx].id !== senderId) return;
+        executeDrawAndAdvanceTurn(senderId);
+      } else if (msg.type === 'CHAT_EMOTE') {
+        broadcastChatOrEmote(msg.payload);
+        displayChatOrEmote(msg.payload);
+      }
+    }
+
+    function handleGuestReceiveData(msg) {
+      if (msg.type === 'REJECT') {
+        showToast(msg.reason, 'error');
+        leaveOnlineRoom();
+      } else if (msg.type === 'WAITING_LIST') {
+        waitingRoomPlayers = msg.players;
+        renderWaitingRoom();
+      } else if (msg.type === 'GAME_STATE') {
+        const wasMyTurn = gameState && gameState.players[gameState.currentTurnIdx]?.id === myPlayerId;
+        gameState = msg.state;
+        const isNowMyTurn = gameState.players[gameState.currentTurnIdx]?.id === myPlayerId;
+
+        enterActiveGameDisplay();
+
+        if (isNowMyTurn && (!wasMyTurn || !turnSnapshot)) {
+          takeTurnSnapshot();
+          SoundFX.playSuccess();
+        }
+        renderAll();
+      } else if (msg.type === 'ACTION_REJECTED') {
+        showToast(msg.reason, 'error');
+        SoundFX.playError();
+      } else if (msg.type === 'CHAT_EMOTE') {
+        displayChatOrEmote(msg.payload);
+      }
+    }
+
+    function broadcastWaitingRoom() {
+      renderWaitingRoom();
+      if (usingLocalRelay) {
+        sendViaLocalRelay({ type: 'WAITING_LIST', players: waitingRoomPlayers });
+      } else {
+        Object.values(guestConns).forEach(c => {
+          if (c.open) c.send({ type: 'WAITING_LIST', players: waitingRoomPlayers });
+        });
       }
     }
 
@@ -1394,203 +1867,8 @@
     }
 
     /*************************************************************************
-     * 6. PEERJS WEBRTC SERVERLESS MULTIPLAYER ENGINE
+     * 6B. WAITING ROOM UI & HOST START HELPERS
      *************************************************************************/
-    function generateRoomCode() {
-      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-      let code = '';
-      for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
-      return code;
-    }
-
-    function createOnlineRoom() {
-      if (typeof Peer === 'undefined') {
-        showToast('PeerJS 連線元件載入失敗，請檢查網路連線', 'error');
-        return;
-      }
-
-      const btn = document.getElementById('btn-create-room');
-      btn.disabled = true;
-      btn.textContent = '建立中...';
-
-      appMode = 'online';
-      isHost = true;
-      onlineRoomCode = generateRoomCode();
-      const peerId = `RUMMIKUB_TW_${onlineRoomCode}`;
-
-      peer = new Peer(peerId);
-
-      peer.on('open', (id) => {
-        myPlayerId = id;
-        waitingRoomPlayers = [{ id: myPlayerId, name: getMyName(), isHost: true }];
-        guestConns = {};
-
-        btn.disabled = false;
-        btn.textContent = '建立房間';
-
-        document.getElementById('online-entry-panel').classList.add('hidden');
-        document.getElementById('online-waiting-panel').classList.remove('hidden');
-        document.getElementById('display-room-code').textContent = onlineRoomCode;
-        document.getElementById('host-start-controls').classList.remove('hidden');
-        document.getElementById('fill-bots-label').classList.remove('hidden');
-        document.getElementById('guest-waiting-msg').classList.add('hidden');
-
-        renderWaitingRoom();
-        showToast(`房間 ${onlineRoomCode} 已建立！快複製連結邀請好友`, 'success');
-      });
-
-      peer.on('connection', (conn) => {
-        conn.on('open', () => {
-          if (Object.keys(guestConns).length >= 3 || (gameState && gameState.phase === 'playing')) {
-            conn.send({ type: 'REJECT', reason: '房間已滿或遊戲已開始' });
-            setTimeout(() => conn.close(), 300);
-            return;
-          }
-          guestConns[conn.peer] = conn;
-        });
-
-        conn.on('data', (data) => handleHostReceiveData(conn.peer, data));
-
-        conn.on('close', () => {
-          delete guestConns[conn.peer];
-          waitingRoomPlayers = waitingRoomPlayers.filter(p => p.id !== conn.peer);
-          broadcastWaitingRoom();
-          if (gameState && gameState.phase === 'playing') {
-            const leftPlayer = gameState.players.find(p => p.id === conn.peer);
-            if (leftPlayer) {
-              leftPlayer.isBot = true;
-              leftPlayer.difficulty = 'challenge';
-              leftPlayer.name += ' (AI接管)';
-              showToast(`${leftPlayer.name} 已由 AI 接管`, 'warn');
-              broadcastGameState();
-              renderAll();
-              checkIfBotTurn();
-            }
-          }
-        });
-      });
-
-      peer.on('error', (err) => {
-        btn.disabled = false;
-        btn.textContent = '建立房間';
-        showToast(`連線錯誤：${err.type}`, 'error');
-      });
-    }
-
-    function joinOnlineRoom() {
-      if (typeof Peer === 'undefined') {
-        showToast('PeerJS 連線元件載入失敗，請檢查網路連線', 'error');
-        return;
-      }
-
-      const code = document.getElementById('join-room-code-input').value.trim().toUpperCase();
-      if (code.length !== 6) {
-        showToast('請輸入正確的 6 碼房間代碼', 'error');
-        return;
-      }
-
-      const btn = document.getElementById('btn-join-room');
-      btn.disabled = true;
-      btn.textContent = '連線中...';
-
-      appMode = 'online';
-      isHost = false;
-      onlineRoomCode = code;
-
-      peer = new Peer();
-
-      peer.on('open', (id) => {
-        myPlayerId = id;
-        const hostPeerId = `RUMMIKUB_TW_${code}`;
-        hostConn = peer.connect(hostPeerId, { reliable: true });
-
-        hostConn.on('open', () => {
-          btn.disabled = false;
-          btn.textContent = '加入對戰';
-          hostConn.send({ type: 'JOIN_REQ', name: getMyName() });
-
-          document.getElementById('online-entry-panel').classList.add('hidden');
-          document.getElementById('online-waiting-panel').classList.remove('hidden');
-          document.getElementById('display-room-code').textContent = code;
-          document.getElementById('host-start-controls').classList.add('hidden');
-          document.getElementById('fill-bots-label').classList.add('hidden');
-          document.getElementById('guest-waiting-msg').classList.remove('hidden');
-          showToast(`成功連入房間 ${code}！`, 'success');
-        });
-
-        hostConn.on('data', (data) => handleGuestReceiveData(data));
-
-        hostConn.on('close', () => {
-          showToast('與房主的連線已中斷', 'error');
-          leaveOnlineRoom();
-        });
-      });
-
-      peer.on('error', () => {
-        btn.disabled = false;
-        btn.textContent = '加入對戰';
-        showToast('找不到該房間或連線逾時，請確認房號', 'error');
-      });
-    }
-
-    function handleHostReceiveData(senderId, msg) {
-      if (msg.type === 'JOIN_REQ') {
-        if (!waitingRoomPlayers.some(p => p.id === senderId)) {
-          waitingRoomPlayers.push({ id: senderId, name: msg.name || '好友玩家', isHost: false });
-        }
-        broadcastWaitingRoom();
-      } else if (msg.type === 'ACTION_END_TURN') {
-        if (!gameState || gameState.players[gameState.currentTurnIdx].id !== senderId) return;
-        const validation = verifySubmittedTurn(senderId, msg.tableMelds, msg.rack, msg.turnStartTable, msg.turnStartRack);
-        if (validation.ok) {
-          applyValidatedTurn(senderId, msg.tableMelds, msg.rack, validation.brokeIceNow);
-        } else {
-          const conn = guestConns[senderId];
-          if (conn) conn.send({ type: 'ACTION_REJECTED', reason: validation.reason });
-        }
-      } else if (msg.type === 'ACTION_DRAW') {
-        if (!gameState || gameState.players[gameState.currentTurnIdx].id !== senderId) return;
-        executeDrawAndAdvanceTurn(senderId);
-      } else if (msg.type === 'CHAT_EMOTE') {
-        broadcastChatOrEmote(msg.payload);
-        displayChatOrEmote(msg.payload);
-      }
-    }
-
-    function handleGuestReceiveData(msg) {
-      if (msg.type === 'REJECT') {
-        showToast(msg.reason, 'error');
-        leaveOnlineRoom();
-      } else if (msg.type === 'WAITING_LIST') {
-        waitingRoomPlayers = msg.players;
-        renderWaitingRoom();
-      } else if (msg.type === 'GAME_STATE') {
-        const wasMyTurn = gameState && gameState.players[gameState.currentTurnIdx]?.id === myPlayerId;
-        gameState = msg.state;
-        const isNowMyTurn = gameState.players[gameState.currentTurnIdx]?.id === myPlayerId;
-
-        enterActiveGameDisplay();
-
-        if (isNowMyTurn && (!wasMyTurn || !turnSnapshot)) {
-          takeTurnSnapshot();
-          SoundFX.playSuccess();
-        }
-        renderAll();
-      } else if (msg.type === 'ACTION_REJECTED') {
-        showToast(msg.reason, 'error');
-        SoundFX.playError();
-      } else if (msg.type === 'CHAT_EMOTE') {
-        displayChatOrEmote(msg.payload);
-      }
-    }
-
-    function broadcastWaitingRoom() {
-      renderWaitingRoom();
-      Object.values(guestConns).forEach(c => {
-        if (c.open) c.send({ type: 'WAITING_LIST', players: waitingRoomPlayers });
-      });
-    }
-
     function renderWaitingRoom() {
       const listEl = document.getElementById('waiting-players-list');
       listEl.innerHTML = '';
@@ -1634,8 +1912,16 @@
     }
 
     function leaveOnlineRoom() {
+      clearTimeout(onlineConnectTimeout);
+      clearInterval(joinHandshakeInterval);
+      setOnlineStatusBanner('', false);
+      if (localRoomChannel) {
+        try { localRoomChannel.close(); } catch (e) {}
+        localRoomChannel = null;
+      }
+      usingLocalRelay = false;
       if (peer) {
-        peer.destroy();
+        try { peer.destroy(); } catch (e) {}
         peer = null;
       }
       hostConn = null;
@@ -1818,71 +2104,95 @@
 
     function broadcastGameState() {
       if (appMode !== 'online' || !isHost) return;
-      Object.values(guestConns).forEach(conn => {
-        if (conn.open) conn.send({ type: 'GAME_STATE', state: gameState });
-      });
+      if (usingLocalRelay) {
+        sendViaLocalRelay({ type: 'GAME_STATE', state: gameState });
+      } else {
+        Object.values(guestConns).forEach(conn => {
+          if (conn.open) conn.send({ type: 'GAME_STATE', state: gameState });
+        });
+      }
     }
 
+    /*************************************************************************
+     * 8. TILE MULTI-SELECTION, DRAG & DROP, AND TURN TIMER
+     *************************************************************************/
     function startTurnTimer() {
       clearInterval(turnTimerInterval);
-      if (!gameState || gameState.phase !== 'playing' || gameState.turnDuration === 0) {
-        document.getElementById('timer-text').textContent = '∞';
-        document.getElementById('timer-progress-bar').style.width = '100%';
+      if (!gameState || gameState.phase !== 'playing') return;
+
+      const timerBadge = document.getElementById('timer-badge');
+      const timerText = document.getElementById('timer-text');
+      const progressBar = document.getElementById('timer-progress-bar');
+
+      if (!gameState.turnDuration || gameState.turnDuration <= 0) {
+        if (timerText) timerText.textContent = '∞';
+        if (progressBar) progressBar.style.width = '100%';
         return;
       }
 
       gameState.timeLeft = gameState.turnDuration;
-      updateTimerUI();
+      if (timerText) timerText.textContent = `${gameState.timeLeft}s`;
+      if (progressBar) {
+        progressBar.style.width = '100%';
+        progressBar.className = 'h-full bg-amber-400 transition-all duration-500';
+      }
 
       turnTimerInterval = setInterval(() => {
         if (!gameState || gameState.phase !== 'playing') {
           clearInterval(turnTimerInterval);
           return;
         }
-        gameState.timeLeft--;
-        updateTimerUI();
-
-        if (isHost && gameState.timeLeft <= 0) {
-          clearInterval(turnTimerInterval);
-          const activePlayer = gameState.players[gameState.currentTurnIdx];
-          showToast(`${activePlayer.name} 回合逾時，自動抽牌跳過`, 'warn');
-          if (activePlayer.id === myPlayerId && turnSnapshot) {
-            gameState.tableMelds = deepClone(turnSnapshot.tableMelds);
-            activePlayer.rack = deepClone(turnSnapshot.rack);
+        gameState.timeLeft = Math.max(0, gameState.timeLeft - 1);
+        if (timerText) timerText.textContent = `${gameState.timeLeft}s`;
+        if (progressBar) {
+          const pct = (gameState.timeLeft / gameState.turnDuration) * 100;
+          progressBar.style.width = `${pct}%`;
+          if (gameState.timeLeft <= 15) {
+            progressBar.className = 'h-full bg-red-500 transition-all duration-500';
+            if (timerBadge) timerBadge.classList.add('border-red-400', 'text-red-300');
+          } else {
+            if (timerBadge) timerBadge.classList.remove('border-red-400', 'text-red-300');
           }
-          executeDrawAndAdvanceTurn(activePlayer.id);
+        }
+
+        if (gameState.timeLeft <= 0) {
+          clearInterval(turnTimerInterval);
+          if (isMyTurn()) {
+            showToast('⏰ 思考時間到！自動還原桌面並抽 1 張牌', 'warn');
+            playerDrawTile();
+          }
         }
       }, 1000);
     }
 
-    function updateTimerUI() {
-      if (!gameState || gameState.turnDuration === 0) return;
-      const t = Math.max(0, gameState.timeLeft);
-      document.getElementById('timer-text').textContent = `${t}s`;
-      const pct = (t / gameState.turnDuration) * 100;
-      const bar = document.getElementById('timer-progress-bar');
-      bar.style.width = `${pct}%`;
-      bar.className = `h-full transition-all duration-500 ${t <= 15 ? 'bg-red-500' : 'bg-amber-400'}`;
+    function canManipulateTableTile(tileId) {
+      const me = gameState?.players.find(p => p.id === myPlayerId);
+      if (!me) return false;
+      if (me.brokenIce) return true;
+      // Before breaking ice, can only move tiles that came from own rack this turn
+      return Boolean(turnSnapshot && turnSnapshot.rack.some(t => t.id === tileId));
     }
 
-    /*************************************************************************
-     * 8. MULTI-SELECT CLICK-TO-PLAY & DRAG-AND-DROP INTERACTION
-     *************************************************************************/
     function handleTileClick(source, tileId, meldIndex = null) {
       if (!isMyTurn()) {
-        showToast('目前不是你的回合喔！', 'warn');
+        showToast('目前尚未輪到你的回合', 'info');
         return;
       }
-      SoundFX.playClick();
+
+      if (source === 'table' && !canManipulateTableTile(tileId)) {
+        showToast('尚未破冰前，不可選取或拆解桌上既有牌組！', 'error');
+        SoundFX.playError();
+        return;
+      }
 
       const existingIdx = selectedTiles.findIndex(item => item.tileId === tileId);
       if (existingIdx !== -1) {
-        // Click again to deselect this tile
         selectedTiles.splice(existingIdx, 1);
       } else {
-        // Add to multi-selection list in click order
         selectedTiles.push({ source, tileId, meldIndex });
       }
+
+      SoundFX.playClick();
       renderAll();
     }
 
@@ -1897,82 +2207,83 @@
         e.preventDefault();
         return;
       }
-      draggedTileData = { source, tileId, meldIndex };
-      // If dragged tile wasn't already selected, include it so multi-drag also works seamlessly
-      if (!selectedTiles.some(item => item.tileId === tileId)) {
-        selectedTiles = [{ source, tileId, meldIndex }];
+      if (source === 'table' && !canManipulateTableTile(tileId)) {
+        e.preventDefault();
+        showToast('尚未破冰前，不可拖曳桌上既有牌組！', 'error');
+        SoundFX.playError();
+        return;
       }
-      e.dataTransfer.effectAllowed = 'move';
+      if (!selectedTiles.some(item => item.tileId === tileId)) {
+        selectedTiles.push({ source, tileId, meldIndex });
+      }
+      draggedTileData = { source, tileId, meldIndex };
+      if (e.dataTransfer) {
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', tileId);
+      }
     }
 
     function handleTableDragOver(e) {
       e.preventDefault();
     }
 
-    function canManipulateTableTile(tileId) {
-      const me = gameState.players.find(p => p.id === myPlayerId);
-      if (me.brokenIce) return true;
-      return turnSnapshot && turnSnapshot.rack.some(t => t.id === tileId);
-    }
-
-    function extractTilesFromSelectionList(selectionList) {
+    function extractTilesFromSelectionList(selectionItems) {
       const me = gameState.players.find(p => p.id === myPlayerId);
       const extracted = [];
+      const idsToRemove = new Set(selectionItems.map(s => s.tileId));
 
-      for (const item of selectionList) {
-        let foundTile = null;
+      for (const item of selectionItems) {
         if (item.source === 'rack') {
-          const idx = me.rack.findIndex(t => t.id === item.tileId);
-          if (idx !== -1) foundTile = me.rack.splice(idx, 1)[0];
+          const found = me.rack.find(t => t.id === item.tileId);
+          if (found) extracted.push(found);
         } else if (item.source === 'table') {
           for (const meld of gameState.tableMelds) {
-            const idx = meld.tiles.findIndex(t => t.id === item.tileId);
-            if (idx !== -1) {
-              foundTile = meld.tiles.splice(idx, 1)[0];
+            const found = meld.tiles.find(t => t.id === item.tileId);
+            if (found) {
+              extracted.push(found);
               break;
             }
           }
         }
-        if (foundTile) extracted.push(foundTile);
       }
 
-      // Clean up any empty melds left behind on table
-      gameState.tableMelds = gameState.tableMelds.filter(m => m.tiles.length > 0);
+      me.rack = me.rack.filter(t => !idsToRemove.has(t.id));
+      gameState.tableMelds.forEach(meld => {
+        meld.tiles = meld.tiles.filter(t => !idsToRemove.has(t.id));
+      });
+      gameState.tableMelds = gameState.tableMelds.filter(meld => meld.tiles.length > 0);
+
       return extracted;
     }
 
-    /**
-     * Plays all currently selected tiles (1 or more) onto the table as a new meld group.
-     */
     function playSelectedTilesToNewSet() {
       if (!isMyTurn()) return;
       if (selectedTiles.length === 0) {
-        showToast('請先點選要打出的手牌（可連續點選多張牌）', 'info');
+        showToast('請先點選要打出的牌張！', 'info');
         return;
       }
 
-      // Check ice-break protection for any table tiles in selection
       for (const item of selectedTiles) {
         if (item.source === 'table' && !canManipulateTableTile(item.tileId)) {
-          showToast('尚未破冰（首回合需出滿 30 分）前，不可移動桌上既有牌組！', 'error');
+          showToast('尚未破冰前，不可移動桌上既有牌組！', 'error');
           SoundFX.playError();
           return;
         }
       }
 
-      const tilesToPlay = extractTilesFromSelectionList(selectedTiles);
-      if (tilesToPlay.length > 0) {
-        const orderedTiles = autoOrderMeldIfPossible(tilesToPlay);
-        gameState.tableMelds.push({
-          id: `meld_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-          tiles: orderedTiles
-        });
-        selectedTiles = [];
-        // Clear sort group highlight map for played tiles
-        recomputePlayableGroupsIfActive();
-        SoundFX.playClick();
-        renderAll();
-      }
+      const tilesForNewMeld = extractTilesFromSelectionList(selectedTiles);
+      if (tilesForNewMeld.length === 0) return;
+
+      const orderedTiles = autoOrderMeldIfPossible(tilesForNewMeld);
+      gameState.tableMelds.push({
+        id: `m_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        tiles: orderedTiles
+      });
+
+      selectedTiles = [];
+      recomputePlayableGroupsIfActive();
+      SoundFX.playClick();
+      renderAll();
     }
 
     function handleDropNewSet(e) {
@@ -2383,7 +2694,7 @@
       const startRack = turnSnapshot ? turnSnapshot.rack : me.rack;
 
       if (appMode === 'online' && !isHost) {
-        hostConn.send({
+        sendToHost({
           type: 'ACTION_END_TURN',
           tableMelds: gameState.tableMelds,
           rack: me.rack,
@@ -2432,7 +2743,7 @@
       }
 
       if (appMode === 'online' && !isHost) {
-        hostConn.send({ type: 'ACTION_DRAW' });
+        sendToHost({ type: 'ACTION_DRAW' });
         return;
       }
 
@@ -2750,16 +3061,20 @@
       if (appMode === 'online') {
         if (isHost) {
           broadcastChatOrEmote(payload);
-        } else if (hostConn && hostConn.open) {
-          hostConn.send({ type: 'CHAT_EMOTE', payload });
+        } else {
+          sendToHost({ type: 'CHAT_EMOTE', payload });
         }
       }
     }
 
     function broadcastChatOrEmote(payload) {
-      Object.values(guestConns).forEach(c => {
-        if (c.open) c.send({ type: 'CHAT_EMOTE', payload });
-      });
+      if (usingLocalRelay) {
+        sendViaLocalRelay({ type: 'CHAT_EMOTE', payload });
+      } else {
+        Object.values(guestConns).forEach(c => {
+          if (c.open) c.send({ type: 'CHAT_EMOTE', payload });
+        });
+      }
     }
 
     function displayChatOrEmote(payload) {
