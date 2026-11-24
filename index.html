@@ -268,8 +268,8 @@
     /* Recessed Slot Placeholder on Rack */
     .rack-slot {
       width: 100%;
-      aspect-ratio: 3 / 3.9;
-      max-height: clamp(44px, 12.5dvh, 66px);
+      aspect-ratio: 3 / 3.85;
+      max-height: clamp(32px, 10.5dvh, 58px);
       border-radius: 7px;
       background: rgba(110, 92, 72, 0.16);
       border: 1px dashed rgba(110, 92, 72, 0.34);
@@ -277,6 +277,96 @@
       align-items: center;
       justify-content: center;
       position: relative;
+    }
+
+    /* =========================================================
+       COMPACT SINGLE-SCREEN LANDSCAPE UI (ZERO VERTICAL SCROLL)
+    ========================================================= */
+    @media (orientation: landscape) and (max-height: 620px) {
+      body.active-game-mode #game-header {
+        padding-top: 3px;
+        padding-bottom: 3px;
+      }
+
+      body.active-game-mode .player-chip {
+        padding: 2px 8px;
+      }
+
+      body.active-game-mode #table-area {
+        padding: 6px 12px;
+      }
+
+      body.active-game-mode #turn-status-banner {
+        margin-bottom: 6px;
+        padding: 3px 10px;
+        font-size: 11px;
+      }
+
+      body.active-game-mode #table-melds-container {
+        gap: 6px;
+        padding-bottom: 6px;
+      }
+
+      body.active-game-mode .meld-tray {
+        padding: 3px 5px;
+        border-radius: 9px;
+      }
+
+      body.active-game-mode .table-tile-size {
+        width: clamp(28px, 4.2vw, 38px) !important;
+        height: clamp(36px, 9.8dvh, 48px) !important;
+      }
+
+      body.active-game-mode .table-slot-size {
+        width: 20px !important;
+        height: clamp(34px, 9.2dvh, 44px) !important;
+      }
+
+      body.active-game-mode #new-meld-zone {
+        margin-top: 2px;
+        margin-bottom: 4px;
+        padding: 5px 12px;
+      }
+
+      body.active-game-mode .physical-rack-outer {
+        padding-top: 4px;
+        padding-bottom: 5px;
+      }
+
+      body.active-game-mode #rack-section-inner {
+        max-width: 96vw;
+        gap: 4px;
+      }
+
+      body.active-game-mode #selection-toolbar {
+        padding: 3px 10px;
+      }
+
+      body.active-game-mode .rummi-rack-stand {
+        padding: 4px 6px 5px 6px;
+        border-radius: 10px;
+      }
+
+      body.active-game-mode .rack-tier-row {
+        padding: 2.5px 4px 3px 4px;
+        gap: 3px;
+      }
+
+      body.active-game-mode .rack-slot {
+        aspect-ratio: auto;
+        height: clamp(30px, 10.2dvh, 46px);
+        max-height: clamp(30px, 10.2dvh, 46px);
+      }
+
+      body.active-game-mode .tile-dimple {
+        display: none;
+      }
+
+      body.active-game-mode .color-suit-dot {
+        font-size: 7px;
+        top: 1px;
+        left: 2px;
+      }
     }
 
     .rack-slot.occupied {
@@ -626,7 +716,7 @@
   <div id="game-view" class="hidden flex-1 flex flex-col h-dvh max-h-dvh overflow-hidden">
 
     <!-- TOP BAR -->
-    <header class="bg-emerald-950/90 border-b border-emerald-800/80 px-2.5 py-2 sm:px-4 flex items-center justify-between gap-2 z-30 shadow-md shrink-0">
+    <header id="game-header" class="bg-emerald-950/90 border-b border-emerald-800/80 px-2.5 py-2 sm:px-4 flex items-center justify-between gap-2 z-30 shadow-md shrink-0">
       <div id="players-bar" class="flex items-center gap-1.5 sm:gap-2.5 overflow-x-auto py-0.5 flex-1"></div>
 
       <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
@@ -671,11 +761,11 @@
     <!-- =========================================================
          CENTER TABLE WORKSPACE (Melds Area)
     ========================================================= -->
-    <main id="table-area" class="flex-1 overflow-y-auto p-2.5 sm:p-4 relative"
+    <main id="table-area" class="flex-1 min-h-0 overflow-y-auto p-2.5 sm:p-4 relative"
       ondragover="handleTableDragOver(event)" ondrop="handleDropNewSet(event)">
 
       <!-- Turn Status & Helper Banner -->
-      <div class="max-w-5xl mx-auto mb-2.5 flex flex-wrap items-center justify-between gap-2 bg-emerald-950/65 border border-emerald-700/40 rounded-2xl px-3 py-1.5 text-xs sm:text-sm">
+      <div id="turn-status-banner" class="max-w-5xl mx-auto mb-2.5 flex flex-wrap items-center justify-between gap-2 bg-emerald-950/65 border border-emerald-700/40 rounded-2xl px-3 py-1.5 text-xs sm:text-sm">
         <div class="flex items-center gap-2">
           <span id="turn-indicator-badge" class="px-2.5 py-0.5 rounded-full font-black bg-amber-400 text-emerald-950">
             輪到你出牌
@@ -731,7 +821,7 @@
          BOTTOM TWO-TIER RUMMIKUB RACK & ACTION CONTROLS
     ========================================================= -->
     <section class="physical-rack-outer px-2 pt-2 pb-2.5 sm:px-4 sm:pt-2.5 sm:pb-3 z-30 shrink-0">
-      <div class="max-w-3xl mx-auto space-y-2">
+      <div id="rack-section-inner" class="max-w-4xl mx-auto flex flex-col gap-1.5">
 
         <!-- Multi-Select Action Bar (Appears/Activates when tiles are selected) -->
         <div id="selection-toolbar" class="hidden flex flex-wrap items-center justify-between gap-2 bg-amber-500/15 border border-amber-400/60 rounded-2xl px-3 py-1.5">
@@ -796,7 +886,7 @@
         <div id="player-rack-stand"
           ondragover="event.preventDefault()"
           ondrop="handleDropToRack(event)"
-          class="rummi-rack-stand space-y-1.5">
+          class="rummi-rack-stand flex flex-col gap-1">
           <!-- Upper Tier Row -->
           <div id="rack-row-top" class="rack-tier-row"></div>
           <!-- Lower Tier Row -->
@@ -2726,15 +2816,15 @@
       const colorClass = tile.isJoker ? 'color-joker' : `color-${tile.color}`;
       const suitSymbol = COLOR_SUIT_SYMBOL[tile.color] || '';
       const suitColorClass = tile.isJoker ? 'text-amber-600' : `color-${tile.color}`;
-
+      const isLandscapeCompact = window.innerWidth > window.innerHeight && window.innerHeight <= 620;
       // Full-bleed responsive font size for both numbers (1~13) and Joker smiley face
       const isTwoDigit = !tile.isJoker && tile.number >= 10;
-      const computedFontSize = customFontSize
-        ? (isTwoDigit ? Math.round(customFontSize * 0.88) : customFontSize)
-        : null;
-      const fontStyle = computedFontSize
-        ? `style="font-size: ${computedFontSize}px;"`
-        : `style="font-size: clamp(22px, 4.4dvh, 32px);"`;
+      const baseFallbackPx = isLandscapeCompact
+        ? Math.max(17, Math.round(window.innerHeight * 0.068))
+        : Math.max(22, Math.min(32, Math.round(window.innerHeight * 0.044)));
+      const rawFontPx = customFontSize || baseFallbackPx;
+      const computedFontSize = isTwoDigit ? Math.round(rawFontPx * 0.88) : rawFontPx;
+      const fontStyle = `style="font-size: ${computedFontSize}px;"`;
 
       const centerContent = tile.isJoker
         ? `<span class="tile-joker-face font-black ${colorClass}" ${fontStyle}>☺</span>`
@@ -2784,12 +2874,12 @@
         const isMe = p.id === myPlayerId;
         return `
           <div id="player-badge-${p.id}"
-            class="px-2.5 py-1.5 rounded-xl border transition flex items-center gap-2 shrink-0 ${
+            class="player-chip px-2.5 py-1.5 rounded-xl border transition flex items-center gap-2 shrink-0 ${
               active
                 ? 'bg-amber-400/20 border-amber-400 shadow-md shadow-amber-400/15'
                 : 'bg-emerald-900/60 border-emerald-800/80 opacity-85'
             }">
-            <div class="flex flex-col">
+            <div class="flex items-center gap-1.5 sm:flex-col sm:items-start sm:gap-0">
               <div class="flex items-center gap-1">
                 <span class="text-xs font-black ${active ? 'text-amber-300' : 'text-white'}">
                   ${escapeHtml(p.name)}${isMe ? ' (你)' : ''}
@@ -2801,7 +2891,7 @@
                 </span>
               </div>
               <div class="text-[11px] text-emerald-200/80 font-mono">
-                剩餘 <strong class="text-white">${p.rack.length}</strong> 張
+                剩<strong class="text-white">${p.rack.length}</strong>張
               </div>
             </div>
           </div>
@@ -2815,7 +2905,7 @@
 
       if (gameState.tableMelds.length === 0) {
         container.innerHTML = `
-          <div class="w-full text-center py-8 text-emerald-200/50 text-sm">
+          <div class="w-full text-center py-3 sm:py-6 text-emerald-200/55 text-xs sm:text-sm">
             牌桌目前空空如也，點選 3 張以上手牌（滿 30 分）即可破冰出牌！
           </div>
         `;
@@ -2831,7 +2921,7 @@
                ondragover="event.preventDefault(); this.classList.add('highlight-drop')"
                ondragleave="this.classList.remove('highlight-drop')"
                ondrop="this.classList.remove('highlight-drop'); handleDropOnMeld(event, ${mIdx}, 'start')"
-               class="slot-btn w-7 h-12 sm:w-8 sm:h-14 flex items-center justify-center text-sm font-black" title="將所選牌加在左側">+</button>`
+               class="slot-btn table-slot-size w-7 h-12 sm:w-8 sm:h-14 flex items-center justify-center text-sm font-black" title="將所選牌加在左側">+</button>`
           : '';
 
         const rightSlot = myTurn
@@ -2839,11 +2929,11 @@
                ondragover="event.preventDefault(); this.classList.add('highlight-drop')"
                ondragleave="this.classList.remove('highlight-drop')"
                ondrop="this.classList.remove('highlight-drop'); handleDropOnMeld(event, ${mIdx}, 'end')"
-               class="slot-btn w-7 h-12 sm:w-8 sm:h-14 flex items-center justify-center text-sm font-black" title="將所選牌加在右側">+</button>`
+               class="slot-btn table-slot-size w-7 h-12 sm:w-8 sm:h-14 flex items-center justify-center text-sm font-black" title="將所選牌加在右側">+</button>`
           : '';
 
         const tilesHtml = meld.tiles
-          .map(t => renderTileHTML(t, 'table', mIdx, 'w-11 h-14 sm:w-12 sm:h-16'))
+          .map(t => renderTileHTML(t, 'table', mIdx, 'table-tile-size w-11 h-14 sm:w-12 sm:h-16'))
           .join('');
 
         return `
@@ -2887,12 +2977,15 @@
         }
       }
 
+      const isLandscapeCompact = window.innerWidth > window.innerHeight && window.innerHeight <= 620;
       const scaleFactor = Math.min(1, 10 / colsPerRow);
       // Full-bleed responsive font sizing calibrated to slot height in landscape & desktop
-      const slotHeightEstimate = Math.min(64, Math.max(42, window.innerHeight * 0.12));
-      const baseFontPx = Math.round(slotHeightEstimate * 0.72);
-      const scaledFontPx = Math.max(15, Math.round(baseFontPx * scaleFactor));
-      const slotGapPx = colsPerRow > 12 ? 2 : 4;
+      const slotHeightEstimate = isLandscapeCompact
+        ? Math.min(46, Math.max(30, window.innerHeight * 0.102))
+        : Math.min(58, Math.max(36, window.innerHeight * 0.105));
+      const baseFontPx = Math.round(slotHeightEstimate * 0.74);
+      const scaledFontPx = Math.max(14, Math.round(baseFontPx * scaleFactor));
+      const slotGapPx = colsPerRow > 12 ? 2 : (isLandscapeCompact ? 3 : 4);
 
       topRowEl.style.gridTemplateColumns = `repeat(${colsPerRow}, minmax(0, 1fr))`;
       bottomRowEl.style.gridTemplateColumns = `repeat(${colsPerRow}, minmax(0, 1fr))`;
@@ -2930,6 +3023,7 @@
     window.addEventListener('resize', () => {
       checkPortraitOrientationOverlay();
       if (gameState && gameState.phase === 'playing') {
+        renderTableMelds();
         renderRack();
       }
     });
