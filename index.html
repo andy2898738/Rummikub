@@ -1170,6 +1170,248 @@
   ========================================================= -->
   <script>
     /*************************************************************************
+     * 1. PROCEDURAL SOUND FX ENGINE (Web Audio API - Zero External URLs)
+     *************************************************************************/
+    const SoundFX = (() => {
+      let ctx = null;
+      let enabled = true;
+
+      function getCtx() {
+        if (!ctx) {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          if (AudioCtx) ctx = new AudioCtx();
+        }
+        if (ctx && ctx.state === 'suspended') {
+          ctx.resume().catch(() => {});
+        }
+        return ctx;
+      }
+
+      function playTone(freq, type = 'sine', duration = 0.08, gainVal = 0.12, delay = 0) {
+        if (!enabled) return;
+        try {
+          const ac = getCtx();
+          if (!ac) return;
+          const now = ac.currentTime + delay;
+          const osc = ac.createOscillator();
+          const gain = ac.createGain();
+          osc.type = type;
+          osc.frequency.setValueAtTime(freq, now);
+          gain.gain.setValueAtTime(gainVal, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+          osc.connect(gain);
+          gain.connect(ac.destination);
+          osc.start(now);
+          osc.stop(now + duration);
+        } catch (e) {}
+      }
+
+      return {
+        toggle() {
+          enabled = !enabled;
+          return enabled;
+        },
+        playClick() {
+          playTone(620, 'triangle', 0.055, 0.12);
+        },
+        playDraw() {
+          playTone(340, 'sine', 0.08, 0.12, 0);
+          playTone(460, 'sine', 0.09, 0.12, 0.06);
+        },
+        playSuccess() {
+          playTone(523.25, 'triangle', 0.1, 0.14, 0);
+          playTone(659.25, 'triangle', 0.1, 0.14, 0.08);
+          playTone(783.99, 'triangle', 0.16, 0.16, 0.16);
+        },
+        playError() {
+          playTone(190, 'sawtooth', 0.14, 0.12, 0);
+          playTone(155, 'sawtooth', 0.16, 0.12, 0.09);
+        },
+        playVictory() {
+          [523.25, 659.25, 783.99, 1046.5].forEach((f, idx) => {
+            playTone(f, 'triangle', 0.18, 0.16, idx * 0.1);
+          });
+        }
+      };
+    })();
+
+    /*************************************************************************
+     * 2. OFFICIAL 106-TILE DECK & RUMMIKUB MELD VALIDATOR
+     *************************************************************************/
+    const COLORS = ['black', 'red', 'blue', 'orange'];
+    const COLOR_ORDER = { black: 0, red: 1, blue: 2, orange: 3 };
+    const COLOR_SUIT_SYMBOL = {
+      black: '♠',
+      red: '♥',
+      blue: '◆',
+      orange: '▲'
+    };
+
+    function createFullDeck() {
+      const deck = [];
+      let uid = 1;
+      for (let setCopy = 0; setCopy < 2; setCopy++) {
+        for (const color of COLORS) {
+          for (let num = 1; num <= 13; num++) {
+            deck.push({
+              id: `t_${uid++}`,
+              color,
+              number: num,
+              isJoker: false
+            });
+          }
+        }
+      }
+      // 2 Official Jokers
+      deck.push({ id: `t_${uid++}`, color: 'joker', number: 0, isJoker: true });
+      deck.push({ id: `t_${uid++}`, color: 'joker', number: 0, isJoker: true });
+
+      // Fisher-Yates Shuffle
+      for (let i = deck.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [deck[i], deck[j]] = [deck[j], deck[i]];
+      }
+      return deck;
+    }
+
+    /**
+     * Validates a Rummikub meld (Group of 3-4 same-number distinct-color tiles,
+     * or Run of >=3 consecutive same-color tiles) and calculates its point value.
+     */
+    function validateMeld(tiles) {
+      if (!Array.isArray(tiles) || tiles.length < 3) {
+        return { valid: false, points: 0, reason: '每組至少需 3 張牌' };
+      }
+
+      const normals = tiles.filter(t => !t.isJoker);
+      const jokerCount = tiles.length - normals.length;
+
+      if (normals.length === 0) {
+        return { valid: false, points: 0, reason: '不可全為百搭鬼牌' };
+      }
+
+      // Check 1: Group (3 or 4 tiles, same number, strictly distinct colors)
+      if (tiles.length <= 4) {
+        const targetNum = normals[0].number;
+        const allSameNum = normals.every(t => t.number === targetNum);
+        const colorSet = new Set(normals.map(t => t.color));
+        if (allSameNum && colorSet.size === normals.length) {
+          return {
+            valid: true,
+            type: 'group',
+            points: targetNum * tiles.length
+          };
+        }
+      }
+
+      // Check 2: Run (3 to 13 tiles, all same color, strictly consecutive numbers)
+      if (tiles.length <= 13) {
+        const targetColor = normals[0].color;
+        const allSameColor = normals.every(t => t.color === targetColor);
+        if (allSameColor) {
+          // Verify ordered positions so Jokers sit in exact gaps/ends
+          let jokersUsed = 0;
+          let expectedNum = null;
+          let isOrderedRun = true;
+
+          // Determine anchor number from first normal tile's index
+          const firstNormalIdx = tiles.findIndex(t => !t.isJoker);
+          const startNum = tiles[firstNormalIdx].number - firstNormalIdx;
+
+          if (startNum >= 1 && startNum + tiles.length - 1 <= 13) {
+            let pts = 0;
+            for (let i = 0; i < tiles.length; i++) {
+              const curNum = startNum + i;
+              const tile = tiles[i];
+              if (tile.isJoker) {
+                jokersUsed++;
+                pts += curNum;
+              } else {
+                if (tile.number !== curNum) {
+                  isOrderedRun = false;
+                  break;
+                }
+                pts += tile.number;
+              }
+            }
+            if (isOrderedRun && jokersUsed === jokerCount) {
+              return {
+                valid: true,
+                type: 'run',
+                points: pts
+              };
+            }
+          }
+        }
+      }
+
+      return { valid: false, points: 0, reason: '不符合同色順子或同數異色群組規則' };
+    }
+
+    /**
+     * Automatically arranges a candidate set of tiles into valid Run or Group order
+     * (placing Jokers into missing numeric gaps or ends) if possible.
+     */
+    function autoOrderMeldIfPossible(tiles) {
+      if (!Array.isArray(tiles) || tiles.length < 2) return tiles;
+      const normals = tiles.filter(t => !t.isJoker);
+      const jokers = tiles.filter(t => t.isJoker);
+      if (normals.length === 0) return tiles;
+
+      // Case A: Same number -> sort by color, Jokers at end
+      if (normals.every(t => t.number === normals[0].number)) {
+        const sortedNormals = [...normals].sort((a, b) => COLOR_ORDER[a.color] - COLOR_ORDER[b.color]);
+        return [...sortedNormals, ...jokers];
+      }
+
+      // Case B: Same color -> sort ascending by number and fill interior gaps with Jokers
+      if (normals.every(t => t.color === normals[0].color)) {
+        const sortedNormals = [...normals].sort((a, b) => a.number - b.number);
+        // Check duplicate numbers
+        for (let i = 1; i < sortedNormals.length; i++) {
+          if (sortedNormals[i].number === sortedNormals[i - 1].number) {
+            return tiles;
+          }
+        }
+
+        const arranged = [sortedNormals[0]];
+        let jokersLeft = [...jokers];
+
+        for (let i = 1; i < sortedNormals.length; i++) {
+          const prevNum = sortedNormals[i - 1].number;
+          const curNum = sortedNormals[i].number;
+          const gap = curNum - prevNum - 1;
+          if (gap > jokersLeft.length) {
+            return [...sortedNormals, ...jokers];
+          }
+          for (let g = 0; g < gap; g++) {
+            arranged.push(jokersLeft.shift());
+          }
+          arranged.push(sortedNormals[i]);
+        }
+
+        // Append remaining jokers at end (or prepend if end exceeds 13)
+        let lastNum = sortedNormals[sortedNormals.length - 1].number;
+        let firstNum = sortedNormals[0].number;
+        while (jokersLeft.length > 0) {
+          const jk = jokersLeft.shift();
+          if (lastNum < 13) {
+            arranged.push(jk);
+            lastNum++;
+          } else if (firstNum > 1) {
+            arranged.unshift(jk);
+            firstNum--;
+          } else {
+            arranged.push(jk);
+          }
+        }
+        return arranged;
+      }
+
+      return tiles;
+    }
+
+    /*************************************************************************
      * 3. APPLICATION STATE, PERSISTENT DEVICE ID & MULTI-SELECT SNAPSHOT
      *************************************************************************/
     const DEVICE_PROFILE_STORAGE_KEY = 'rummikub_tw_device_profile_v1';
