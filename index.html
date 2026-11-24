@@ -2,7 +2,12 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <!-- iOS Safari Home-Screen Fullscreen Web App Support -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="拉密對戰" />
+  <meta name="mobile-web-app-capable" content="yes" />
   <title>拉密線上對戰 Rummikub</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -23,6 +28,11 @@
       --rack-body-top: #f2eadf;
       --rack-body-mid: #e4d8c8;
       --rack-body-dark: #cbbba6;
+      /* Automatic Front-Camera / Notch Safe-Area Tokens */
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-left: env(safe-area-inset-left, 0px);
+      --safe-right: env(safe-area-inset-right, 0px);
     }
 
     * {
@@ -36,7 +46,7 @@
       background: radial-gradient(circle at 50% 35%, var(--felt-light) 0%, var(--felt-mid) 45%, var(--felt-dark) 100%);
       color: #f8fafc;
       margin: 0;
-      padding: 0;
+      padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
       min-height: 100dvh;
       overflow-x: hidden;
     }
@@ -283,6 +293,28 @@
        PORTRAIT & GENERAL RESPONSIVE LAYOUT
     ========================================================= */
     @media (orientation: portrait) {
+      body.active-game-mode #game-header {
+        flex-wrap: wrap;
+        padding: 6px 10px;
+        gap: 6px;
+      }
+      body.active-game-mode #players-bar {
+        width: 100%;
+        flex: 1 1 100%;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 5px;
+        overflow: visible;
+      }
+      body.active-game-mode .player-chip {
+        width: 100%;
+        padding: 4px 8px;
+        justify-content: space-between;
+      }
+      body.active-game-mode #header-actions-bar {
+        width: 100%;
+        justify-content: flex-end;
+      }
       body.active-game-mode #rack-section-inner {
         max-width: 100%;
       }
@@ -301,12 +333,15 @@
     }
 
     /* =========================================================
-       COMPACT SINGLE-SCREEN LANDSCAPE UI
+       COMPACT SINGLE-SCREEN LANDSCAPE UI + CAMERA CUTOUT GUARD
     ========================================================= */
     @media (orientation: landscape) and (max-height: 620px) {
+      /* Ensure side padding clears front-camera punch-holes / Dynamic Island even if env() is 0 */
       body.active-game-mode #game-header {
         padding-top: 3px;
         padding-bottom: 3px;
+        padding-left: max(12px, var(--safe-left), 34px);
+        padding-right: max(12px, var(--safe-right), 34px);
       }
 
       body.active-game-mode .player-chip {
@@ -314,7 +349,7 @@
       }
 
       body.active-game-mode #table-area {
-        padding: 6px 12px;
+        padding: 6px max(14px, var(--safe-right), 34px) 6px max(14px, var(--safe-left), 34px);
       }
 
       body.active-game-mode #turn-status-banner {
@@ -351,11 +386,13 @@
 
       body.active-game-mode .physical-rack-outer {
         padding-top: 4px;
-        padding-bottom: 5px;
+        padding-bottom: max(5px, var(--safe-bottom));
+        padding-left: max(10px, var(--safe-left), 34px);
+        padding-right: max(10px, var(--safe-right), 34px);
       }
 
       body.active-game-mode #rack-section-inner {
-        max-width: 96vw;
+        max-width: 100%;
         gap: 4px;
       }
 
@@ -391,19 +428,71 @@
     }
 
     /* =========================================================
-       FULLSCREEN MODE: SHRINK HAND RACK & MAXIMIZE TABLE BOARD
+       FULLSCREEN MODE: SHRINK HAND RACK, MAXIMIZE TABLE BOARD &
+       AUTOMATIC FRONT-CAMERA / NOTCH / PUNCH-HOLE SAFE ADAPTATION
+       (Works for Android Fullscreen, iOS Safari & Dynamic Island)
     ========================================================= */
+    body.is-fullscreen-mode {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100dvh;
+      overflow: hidden;
+      padding-top: var(--safe-top);
+      padding-bottom: var(--safe-bottom);
+      padding-left: var(--safe-left);
+      padding-right: var(--safe-right);
+    }
+
+    body.is-fullscreen-mode #game-view {
+      height: 100%;
+      max-height: 100%;
+    }
+
     body.is-fullscreen-mode #game-header {
-      padding-top: 3px;
-      padding-bottom: 3px;
+      padding-top: max(4px, var(--safe-top));
+      padding-bottom: 4px;
+      padding-left: max(12px, var(--safe-left));
+      padding-right: max(12px, var(--safe-right));
+    }
+
+    /* Portrait fullscreen on phones with top punch-hole / notch / Dynamic Island */
+    @media (orientation: portrait) {
+      body.is-fullscreen-mode #game-header {
+        padding-top: max(28px, var(--safe-top));
+      }
+      body.is-fullscreen-mode .physical-rack-outer {
+        padding-bottom: max(14px, var(--safe-bottom));
+      }
+    }
+
+    /* Landscape fullscreen on phones with side punch-hole / notch / Dynamic Island */
+    @media (orientation: landscape) {
+      body.is-fullscreen-mode #game-header {
+        padding-left: max(40px, var(--safe-left));
+        padding-right: max(40px, var(--safe-right));
+      }
+      body.is-fullscreen-mode #table-area {
+        padding-left: max(40px, var(--safe-left));
+        padding-right: max(40px, var(--safe-right));
+      }
+      body.is-fullscreen-mode .physical-rack-outer {
+        padding-left: max(40px, var(--safe-left));
+        padding-right: max(40px, var(--safe-right));
+        padding-bottom: max(8px, var(--safe-bottom));
+      }
+      body.is-fullscreen-mode #comms-drawer {
+        right: max(42px, calc(var(--safe-right) + 8px));
+      }
     }
 
     body.is-fullscreen-mode #table-area {
-      padding: 8px 14px;
+      padding-top: 8px;
+      padding-bottom: 8px;
     }
 
     body.is-fullscreen-mode #table-melds-container {
-      max-width: 96vw;
+      max-width: 100%;
       gap: 8px;
     }
 
@@ -762,18 +851,7 @@
     <header id="game-header" class="bg-emerald-950/90 border-b border-emerald-800/80 px-2.5 py-2 sm:px-4 flex items-center justify-between gap-2 z-30 shadow-md shrink-0">
       <div id="players-bar" class="flex items-center gap-1.5 sm:gap-2.5 overflow-x-auto py-0.5 flex-1"></div>
 
-      <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
-        <div class="bg-emerald-900/90 border border-emerald-700/70 px-2.5 py-1 rounded-xl flex items-center gap-1.5" title="牌庫剩餘張數">
-          <span class="text-xs text-emerald-300 hidden sm:inline">牌庫</span>
-          <span class="text-sm">🀄</span>
-          <span id="pool-count" class="font-mono font-black text-amber-300 text-sm sm:text-base">0</span>
-        </div>
-
-        <div id="timer-badge" class="bg-emerald-900/90 border border-emerald-700/70 px-2.5 py-1 rounded-xl flex items-center gap-1 font-mono font-bold text-sm">
-          <span>⏱</span>
-          <span id="timer-text">90s</span>
-        </div>
-
+      <div id="header-actions-bar" class="flex items-center gap-1.5 sm:gap-2 shrink-0">
         <button onclick="toggleFullscreenMode()" id="game-fullscreen-btn" class="px-2.5 py-1.5 bg-emerald-800/90 hover:bg-emerald-700 border border-emerald-600/60 rounded-xl text-xs font-bold text-amber-200 flex items-center gap-1" title="切換全螢幕與橫向顯示">
           <span>⛶</span>
           <span class="hidden sm:inline">全螢幕</span>
@@ -806,6 +884,19 @@
     ========================================================= -->
     <main id="table-area" class="flex-1 min-h-0 overflow-y-auto p-2.5 sm:p-4 relative"
       ondragover="handleTableDragOver(event)" ondrop="handleDropNewSet(event)">
+
+      <!-- Floating Translucent Pool & Countdown HUD (Top-Right of Table, Non-Blocking) -->
+      <div id="floating-table-hud" class="sticky top-0 z-20 float-right ml-2 mb-1.5 flex items-center gap-1.5 pointer-events-none select-none">
+        <div class="bg-emerald-950/65 backdrop-blur-md border border-emerald-400/25 px-2.5 py-1 rounded-xl flex items-center gap-1 shadow-lg" title="牌庫剩餘張數">
+          <span class="text-[11px] text-emerald-200/85 font-bold">牌庫</span>
+          <span class="text-xs">🀄</span>
+          <span id="pool-count" class="font-mono font-black text-amber-300 text-xs sm:text-sm">0</span>
+        </div>
+        <div id="timer-badge" class="bg-emerald-950/65 backdrop-blur-md border border-emerald-400/25 px-2.5 py-1 rounded-xl flex items-center gap-1 font-mono font-bold text-xs sm:text-sm text-emerald-100 shadow-lg">
+          <span>⏱</span>
+          <span id="timer-text">90s</span>
+        </div>
+      </div>
 
       <!-- Turn Status & Helper Banner -->
       <div id="turn-status-banner" class="max-w-5xl mx-auto mb-2.5 flex flex-wrap items-center justify-between gap-2 bg-emerald-950/65 border border-emerald-700/40 rounded-2xl px-3 py-1.5 text-xs sm:text-sm">
@@ -2004,10 +2095,26 @@
     }
 
     /*************************************************************************
-     * 7B. OPTIONAL FULLSCREEN DISPLAY CONTROLLER (PORTRAIT & LANDSCAPE FRIENDLY)
+     * 7B. OPTIONAL FULLSCREEN DISPLAY CONTROLLER (WITH IPHONE SAFARI SUPPORT)
      *************************************************************************/
+    let pseudoFullscreenActive = false;
+
+    function isIOSDevice() {
+      return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    }
+
+    function isStandalonePWA() {
+      return window.navigator.standalone === true ||
+        window.matchMedia('(display-mode: standalone)').matches;
+    }
+
     function isFullscreenActive() {
-      return Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+      return Boolean(
+        document.fullscreenElement ||
+        document.webkitFullscreenElement ||
+        pseudoFullscreenActive
+      );
     }
 
     function enterActiveGameDisplay() {
@@ -2015,13 +2122,17 @@
       document.getElementById('lobby-view').classList.add('hidden');
       document.getElementById('gameover-modal').classList.add('hidden');
       document.getElementById('game-view').classList.remove('hidden');
+      if (isStandalonePWA()) {
+        pseudoFullscreenActive = true;
+      }
       updateFullscreenButtonUI();
     }
 
     function exitActiveGameDisplay() {
       document.body.classList.remove('active-game-mode');
       document.body.classList.remove('is-fullscreen-mode');
-      if (isFullscreenActive()) {
+      pseudoFullscreenActive = false;
+      if (document.fullscreenElement || document.webkitFullscreenElement) {
         try {
           if (document.exitFullscreen) document.exitFullscreen();
           else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
@@ -2032,23 +2143,43 @@
 
     async function toggleFullscreenMode() {
       SoundFX.playClick();
-      if (isFullscreenActive()) {
-        try {
-          if (document.exitFullscreen) await document.exitFullscreen();
-          else if (document.webkitExitFullscreen) await document.webkitExitFullscreen();
-        } catch (e) {}
+      const currentlyFullscreen = isFullscreenActive();
+
+      if (currentlyFullscreen) {
+        pseudoFullscreenActive = false;
+        if (document.fullscreenElement || document.webkitFullscreenElement) {
+          try {
+            if (document.exitFullscreen) await document.exitFullscreen();
+            else if (document.webkitExitFullscreen) await document.webkitExitFullscreen();
+          } catch (e) {}
+        }
       } else {
         const docEl = document.documentElement;
+        let nativeSucceeded = false;
+
         try {
           if (docEl.requestFullscreen) {
             await docEl.requestFullscreen();
+            nativeSucceeded = true;
           } else if (docEl.webkitRequestFullscreen) {
             await docEl.webkitRequestFullscreen();
+            nativeSucceeded = Boolean(document.fullscreenElement || document.webkitFullscreenElement);
           }
         } catch (err) {
-          showToast('目前瀏覽器不支援全螢幕切換，可直接使用一般視窗遊玩', 'info');
+          nativeSucceeded = false;
+        }
+
+        // iPhone Safari does not allow native requestFullscreen() on web pages:
+        // Enable Pseudo-Fullscreen (maximizes table & shrinks hand rack) + guide user for Safari toolbar
+        if (!nativeSucceeded) {
+          pseudoFullscreenActive = true;
+          window.scrollTo(0, 1);
+          if (isIOSDevice() && !isStandalonePWA()) {
+            showToast('已開啟牌桌最大化！提示：在 Safari 點底部「分享 → 加入主畫面」開啟即可完全隱藏網址列全螢幕', 'info');
+          }
         }
       }
+
       setTimeout(() => {
         updateFullscreenButtonUI();
         if (gameState && gameState.phase === 'playing') {
@@ -2069,6 +2200,9 @@
     }
 
     function handleFullscreenLayoutChange() {
+      if (!document.fullscreenElement && !document.webkitFullscreenElement && !isIOSDevice()) {
+        pseudoFullscreenActive = false;
+      }
       updateFullscreenButtonUI();
       if (gameState && gameState.phase === 'playing') {
         renderTableMelds();
@@ -2078,6 +2212,14 @@
 
     document.addEventListener('fullscreenchange', handleFullscreenLayoutChange);
     document.addEventListener('webkitfullscreenchange', handleFullscreenLayoutChange);
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', () => {
+        if (gameState && gameState.phase === 'playing') {
+          renderTableMelds();
+          renderRack();
+        }
+      });
+    }
     window.addEventListener('orientationchange', () => {
       setTimeout(() => {
         if (gameState && gameState.phase === 'playing') {
