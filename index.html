@@ -376,11 +376,11 @@
 
       body.active-game-mode #rack-section-inner {
         max-width: 100%;
-        gap: 4px;
+        gap: 3px;
       }
 
       body.active-game-mode #selection-toolbar {
-        padding: 3px 10px;
+        padding: 2px 8px;
       }
 
       body.active-game-mode .rummi-rack-stand {
@@ -1003,27 +1003,27 @@
     <!-- =========================================================
          BOTTOM TWO-TIER RUMMIKUB RACK & ACTION CONTROLS
     ========================================================= -->
-    <section class="physical-rack-outer px-2 pt-2 pb-2.5 sm:px-4 sm:pt-2.5 sm:pb-3 z-30 shrink-0">
-      <div id="rack-section-inner" class="max-w-4xl mx-auto flex flex-col gap-1.5">
+    <section class="physical-rack-outer px-2 pt-1.5 pb-2 sm:px-4 sm:pt-2 sm:pb-2.5 z-30 shrink-0">
+      <div id="rack-section-inner" class="max-w-4xl mx-auto flex flex-col gap-1">
 
-        <!-- Multi-Select Action Bar (Appears/Activates when tiles are selected) -->
-        <div id="selection-toolbar" class="hidden flex flex-wrap items-center justify-between gap-2 bg-amber-500/15 border border-amber-400/60 rounded-2xl px-3 py-1.5">
-          <div class="flex items-center gap-2 text-xs sm:text-sm font-bold text-amber-200">
-            <span>已選取 <strong id="selected-count-text" class="text-amber-300 font-mono text-base">0</strong> 張牌</span>
-            <span id="selected-points-badge" class="text-[11px] bg-black/35 px-2 py-0.5 rounded-lg text-emerald-200"></span>
+        <!-- Compact Single-Line Multi-Select Action Bar (Does not squeeze table area) -->
+        <div id="selection-toolbar" class="hidden flex items-center justify-between gap-1.5 bg-emerald-950/90 border border-amber-400/50 rounded-xl px-2.5 py-1 shadow">
+          <div class="flex items-center gap-1.5 text-[11px] font-bold text-amber-200 min-w-0 truncate">
+            <span>已選 <strong id="selected-count-text" class="text-amber-300 font-mono text-xs">0</strong> 張</span>
+            <span id="selected-points-badge" class="text-[10px] bg-black/40 px-1.5 py-0.5 rounded text-emerald-200 truncate"></span>
           </div>
-          <div class="flex items-center gap-1.5 ml-auto">
+          <div class="flex items-center gap-1 shrink-0">
             <button onclick="clearAllSelections()"
-              class="px-2.5 py-1.5 bg-stone-800 hover:bg-stone-700 text-stone-200 rounded-xl text-xs font-bold transition">
-              ✕ 取消選取
+              class="px-2 py-0.5 bg-stone-800 hover:bg-stone-700 text-stone-200 rounded-lg text-[11px] font-bold transition">
+              ✕ 取消
             </button>
             <button id="btn-take-back-rack" onclick="returnSelectedTableTilesToRack()"
-              class="hidden px-2.5 py-1.5 bg-sky-500 hover:bg-sky-400 text-slate-950 rounded-xl text-xs font-black transition shadow">
-              ↩ 收回牌架
+              class="hidden px-2 py-0.5 bg-sky-500 hover:bg-sky-400 text-slate-950 rounded-lg text-[11px] font-black transition">
+              ↩ 收回
             </button>
             <button id="btn-play-selected" onclick="playSelectedTilesToNewSet()"
-              class="px-3.5 py-1.5 bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-emerald-950 rounded-xl text-xs sm:text-sm font-black shadow-lg transition transform active:scale-95">
-              🃏 打出所選牌
+              class="px-2.5 py-0.5 bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-emerald-950 rounded-lg text-[11px] font-black shadow transition active:scale-95">
+              🃏 出牌
             </button>
           </div>
         </div>
@@ -3680,7 +3680,7 @@
       if (myTurn && selectedTiles.length > 0) {
         selToolbar.classList.remove('hidden');
         selCountText.textContent = selectedTiles.length;
-        playSelectedBtn.textContent = `🃏 打出所選牌 (${selectedTiles.length}張)`;
+        playSelectedBtn.textContent = `🃏 出牌 (${selectedTiles.length})`;
 
         // Preview if currently selected tiles already form a valid meld & its points
         const allTilesLookup = [...me.rack, ...gameState.tableMelds.flatMap(m => m.tiles)];
@@ -3691,11 +3691,11 @@
         const meldCheck = validateMeld(orderedPreview);
 
         if (meldCheck.valid) {
-          selPointsBadge.textContent = `✓ 合法牌組 (${meldCheck.points} 分)`;
-          selPointsBadge.className = 'text-[11px] bg-emerald-600/40 border border-emerald-400/60 px-2 py-0.5 rounded-lg text-emerald-200 font-bold';
+          selPointsBadge.textContent = `✓ ${meldCheck.points}分`;
+          selPointsBadge.className = 'text-[10px] bg-emerald-600/40 border border-emerald-400/60 px-1.5 py-0.5 rounded text-emerald-200 font-bold';
         } else {
-          selPointsBadge.textContent = selectedTiles.length < 3 ? `尚需 ${3 - selectedTiles.length} 張成組` : '尚未成組';
-          selPointsBadge.className = 'text-[11px] bg-black/35 px-2 py-0.5 rounded-lg text-amber-200/90';
+          selPointsBadge.textContent = selectedTiles.length < 3 ? `缺${3 - selectedTiles.length}張` : '未成組';
+          selPointsBadge.className = 'text-[10px] bg-black/40 px-1.5 py-0.5 rounded text-amber-200/90';
         }
 
         const hasReturnableTableTile = selectedTiles.some(
