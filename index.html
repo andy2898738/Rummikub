@@ -2600,12 +2600,69 @@
       }
 
       me.rack = me.rack.filter(t => !idsToRemove.has(t.id));
-      gameState.tableMelds.forEach(meld => {
-        meld.tiles = meld.tiles.filter(t => !idsToRemove.has(t.id));
-      });
-      gameState.tableMelds = gameState.tableMelds.filter(meld => meld.tiles.length > 0);
+
+      const updatedTableMelds = [];
+      let autoSplitTriggeredCount = 0;
+
+      for (const meld of gameState.tableMelds) {
+        const hadRemovedTile = meld.tiles.some(t => idsToRemove.has(t.id));
+        const remainingTiles = meld.tiles.filter(t => !idsToRemove.has(t.id));
+
+        if (remainingTiles.length === 0) {
+          continue;
+        }
+
+        if (hadRemovedTile && remainingTiles.length >= 6) {
+          const singleOrdered = autoOrderMeldIfPossible(remainingTiles);
+          if (!validateMeld(singleOrdered).valid) {
+            const splitParts = trySmartSplitAfterRemoval(remainingTiles);
+            if (splitParts && splitParts.length >= 2) {
+              splitParts.forEach((partTiles, idx) => {
+                updatedTableMelds.push({
+                  id: idx === 0
+                    ? meld.id
+                    : `m_${Date.now()}_${idx}_${Math.random().toString(36).slice(2, 6)}`,
+                  tiles: partTiles
+                });
+              });
+              autoSplitTriggeredCount++;
+              continue;
+            }
+          }
+        }
+
+        meld.tiles = remainingTiles;
+        updatedTableMelds.push(meld);
+      }
+
+      gameState.tableMelds = updatedTableMelds;
+
+      if (autoSplitTriggeredCount > 0) {
+        showToast('✨ 移出牌後，原牌組已自動智能拆分為兩組合法牌組！', 'success');
+      }
 
       return extracted;
+    }
+
+    /**
+     * Checks if remaining tiles after removing a middle tile from a table meld
+     * (e.g., removing 4 from 1-2-3-4-5-6-7) can be cleanly partitioned into
+     * 2 (or more) valid >=3-card melds.
+     */
+    function trySmartSplitAfterRemoval(remainingTiles) {
+      if (!Array.isArray(remainingTiles) || remainingTiles.length < 6) return null;
+
+      // Strategy 1: Contiguous cut points along current order (preserves Joker positions in runs)
+      for (let cutIdx = 3; cutIdx <= remainingTiles.length - 3; cutIdx++) {
+        const leftSlice = autoOrderMeldIfPossible(remainingTiles.slice(0, cutIdx));
+        const rightSlice = autoOrderMeldIfPossible(remainingTiles.slice(cutIdx));
+        if (validateMeld(leftSlice).valid && validateMeld(rightSlice).valid) {
+          return [leftSlice, rightSlice];
+        }
+      }
+
+      // Strategy 2: General combinatorial split fallback
+      return trySmartSplitCombinedMeld(remainingTiles);
     }
 
     function playSelectedTilesToNewSet() {
