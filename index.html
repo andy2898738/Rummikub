@@ -368,9 +368,10 @@
         border-radius: 9px;
       }
 
-      body.active-game-mode .table-tile-size {
-        width: clamp(28px, 4.2vw, 38px) !important;
-        height: clamp(36px, 9.8dvh, 48px) !important;
+      body.active-game-mode #new-meld-zone {
+        margin-top: 2px;
+        margin-bottom: 2px;
+        padding: 4px 10px;
       }
 
       body.active-game-mode .table-slot-size {
@@ -473,9 +474,13 @@
         padding-right: max(40px, var(--safe-right));
       }
       body.is-fullscreen-mode #table-area {
-        padding-left: max(40px, var(--safe-left));
-        padding-right: max(40px, var(--safe-right));
-      }
+      padding-top: 6px;
+      padding-bottom: 6px;
+    }
+
+    body.is-fullscreen-mode #table-melds-container {
+      max-width: 100%;
+    }
       body.is-fullscreen-mode .physical-rack-outer {
         padding-left: max(40px, var(--safe-left));
         padding-right: max(40px, var(--safe-right));
@@ -565,9 +570,49 @@
     .meld-tray {
       background: rgba(13, 38, 28, 0.55);
       backdrop-filter: blur(4px);
-      border-radius: 12px;
-      padding: 6px 8px;
+      border-radius: 10px;
+      padding: 4px 6px;
       transition: all 0.2s ease;
+      max-width: 100%;
+    }
+
+    /* Fixed Single-Page Table Board (Strictly No Horizontal or Vertical Scrollbars) */
+    #game-view {
+      width: 100vw;
+      max-width: 100vw;
+      height: 100dvh;
+      max-height: 100dvh;
+      overflow: hidden;
+    }
+
+    #table-area {
+      overflow: hidden !important;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      width: 100%;
+      max-width: 100%;
+    }
+
+    #table-melds-wrapper {
+      flex: 1 1 auto;
+      min-height: 0;
+      width: 100%;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #table-melds-container {
+      width: 100%;
+      max-height: 100%;
+      overflow: hidden;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      align-content: center;
+      justify-content: center;
     }
 
     .meld-valid {
@@ -626,6 +671,42 @@
       background: rgba(255, 255, 255, 0.22);
       border-radius: 9999px;
     }
+
+    /* =========================================================
+       MOBILE & RESPONSIVE LOBBY VIEW PROPORTION TUNING
+    ========================================================= */
+    @media (max-width: 640px) {
+      #lobby-view {
+        padding: max(12px, var(--safe-top)) 12px max(16px, var(--safe-bottom)) 12px;
+        justify-content: flex-start;
+        overflow-y: auto;
+      }
+      #lobby-card {
+        margin-top: auto;
+        margin-bottom: auto;
+        border-radius: 22px;
+      }
+      .lobby-hero-tile {
+        width: 34px !important;
+        height: 44px !important;
+        font-size: 22px !important;
+        border-radius: 6px !important;
+      }
+    }
+
+    @media (max-height: 700px) {
+      #lobby-view {
+        padding-top: 8px;
+        padding-bottom: 10px;
+      }
+      #lobby-header {
+        padding: 12px 16px !important;
+      }
+      #lobby-body {
+        padding: 14px 16px !important;
+        gap: 12px !important;
+      }
+    }
   </style>
 </head>
 <body class="felt-bg flex flex-col min-h-dvh">
@@ -636,90 +717,90 @@
   <div id="toast-container" class="fixed top-16 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-2 pointer-events-none w-11/12 max-w-md"></div>
 
   <!-- =========================================================
-       VIEW 1: LOBBY & ROOM SETUP SCREEN
+       VIEW 1: LOBBY & ROOM SETUP SCREEN (Mobile-First Adaptive)
   ========================================================= -->
-  <div id="lobby-view" class="flex-1 flex flex-col items-center justify-center p-4 sm:p-6">
-    <div class="w-full max-w-2xl bg-emerald-950/85 backdrop-blur-md border border-emerald-700/50 rounded-3xl shadow-2xl overflow-hidden">
+  <div id="lobby-view" class="flex-1 flex flex-col items-center justify-center p-3 sm:p-6 min-h-dvh">
+    <div id="lobby-card" class="w-full max-w-xl bg-emerald-950/90 backdrop-blur-md border border-emerald-700/50 rounded-3xl shadow-2xl overflow-hidden">
       <!-- Header Banner -->
-      <div class="bg-gradient-to-r from-emerald-900 via-teal-900 to-emerald-900 p-6 sm:p-8 text-center border-b border-emerald-700/40 relative">
-        <div class="flex justify-center items-center gap-2 mb-3">
-          <span class="rummi-tile w-11 h-14 text-3xl font-black color-red -rotate-6">
+      <div id="lobby-header" class="bg-gradient-to-r from-emerald-900 via-teal-900 to-emerald-900 px-4 py-4 sm:p-7 text-center border-b border-emerald-700/40 relative">
+        <div class="flex justify-center items-center gap-1.5 sm:gap-2 mb-2 sm:mb-3">
+          <span class="rummi-tile lobby-hero-tile w-10 h-13 sm:w-11 sm:h-14 text-2xl sm:text-3xl font-black color-red -rotate-6">
             <span class="color-suit-dot">♥</span>
             <span class="tile-num">7</span>
             <span class="tile-dimple"></span>
           </span>
-          <span class="rummi-tile w-11 h-14 text-3xl font-black color-blue -rotate-2">
+          <span class="rummi-tile lobby-hero-tile w-10 h-13 sm:w-11 sm:h-14 text-2xl sm:text-3xl font-black color-blue -rotate-2">
             <span class="color-suit-dot">◆</span>
             <span class="tile-num">7</span>
             <span class="tile-dimple"></span>
           </span>
-          <span class="rummi-tile w-11 h-14 text-3xl font-black color-black rotate-2">
+          <span class="rummi-tile lobby-hero-tile w-10 h-13 sm:w-11 sm:h-14 text-2xl sm:text-3xl font-black color-black rotate-2">
             <span class="color-suit-dot">♠</span>
             <span class="tile-num">7</span>
             <span class="tile-dimple"></span>
           </span>
-          <span class="rummi-tile w-11 h-14 text-3xl font-black rotate-6">
+          <span class="rummi-tile lobby-hero-tile w-10 h-13 sm:w-11 sm:h-14 text-2xl sm:text-3xl font-black rotate-6">
             <span class="color-suit-dot text-amber-600">★</span>
             <span class="tile-joker-face font-black">☺</span>
             <span class="tile-dimple"></span>
           </span>
         </div>
-        <h1 class="text-3xl sm:text-4xl font-black tracking-wide text-amber-300 drop-shadow">
+        <h1 class="text-2xl sm:text-4xl font-black tracking-wide text-amber-300 drop-shadow leading-tight">
           拉密線上對戰
         </h1>
-        <p class="text-emerald-200/80 text-sm sm:text-base mt-1">
+        <p class="text-emerald-200/80 text-xs sm:text-sm mt-1">
           Rummikub 以色列麻將・支援好友即時連線與智慧 AI 對戰
         </p>
       </div>
 
-      <!-- Player Nickname Input -->
-      <div class="p-6 sm:p-8 space-y-6">
-        <div class="bg-emerald-900/50 p-4 rounded-2xl border border-emerald-700/40">
-          <label class="block text-xs font-bold uppercase tracking-wider text-emerald-300 mb-1.5">
+      <!-- Player Nickname & Mode Configuration -->
+      <div id="lobby-body" class="p-4 sm:p-7 flex flex-col gap-3.5 sm:gap-5">
+        <div class="bg-emerald-900/50 p-3 sm:p-4 rounded-2xl border border-emerald-700/40">
+          <label class="block text-[11px] sm:text-xs font-bold uppercase tracking-wider text-emerald-300 mb-1.5">
             你的玩家暱稱
           </label>
           <div class="flex gap-2">
             <input id="player-name-input" type="text" maxlength="12" placeholder="輸入暱稱（例如：拉密高手）"
-              class="flex-1 bg-emerald-950/90 border border-emerald-600/60 rounded-xl px-4 py-2.5 text-white font-bold focus:outline-none focus:border-amber-400" />
-            <button onclick="randomizeName()" class="px-3.5 py-2.5 bg-emerald-800 hover:bg-emerald-700 rounded-xl text-sm font-bold text-emerald-100 transition" title="隨機暱稱">
+              class="min-w-0 flex-1 bg-emerald-950/90 border border-emerald-600/60 rounded-xl px-3.5 py-2 sm:px-4 sm:py-2.5 text-sm sm:text-base text-white font-bold focus:outline-none focus:border-amber-400" />
+            <button onclick="randomizeName()" class="px-3 py-2 sm:px-3.5 sm:py-2.5 bg-emerald-800 hover:bg-emerald-700 active:scale-95 rounded-xl text-xs sm:text-sm font-bold text-emerald-100 transition shrink-0" title="隨機暱稱">
               🎲 隨機
             </button>
           </div>
         </div>
 
         <!-- Mode Tabs -->
-        <div class="grid grid-cols-2 gap-2 p-1.5 bg-emerald-950/90 rounded-2xl border border-emerald-800">
+        <div class="grid grid-cols-2 gap-1.5 sm:gap-2 p-1 sm:p-1.5 bg-emerald-950/90 rounded-2xl border border-emerald-800">
           <button id="tab-btn-solo" onclick="switchLobbyTab('solo')"
-            class="py-2.5 px-3 rounded-xl font-bold text-sm sm:text-base transition bg-amber-500 text-emerald-950 shadow">
+            class="py-2 sm:py-2.5 px-2.5 sm:px-3 rounded-xl font-bold text-xs sm:text-base transition bg-amber-500 text-emerald-950 shadow">
             🤖 單機 AI 對戰
           </button>
           <button id="tab-btn-online" onclick="switchLobbyTab('online')"
-            class="py-2.5 px-3 rounded-xl font-bold text-sm sm:text-base transition text-emerald-200 hover:bg-emerald-900/60">
+            class="py-2 sm:py-2.5 px-2.5 sm:px-3 rounded-xl font-bold text-xs sm:text-base transition text-emerald-200 hover:bg-emerald-900/60">
             🌐 線上好友對戰
           </button>
         </div>
 
         <!-- TAB A: SOLO VS AI -->
-        <div id="lobby-tab-solo" class="space-y-4">
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div class="bg-emerald-900/40 p-3.5 rounded-2xl border border-emerald-700/40">
-              <label class="block text-xs text-emerald-300 font-bold mb-1.5">AI 對手人數</label>
-              <select id="solo-bot-count" class="w-full bg-emerald-950 border border-emerald-700 rounded-xl px-3 py-2 text-sm font-bold text-white">
+        <div id="lobby-tab-solo" class="space-y-3.5 sm:space-y-4">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3">
+            <div class="bg-emerald-900/40 px-3.5 py-2.5 sm:p-3.5 rounded-2xl border border-emerald-700/40 flex items-center justify-between sm:block gap-3">
+              <label class="text-xs text-emerald-300 font-bold sm:block sm:mb-1.5 shrink-0">AI 對手人數</label>
+              <select id="solo-bot-count" class="w-44 sm:w-full bg-emerald-950 border border-emerald-700 rounded-xl px-2.5 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm font-bold text-white">
                 <option value="1">1 位 AI（雙人對決）</option>
                 <option value="2">2 位 AI（三人混戰）</option>
                 <option value="3" selected>3 位 AI（四人標準局）</option>
               </select>
             </div>
-            <div class="bg-emerald-900/40 p-3.5 rounded-2xl border border-emerald-700/40">
-              <label class="block text-xs text-emerald-300 font-bold mb-1.5">AI 智慧難度</label>
-              <select id="solo-difficulty" class="w-full bg-emerald-950 border border-emerald-700 rounded-xl px-3 py-2 text-sm font-bold text-white">
-                <option value="casual">休閒（適合新手練習）</option>
-                <option value="challenge" selected>挑戰（積極破冰與拆牌）</option>
+            <div class="bg-emerald-900/40 px-3.5 py-2.5 sm:p-3.5 rounded-2xl border border-emerald-700/40 flex items-center justify-between sm:block gap-3">
+              <label class="text-xs text-emerald-300 font-bold sm:block sm:mb-1.5 shrink-0">AI 智慧難度</label>
+              <select id="solo-difficulty" class="w-44 sm:w-full bg-emerald-950 border border-emerald-700 rounded-xl px-2.5 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm font-bold text-white">
+                <option value="casual">休閒（新手練習）</option>
+                <option value="challenge" selected>挑戰（積極破冰拆牌）</option>
               </select>
             </div>
-            <div class="bg-emerald-900/40 p-3.5 rounded-2xl border border-emerald-700/40">
-              <label class="block text-xs text-emerald-300 font-bold mb-1.5">每回合思考時間</label>
-              <select id="solo-timer" class="w-full bg-emerald-950 border border-emerald-700 rounded-xl px-3 py-2 text-sm font-bold text-white">
+            <div class="bg-emerald-900/40 px-3.5 py-2.5 sm:p-3.5 rounded-2xl border border-emerald-700/40 flex items-center justify-between sm:block gap-3">
+              <label class="text-xs text-emerald-300 font-bold sm:block sm:mb-1.5 shrink-0">每回合思考時間</label>
+              <select id="solo-timer" class="w-44 sm:w-full bg-emerald-950 border border-emerald-700 rounded-xl px-2.5 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm font-bold text-white">
                 <option value="60">60 秒</option>
                 <option value="90" selected>90 秒</option>
                 <option value="0">無限時</option>
@@ -728,21 +809,21 @@
           </div>
 
           <button onclick="startSoloGame()"
-            class="w-full py-4 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-emerald-950 font-black text-lg rounded-2xl shadow-lg shadow-amber-500/20 transition transform active:scale-[0.99]">
+            class="w-full py-3.5 sm:py-4 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-emerald-950 font-black text-base sm:text-lg rounded-2xl shadow-lg shadow-amber-500/20 transition transform active:scale-[0.99]">
             立即開始單機對戰 ▶
           </button>
         </div>
 
         <!-- TAB B: ONLINE MULTIPLAYER (PeerJS) -->
-        <div id="lobby-tab-online" class="hidden space-y-4">
-          <div id="online-entry-panel" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div id="lobby-tab-online" class="hidden space-y-3 sm:space-y-4">
+          <div id="online-entry-panel" class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <!-- Create Room -->
-            <div class="bg-emerald-900/40 p-4 rounded-2xl border border-emerald-700/40 flex flex-col justify-between space-y-3">
+            <div class="bg-emerald-900/40 p-3.5 sm:p-4 rounded-2xl border border-emerald-700/40 flex flex-col justify-between space-y-2.5 sm:space-y-3">
               <div>
-                <h3 class="font-bold text-amber-300 text-base flex items-center gap-1.5">
+                <h3 class="font-bold text-amber-300 text-sm sm:text-base flex items-center gap-1.5">
                   <span>🏠</span> 建立新房間（房主）
                 </h3>
-                <p class="text-xs text-emerald-200/75 mt-1">
+                <p class="text-[11px] sm:text-xs text-emerald-200/75 mt-1 leading-relaxed">
                   產生專屬 6 碼房號與邀請連結，免註冊直接與好友跨裝置連線。
                 </p>
               </div>
@@ -756,27 +837,27 @@
                   </select>
                 </div>
                 <button id="btn-create-room" onclick="createOnlineRoom()"
-                  class="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-emerald-950 font-black rounded-xl transition shadow">
+                  class="w-full py-2.5 sm:py-3 bg-emerald-500 hover:bg-emerald-400 text-emerald-950 font-black text-sm sm:text-base rounded-xl transition shadow">
                   建立房間
                 </button>
               </div>
             </div>
 
             <!-- Join Room -->
-            <div class="bg-emerald-900/40 p-4 rounded-2xl border border-emerald-700/40 flex flex-col justify-between space-y-3">
+            <div class="bg-emerald-900/40 p-3.5 sm:p-4 rounded-2xl border border-emerald-700/40 flex flex-col justify-between space-y-2.5 sm:space-y-3">
               <div>
-                <h3 class="font-bold text-sky-300 text-base flex items-center gap-1.5">
+                <h3 class="font-bold text-sky-300 text-sm sm:text-base flex items-center gap-1.5">
                   <span>🔑</span> 加入好友房間
                 </h3>
-                <p class="text-xs text-emerald-200/75 mt-1">
+                <p class="text-[11px] sm:text-xs text-emerald-200/75 mt-1 leading-relaxed">
                   輸入房主提供的 6 碼房間代碼即可加入對局（支援 4G/5G 與不同 Wi-Fi 跨網連線）。
                 </p>
               </div>
               <div class="space-y-2">
                 <input id="join-room-code-input" type="text" maxlength="6" placeholder="輸入 6 碼房號"
-                  class="w-full bg-emerald-950 border border-emerald-600 rounded-xl px-3 py-2 text-center font-mono text-lg tracking-widest uppercase text-amber-300 font-bold focus:outline-none focus:border-amber-400" />
+                  class="w-full bg-emerald-950 border border-emerald-600 rounded-xl px-3 py-1.5 sm:py-2 text-center font-mono text-base sm:text-lg tracking-widest uppercase text-amber-300 font-bold focus:outline-none focus:border-amber-400" />
                 <button id="btn-join-room" onclick="joinOnlineRoom()"
-                  class="w-full py-3 bg-sky-500 hover:bg-sky-400 text-slate-950 font-black rounded-xl transition shadow">
+                  class="w-full py-2.5 sm:py-3 bg-sky-500 hover:bg-sky-400 text-slate-950 font-black text-sm sm:text-base rounded-xl transition shadow">
                   加入對戰
                 </button>
               </div>
@@ -790,13 +871,13 @@
           </div>
 
           <!-- Waiting Room Panel -->
-          <div id="online-waiting-panel" class="hidden bg-emerald-900/60 p-5 rounded-2xl border border-amber-400/40 space-y-4">
-            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-700/50 pb-3">
+          <div id="online-waiting-panel" class="hidden bg-emerald-900/60 p-4 sm:p-5 rounded-2xl border border-amber-400/40 space-y-3.5 sm:space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-2.5 border-b border-emerald-700/50 pb-3">
               <div>
-                <span class="text-xs text-emerald-300 block">房間代碼（點擊複製邀請連結）</span>
+                <span class="text-[11px] sm:text-xs text-emerald-300 block">房間代碼（點擊複製邀請連結）</span>
                 <div class="flex items-center gap-2 mt-0.5">
                   <span id="display-room-code" class="font-mono text-2xl sm:text-3xl font-black tracking-widest text-amber-300">------</span>
-                  <button onclick="copyInviteLink()" class="px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/50 text-amber-200 rounded-lg text-xs font-bold transition">
+                  <button onclick="copyInviteLink()" class="px-2.5 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/50 text-amber-200 rounded-lg text-xs font-bold transition">
                     📋 複製邀請連結
                   </button>
                 </div>
@@ -811,7 +892,7 @@
                 <span class="text-xs font-bold text-emerald-300">目前房間玩家（2～4 人可開局）</span>
                 <label id="fill-bots-label" class="hidden flex items-center gap-1.5 text-xs text-amber-200 cursor-pointer">
                   <input id="online-fill-bots" type="checkbox" class="rounded accent-amber-400" />
-                  <span>空位自動補 AI 機器人</span>
+                  <span>空位補 AI</span>
                 </label>
               </div>
               <div id="waiting-players-list" class="grid grid-cols-1 sm:grid-cols-2 gap-2"></div>
@@ -819,22 +900,22 @@
 
             <div id="host-start-controls" class="hidden pt-1">
               <button onclick="hostStartOnlineGame()"
-                class="w-full py-3.5 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-emerald-950 font-black text-base rounded-xl shadow-lg transition">
+                class="w-full py-3 sm:py-3.5 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-emerald-950 font-black text-sm sm:text-base rounded-xl shadow-lg transition">
                 全員就緒，開始對戰！ ▶
               </button>
             </div>
-            <div id="guest-waiting-msg" class="hidden text-center py-2 text-sm text-emerald-200 animate-pulse">
+            <div id="guest-waiting-msg" class="hidden text-center py-2 text-xs sm:text-sm text-emerald-200 animate-pulse">
               ⏳ 等待房主開始遊戲...
             </div>
           </div>
         </div>
 
         <!-- Quick Rules Footer -->
-        <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-emerald-800/60 text-xs text-emerald-300/80">
-          <button onclick="toggleRulesModal(true)" class="hover:text-amber-300 underline font-bold">
+        <div class="flex items-center justify-between gap-2 pt-2.5 border-t border-emerald-800/60 text-xs text-emerald-300/85">
+          <button onclick="toggleRulesModal(true)" class="hover:text-amber-300 underline font-bold py-1">
             📖 查看完整拉密規則說明
           </button>
-          <button onclick="toggleSound()" id="lobby-sound-btn" class="hover:text-white flex items-center gap-1">
+          <button onclick="toggleSound()" id="lobby-sound-btn" class="hover:text-white flex items-center gap-1 py-1">
             🔊 音效：開啟
           </button>
         </div>
@@ -880,13 +961,13 @@
     </div>
 
     <!-- =========================================================
-         CENTER TABLE WORKSPACE (Melds Area)
+         CENTER TABLE WORKSPACE (Fixed Single-Page Melds Area, Zero Scroll)
     ========================================================= -->
-    <main id="table-area" class="flex-1 min-h-0 overflow-y-auto p-2.5 sm:p-4 relative"
+    <main id="table-area" class="flex-1 min-h-0 overflow-hidden p-2 sm:p-3 relative"
       ondragover="handleTableDragOver(event)" ondrop="handleDropNewSet(event)">
 
       <!-- Floating Translucent Pool & Countdown HUD (Top-Right of Table, Non-Blocking) -->
-      <div id="floating-table-hud" class="sticky top-0 z-20 float-right ml-2 mb-1.5 flex items-center gap-1.5 pointer-events-none select-none">
+      <div id="floating-table-hud" class="absolute top-2 right-2.5 z-20 flex items-center gap-1.5 pointer-events-none select-none">
         <div class="bg-emerald-950/65 backdrop-blur-md border border-emerald-400/25 px-2.5 py-1 rounded-xl flex items-center gap-1 shadow-lg" title="牌庫剩餘張數">
           <span class="text-[11px] text-emerald-200/85 font-bold">牌庫</span>
           <span class="text-xs">🀄</span>
@@ -899,12 +980,12 @@
       </div>
 
       <!-- Turn Status & Helper Banner -->
-      <div id="turn-status-banner" class="max-w-5xl mx-auto mb-2.5 flex flex-wrap items-center justify-between gap-2 bg-emerald-950/65 border border-emerald-700/40 rounded-2xl px-3 py-1.5 text-xs sm:text-sm">
+      <div id="turn-status-banner" class="w-full max-w-5xl mx-auto mb-1.5 pr-32 sm:pr-40 flex flex-wrap items-center justify-between gap-1.5 bg-emerald-950/65 border border-emerald-700/40 rounded-2xl px-3 py-1 text-xs sm:text-sm shrink-0">
         <div class="flex items-center gap-2">
           <span id="turn-indicator-badge" class="px-2.5 py-0.5 rounded-full font-black bg-amber-400 text-emerald-950">
             輪到你出牌
           </span>
-          <span id="turn-instruction-text" class="text-emerald-100/90">
+          <span id="turn-instruction-text" class="text-emerald-100/90 truncate max-w-[55vw] sm:max-w-none">
             可多選多張牌後按「打出所選牌」，或直接拖曳到牌桌。
           </span>
         </div>
@@ -913,16 +994,18 @@
         </div>
       </div>
 
-      <!-- Melds Grid Container -->
-      <div id="table-melds-container" class="max-w-5xl mx-auto flex flex-wrap items-start gap-2.5 sm:gap-3.5 pb-6"></div>
+      <!-- Auto-Fit Melds Container (Strictly Fits Inside Fixed Table Bounds) -->
+      <div id="table-melds-wrapper">
+        <div id="table-melds-container" class="max-w-6xl mx-auto"></div>
+      </div>
 
       <!-- Create New Meld Drop / Tap Zone -->
       <div id="new-meld-zone" onclick="playSelectedTilesToNewSet()"
         ondragover="event.preventDefault(); this.classList.add('highlight-drop')"
         ondragleave="this.classList.remove('highlight-drop')"
         ondrop="this.classList.remove('highlight-drop'); handleDropNewSet(event)"
-        class="max-w-md mx-auto mt-1 mb-4 py-3 px-5 border-2 border-dashed border-emerald-400/35 hover:border-amber-400/80 bg-emerald-950/35 hover:bg-emerald-900/45 rounded-2xl text-center cursor-pointer transition">
-        <div class="text-emerald-200/85 text-xs sm:text-sm font-bold">
+        class="w-full max-w-md mx-auto mt-1 py-1.5 sm:py-2 px-4 border-2 border-dashed border-emerald-400/35 hover:border-amber-400/80 bg-emerald-950/35 hover:bg-emerald-900/45 rounded-xl text-center cursor-pointer transition shrink-0">
+        <div class="text-emerald-200/85 text-[11px] sm:text-xs font-bold truncate">
           ➕ 點擊此處或按下方「打出所選牌」建立新牌組（亦支援直接拖曳）
         </div>
       </div>
@@ -3258,7 +3341,7 @@
         .replace(/'/g, '&#39;');
     }
 
-    function renderTileHTML(tile, source, meldIndex = null, sizeClass = 'w-11 h-14 sm:w-12 sm:h-16', customFontSize = null) {
+    function renderTileHTML(tile, source, meldIndex = null, sizeClass = 'w-11 h-14 sm:w-12 sm:h-16', customFontSize = null, customBoxStyle = '') {
       const selectIdx = selectedTiles.findIndex(item => item.tileId === tile.id);
       const isSelected = selectIdx !== -1;
 
@@ -3281,8 +3364,9 @@
         ? Math.max(17, Math.round(window.innerHeight * 0.068))
         : Math.max(22, Math.min(32, Math.round(window.innerHeight * 0.044)));
       const rawFontPx = customFontSize || baseFallbackPx;
-      const computedFontSize = isTwoDigit ? Math.round(rawFontPx * 0.88) : rawFontPx;
+      const computedFontSize = Math.max(10, isTwoDigit ? Math.round(rawFontPx * 0.86) : rawFontPx);
       const fontStyle = `style="font-size: ${computedFontSize}px;"`;
+      const suitDotSize = Math.max(5.5, Math.min(8.5, Math.round(computedFontSize * 0.28)));
 
       const centerContent = tile.isJoker
         ? `<span class="tile-joker-face font-black ${colorClass}" ${fontStyle}>☺</span>`
@@ -3296,16 +3380,19 @@
         ? `<span class="playable-group-pill">可出 ${playableMeta.points}分</span>`
         : '';
 
+      const dimpleHtml = computedFontSize >= 16 ? `<span class="tile-dimple"></span>` : '';
+
       return `
         <div
+          ${customBoxStyle}
           draggable="true"
           ondragstart="handleTileDragStart(event, '${source}', '${tile.id}', ${meldIndex})"
           onclick="event.stopPropagation(); handleTileClick('${source}', '${tile.id}', ${meldIndex})"
           class="rummi-tile ${sizeClass} ${isSelected ? 'selected' : ''} ${isPlayableGroupTile ? 'playable-set-tile' : ''} ${fromRackThisTurn ? 'from-rack' : ''}">
           ${orderBadge}
-          <span class="color-suit-dot ${suitColorClass}">${suitSymbol}</span>
+          <span class="color-suit-dot ${suitColorClass}" style="font-size: ${suitDotSize}px;">${suitSymbol}</span>
           ${centerContent}
-          <span class="tile-dimple"></span>
+          ${dimpleHtml}
           ${groupPill}
         </div>
       `;
@@ -3357,45 +3444,139 @@
       }).join('');
     }
 
+    /**
+     * Dynamically calculates optimal tile width, height, font size, and gaps so
+     * ALL melds on the table fit inside the fixed #table-melds-wrapper with zero
+     * horizontal or vertical scrolling, regardless of how many tiles are played.
+     */
+    function computeAutoFitTableMetrics(melds, myTurn) {
+      const wrapper = document.getElementById('table-melds-wrapper');
+      const availW = Math.max(240, (wrapper ? wrapper.clientWidth : window.innerWidth - 32) - 8);
+      const availH = Math.max(110, (wrapper ? wrapper.clientHeight : Math.round(window.innerHeight * 0.42)) - 6);
+
+      const isLandscape = window.innerWidth > window.innerHeight;
+      const maxTileH = Math.min(isLandscape ? 54 : 60, Math.floor(availH * 0.46));
+      const minTileH = 22;
+
+      // Binary/step search from largest comfortable tile height down to minimum
+      for (let h = maxTileH; h >= minTileH; h -= 1) {
+        const w = Math.max(16, Math.round(h * 0.76));
+        const tileGap = h >= 42 ? 3 : (h >= 30 ? 2 : 1.5);
+        const trayPadX = h >= 42 ? 12 : (h >= 30 ? 8 : 5);
+        const trayPadY = h >= 42 ? 8 : (h >= 30 ? 5 : 3);
+        const trayGap = h >= 42 ? 8 : (h >= 30 ? 5 : 3);
+        const slotW = myTurn ? Math.max(14, Math.round(w * 0.56)) : 0;
+
+        // Simulate flex-wrap layout of all meld trays inside availW
+        let currentRowW = 0;
+        let rowsCount = 1;
+        let overflowSingleMeld = false;
+
+        for (const meld of melds) {
+          const itemCount = meld.tiles.length + (myTurn ? 2 : 0);
+          const tilesW = meld.tiles.length * w;
+          const slotsW = myTurn ? slotW * 2 : 0;
+          const innerGapsW = Math.max(0, itemCount - 1) * tileGap;
+          const trayW = trayPadX + tilesW + slotsW + innerGapsW + 3; // +3px border allowance
+
+          if (trayW > availW) {
+            overflowSingleMeld = true;
+            break;
+          }
+
+          if (currentRowW === 0) {
+            currentRowW = trayW;
+          } else if (currentRowW + trayGap + trayW <= availW) {
+            currentRowW += trayGap + trayW;
+          } else {
+            rowsCount++;
+            currentRowW = trayW;
+          }
+        }
+
+        if (overflowSingleMeld) continue;
+
+        const trayH = h + trayPadY + 3;
+        const totalRequiredH = rowsCount * trayH + Math.max(0, rowsCount - 1) * trayGap;
+
+        if (totalRequiredH <= availH) {
+          return {
+            tileW: w,
+            tileH: h,
+            fontPx: Math.max(11, Math.round(h * 0.74)),
+            slotW,
+            slotH: Math.max(18, h - 4),
+            tileGap,
+            trayPadX,
+            trayPadY,
+            trayGap
+          };
+        }
+      }
+
+      // Extreme fallback if table has >80 tiles on a tiny screen
+      const fallbackH = 20;
+      const fallbackW = 15;
+      return {
+        tileW: fallbackW,
+        tileH: fallbackH,
+        fontPx: 11,
+        slotW: myTurn ? 12 : 0,
+        slotH: 18,
+        tileGap: 1,
+        trayPadX: 4,
+        trayPadY: 2,
+        trayGap: 2
+      };
+    }
+
     function renderTableMelds() {
       const container = document.getElementById('table-melds-container');
       const myTurn = isMyTurn();
 
       if (gameState.tableMelds.length === 0) {
+        container.style.gap = '8px';
         container.innerHTML = `
-          <div class="w-full text-center py-3 sm:py-6 text-emerald-200/55 text-xs sm:text-sm">
+          <div class="w-full text-center py-2 text-emerald-200/60 text-xs sm:text-sm">
             牌桌目前空空如也，點選 3 張以上手牌（滿 30 分）即可破冰出牌！
           </div>
         `;
         return;
       }
 
+      const fit = computeAutoFitTableMetrics(gameState.tableMelds, myTurn);
+      container.style.gap = `${fit.trayGap}px`;
+
+      const tileBoxStyle = `style="width: ${fit.tileW}px; height: ${fit.tileH}px; border-radius: ${fit.tileH < 32 ? 4 : 7}px;"`;
+      const slotBoxStyle = `style="width: ${fit.slotW}px; height: ${fit.slotH}px; font-size: ${Math.max(10, Math.round(fit.slotW * 0.65))}px; border-radius: ${fit.tileH < 32 ? 4 : 6}px;"`;
+      const trayStyle = `style="padding: ${Math.round(fit.trayPadY / 2)}px ${Math.round(fit.trayPadX / 2)}px; gap: ${fit.tileGap}px; border-radius: ${fit.tileH < 32 ? 7 : 11}px;"`;
+
       container.innerHTML = gameState.tableMelds.map((meld, mIdx) => {
         const check = validateMeld(meld.tiles);
         const validityClass = check.valid ? 'meld-valid' : 'meld-invalid';
 
         const leftSlot = myTurn
-          ? `<button onclick="handlePlaceIntoMeld(${mIdx}, 'start')"
+          ? `<button ${slotBoxStyle} onclick="handlePlaceIntoMeld(${mIdx}, 'start')"
                ondragover="event.preventDefault(); this.classList.add('highlight-drop')"
                ondragleave="this.classList.remove('highlight-drop')"
                ondrop="this.classList.remove('highlight-drop'); handleDropOnMeld(event, ${mIdx}, 'start')"
-               class="slot-btn table-slot-size w-7 h-12 sm:w-8 sm:h-14 flex items-center justify-center text-sm font-black" title="將所選牌加在左側">+</button>`
+               class="slot-btn flex items-center justify-center font-black shrink-0" title="將所選牌加在左側">+</button>`
           : '';
 
         const rightSlot = myTurn
-          ? `<button onclick="handlePlaceIntoMeld(${mIdx}, 'end')"
+          ? `<button ${slotBoxStyle} onclick="handlePlaceIntoMeld(${mIdx}, 'end')"
                ondragover="event.preventDefault(); this.classList.add('highlight-drop')"
                ondragleave="this.classList.remove('highlight-drop')"
                ondrop="this.classList.remove('highlight-drop'); handleDropOnMeld(event, ${mIdx}, 'end')"
-               class="slot-btn table-slot-size w-7 h-12 sm:w-8 sm:h-14 flex items-center justify-center text-sm font-black" title="將所選牌加在右側">+</button>`
+               class="slot-btn flex items-center justify-center font-black shrink-0" title="將所選牌加在右側">+</button>`
           : '';
 
         const tilesHtml = meld.tiles
-          .map(t => renderTileHTML(t, 'table', mIdx, 'table-tile-size w-11 h-14 sm:w-12 sm:h-16'))
+          .map(t => renderTileHTML(t, 'table', mIdx, '', fit.fontPx, tileBoxStyle))
           .join('');
 
         return `
-          <div class="meld-tray ${validityClass} flex items-center gap-1 sm:gap-1.5">
+          <div class="meld-tray ${validityClass} flex items-center" ${trayStyle}>
             ${leftSlot}
             ${tilesHtml}
             ${rightSlot}
@@ -3405,21 +3586,22 @@
     }
 
     /**
-     * Renders the Two-Tier Physical Rummikub Rack:
-     * - Default capacity: 2 rows x 10 slots = 20 slots total.
-     * - When total tiles > 20: colsPerRow = Math.ceil(totalTiles / 2),
-     *   both top & bottom rows maintain equal slot count and scale down proportionally.
+     * Renders the authentic two-tier Rummikub tile rack:
+     * - Standard capacity: 2 rows x 10 slots = 20 slots
+     * - If rack exceeds 20 tiles, both rows keep equal slot counts (ceil(total / 2))
+     *   and scale down proportionally to fit inside the rack without overflow.
      */
     function renderRack() {
+      const me = gameState.players.find(p => p.id === myPlayerId);
+      if (!me) return;
+
       const topRowEl = document.getElementById('rack-row-top');
       const bottomRowEl = document.getElementById('rack-row-bottom');
       const capBadge = document.getElementById('rack-capacity-badge');
       const playableBadge = document.getElementById('playable-sets-badge');
-      const me = gameState.players.find(p => p.id === myPlayerId);
-      if (!me) return;
 
       const totalTiles = me.rack.length;
-      const colsPerRow = totalTiles <= 20 ? 10 : Math.ceil(totalTiles / 2);
+      const colsPerRow = Math.max(10, Math.ceil(totalTiles / 2));
       const totalSlots = colsPerRow * 2;
 
       if (capBadge) {
