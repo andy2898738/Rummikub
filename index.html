@@ -280,7 +280,28 @@
     }
 
     /* =========================================================
-       COMPACT SINGLE-SCREEN LANDSCAPE UI (ZERO VERTICAL SCROLL)
+       PORTRAIT & GENERAL RESPONSIVE LAYOUT
+    ========================================================= */
+    @media (orientation: portrait) {
+      body.active-game-mode #rack-section-inner {
+        max-width: 100%;
+      }
+      body.active-game-mode .rack-slot {
+        aspect-ratio: 3 / 4.1;
+        max-height: clamp(34px, 7.2dvh, 52px);
+      }
+      body.active-game-mode .table-tile-size {
+        width: clamp(32px, 8.8vw, 44px) !important;
+        height: clamp(42px, 11.5vw, 56px) !important;
+      }
+      body.active-game-mode .table-slot-size {
+        width: 24px !important;
+        height: clamp(40px, 11vw, 52px) !important;
+      }
+    }
+
+    /* =========================================================
+       COMPACT SINGLE-SCREEN LANDSCAPE UI
     ========================================================= */
     @media (orientation: landscape) and (max-height: 620px) {
       body.active-game-mode #game-header {
@@ -369,6 +390,69 @@
       }
     }
 
+    /* =========================================================
+       FULLSCREEN MODE: SHRINK HAND RACK & MAXIMIZE TABLE BOARD
+    ========================================================= */
+    body.is-fullscreen-mode #game-header {
+      padding-top: 3px;
+      padding-bottom: 3px;
+    }
+
+    body.is-fullscreen-mode #table-area {
+      padding: 8px 14px;
+    }
+
+    body.is-fullscreen-mode #table-melds-container {
+      max-width: 96vw;
+      gap: 8px;
+    }
+
+    body.is-fullscreen-mode .table-tile-size {
+      width: clamp(34px, 4.6vw, 46px) !important;
+      height: clamp(44px, 10.5dvh, 58px) !important;
+    }
+
+    body.is-fullscreen-mode .physical-rack-outer {
+      padding-top: 3px;
+      padding-bottom: 4px;
+    }
+
+    body.is-fullscreen-mode #rack-section-inner {
+      max-width: min(680px, 86vw);
+      gap: 3px;
+    }
+
+    body.is-fullscreen-mode .rummi-rack-stand {
+      padding: 3px 5px 4px 5px;
+      border-radius: 10px;
+    }
+
+    body.is-fullscreen-mode .rack-tier-row {
+      padding: 2px 3px 2.5px 3px;
+      gap: 2.5px;
+    }
+
+    body.is-fullscreen-mode .rack-slot {
+      aspect-ratio: auto;
+      height: clamp(24px, 6.2dvh, 36px) !important;
+      max-height: clamp(24px, 6.2dvh, 36px) !important;
+      border-radius: 5px;
+    }
+
+    body.is-fullscreen-mode .rack-slot .rummi-tile {
+      border-radius: 5px;
+    }
+
+    body.is-fullscreen-mode .rack-slot .tile-dimple {
+      display: none;
+    }
+
+    body.is-fullscreen-mode .rack-slot .color-suit-dot {
+      font-size: 6.5px;
+      top: 1px;
+      left: 2px;
+    }
+
     .rack-slot.occupied {
       background: transparent;
       border: none;
@@ -441,28 +525,6 @@
       animation: floatUpEmote 2.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
     }
 
-    /* =========================================================
-       LANDSCAPE FULLSCREEN ENFORCEMENT OVERLAY (IN-GAME PORTRAIT)
-    ========================================================= */
-    @keyframes phoneTiltLandscape {
-      0%, 100% { transform: rotate(0deg); }
-      45%, 65% { transform: rotate(-90deg); }
-    }
-
-    .animate-phone-rotate {
-      animation: phoneTiltLandscape 2.2s ease-in-out infinite;
-    }
-
-    /* Automatic CSS fallback whenever active-game-mode is on and viewport is portrait */
-    body.active-game-mode #portrait-lock-overlay {
-      display: none;
-    }
-    @media (orientation: portrait) {
-      body.active-game-mode #portrait-lock-overlay {
-        display: flex !important;
-      }
-    }
-
     /* Custom Scrollbar */
     ::-webkit-scrollbar {
       width: 6px;
@@ -478,31 +540,6 @@
   </style>
 </head>
 <body class="felt-bg flex flex-col min-h-dvh">
-
-  <!-- =========================================================
-       PORTRAIT ROTATION & FULLSCREEN PROMPT OVERLAY (IN-GAME ONLY)
-  ========================================================= -->
-  <div id="portrait-lock-overlay" class="hidden fixed inset-0 z-[60] bg-emerald-950/95 backdrop-blur-md flex-col items-center justify-center p-6 text-center select-none">
-    <div class="max-w-sm w-full bg-emerald-900/75 border-2 border-amber-400/70 rounded-3xl p-6 shadow-2xl space-y-5">
-      <div class="flex justify-center">
-        <div class="w-16 h-24 rounded-2xl border-4 border-amber-300 bg-emerald-950 flex flex-col items-center justify-between p-1.5 shadow-lg animate-phone-rotate">
-          <div class="w-5 h-1 rounded-full bg-amber-300/60"></div>
-          <span class="text-2xl">🀄</span>
-          <div class="w-2.5 h-2.5 rounded-full border border-amber-300/60"></div>
-        </div>
-      </div>
-      <div class="space-y-1.5">
-        <h2 class="text-xl font-black text-amber-300 tracking-wide">請將裝置轉為橫向遊玩</h2>
-        <p class="text-xs sm:text-sm text-emerald-100/90 leading-relaxed">
-          為完整呈現寬螢幕牌桌與雙排 20 格手牌架，請將手機或平板橫放，以獲得最佳全螢幕對戰視野！
-        </p>
-      </div>
-      <button onclick="requestFullscreenAndLandscape(true)"
-        class="w-full py-3.5 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-emerald-950 font-black text-sm sm:text-base rounded-2xl shadow-lg transition transform active:scale-95">
-        ⛶ 一鍵進入橫向全螢幕
-      </button>
-    </div>
-  </div>
 
   <!-- =========================================================
        TOAST / MESSAGE NOTIFICATION BAR (Replaces alert())
@@ -1328,9 +1365,6 @@
      * 5. SOLO MODE INITIALIZATION
      *************************************************************************/
     function startSoloGame() {
-      // Trigger fullscreen & landscape immediately on user click gesture
-      requestFullscreenAndLandscape(false);
-
       appMode = 'solo';
       isHost = true;
       myPlayerId = 'p_human';
@@ -1374,9 +1408,6 @@
         showToast('PeerJS 連線元件載入失敗，請檢查網路連線', 'error');
         return;
       }
-
-      // Request fullscreen & landscape immediately inside user gesture
-      requestFullscreenAndLandscape(false);
 
       const btn = document.getElementById('btn-create-room');
       btn.disabled = true;
@@ -1457,9 +1488,6 @@
         showToast('請輸入正確的 6 碼房間代碼', 'error');
         return;
       }
-
-      // Request fullscreen & landscape immediately inside user gesture
-      requestFullscreenAndLandscape(false);
 
       const btn = document.getElementById('btn-join-room');
       btn.disabled = true;
@@ -1618,8 +1646,6 @@
     }
 
     function hostStartOnlineGame() {
-      requestFullscreenAndLandscape(false);
-
       const fillBots = document.getElementById('online-fill-bots').checked;
       const timerSec = parseInt(document.getElementById('online-timer-select').value, 10);
 
@@ -1692,25 +1718,24 @@
     }
 
     /*************************************************************************
-     * 7B. FULLSCREEN & LANDSCAPE ORIENTATION CONTROLLER
+     * 7B. OPTIONAL FULLSCREEN DISPLAY CONTROLLER (PORTRAIT & LANDSCAPE FRIENDLY)
      *************************************************************************/
+    function isFullscreenActive() {
+      return Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+    }
+
     function enterActiveGameDisplay() {
       document.body.classList.add('active-game-mode');
       document.getElementById('lobby-view').classList.add('hidden');
       document.getElementById('gameover-modal').classList.add('hidden');
       document.getElementById('game-view').classList.remove('hidden');
-      requestFullscreenAndLandscape(false);
-      checkPortraitOrientationOverlay();
+      updateFullscreenButtonUI();
     }
 
     function exitActiveGameDisplay() {
       document.body.classList.remove('active-game-mode');
-      const overlay = document.getElementById('portrait-lock-overlay');
-      if (overlay) overlay.classList.add('hidden');
-      if (screen.orientation && screen.orientation.unlock) {
-        try { screen.orientation.unlock(); } catch (e) {}
-      }
-      if (document.fullscreenElement || document.webkitFullscreenElement) {
+      document.body.classList.remove('is-fullscreen-mode');
+      if (isFullscreenActive()) {
         try {
           if (document.exitFullscreen) document.exitFullscreen();
           else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
@@ -1719,84 +1744,60 @@
       updateFullscreenButtonUI();
     }
 
-    async function requestFullscreenAndLandscape(showFeedback = false) {
-      const docEl = document.documentElement;
-      try {
-        if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+    async function toggleFullscreenMode() {
+      SoundFX.playClick();
+      if (isFullscreenActive()) {
+        try {
+          if (document.exitFullscreen) await document.exitFullscreen();
+          else if (document.webkitExitFullscreen) await document.webkitExitFullscreen();
+        } catch (e) {}
+      } else {
+        const docEl = document.documentElement;
+        try {
           if (docEl.requestFullscreen) {
             await docEl.requestFullscreen();
           } else if (docEl.webkitRequestFullscreen) {
             await docEl.webkitRequestFullscreen();
           }
-        }
-      } catch (err) {
-        if (showFeedback) {
-          showToast('請手動將裝置橫放以獲得最佳全螢幕視野', 'info');
+        } catch (err) {
+          showToast('目前瀏覽器不支援全螢幕切換，可直接使用一般視窗遊玩', 'info');
         }
       }
-
-      try {
-        if (screen.orientation && screen.orientation.lock) {
-          await screen.orientation.lock('landscape');
+      setTimeout(() => {
+        updateFullscreenButtonUI();
+        if (gameState && gameState.phase === 'playing') {
+          renderTableMelds();
+          renderRack();
         }
-      } catch (err) {
-        // Browsers on iOS Safari or desktop may ignore orientation.lock; CSS/JS portrait overlay handles guidance
-      }
-
-      updateFullscreenButtonUI();
-      checkPortraitOrientationOverlay();
-    }
-
-    function toggleFullscreenMode() {
-      SoundFX.playClick();
-      if (document.fullscreenElement || document.webkitFullscreenElement) {
-        try {
-          if (document.exitFullscreen) document.exitFullscreen();
-          else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
-        } catch (e) {}
-      } else {
-        requestFullscreenAndLandscape(true);
-      }
-      setTimeout(updateFullscreenButtonUI, 150);
+      }, 120);
     }
 
     function updateFullscreenButtonUI() {
       const btn = document.getElementById('game-fullscreen-btn');
+      const isFs = isFullscreenActive();
+      document.body.classList.toggle('is-fullscreen-mode', isFs);
       if (!btn) return;
-      const isFs = Boolean(document.fullscreenElement || document.webkitFullscreenElement);
       btn.innerHTML = isFs
         ? '<span>🗗</span><span class="hidden sm:inline">退出全螢幕</span>'
         : '<span>⛶</span><span class="hidden sm:inline">全螢幕</span>';
     }
 
-    function checkPortraitOrientationOverlay() {
-      const overlay = document.getElementById('portrait-lock-overlay');
-      if (!overlay) return;
-      const inGame = gameState && (gameState.phase === 'playing' || gameState.phase === 'gameover');
-      const isPortrait = window.innerHeight > window.innerWidth;
-      if (inGame && isPortrait) {
-        overlay.classList.remove('hidden');
-        overlay.classList.add('flex');
-      } else {
-        overlay.classList.add('hidden');
-        overlay.classList.remove('flex');
+    function handleFullscreenLayoutChange() {
+      updateFullscreenButtonUI();
+      if (gameState && gameState.phase === 'playing') {
+        renderTableMelds();
+        renderRack();
       }
     }
 
-    document.addEventListener('fullscreenchange', () => {
-      updateFullscreenButtonUI();
-      checkPortraitOrientationOverlay();
-      if (gameState && gameState.phase === 'playing') renderRack();
-    });
-    document.addEventListener('webkitfullscreenchange', () => {
-      updateFullscreenButtonUI();
-      checkPortraitOrientationOverlay();
-      if (gameState && gameState.phase === 'playing') renderRack();
-    });
+    document.addEventListener('fullscreenchange', handleFullscreenLayoutChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenLayoutChange);
     window.addEventListener('orientationchange', () => {
       setTimeout(() => {
-        checkPortraitOrientationOverlay();
-        if (gameState && gameState.phase === 'playing') renderRack();
+        if (gameState && gameState.phase === 'playing') {
+          renderTableMelds();
+          renderRack();
+        }
       }, 150);
     });
 
@@ -2977,15 +2978,21 @@
         }
       }
 
+      const isFullscreen = isFullscreenActive();
       const isLandscapeCompact = window.innerWidth > window.innerHeight && window.innerHeight <= 620;
       const scaleFactor = Math.min(1, 10 / colsPerRow);
-      // Full-bleed responsive font sizing calibrated to slot height in landscape & desktop
-      const slotHeightEstimate = isLandscapeCompact
-        ? Math.min(46, Math.max(30, window.innerHeight * 0.102))
-        : Math.min(58, Math.max(36, window.innerHeight * 0.105));
+      // Full-bleed responsive font sizing calibrated to slot height (compact in fullscreen so table maximizes)
+      let slotHeightEstimate;
+      if (isFullscreen) {
+        slotHeightEstimate = Math.min(36, Math.max(24, window.innerHeight * 0.062));
+      } else if (isLandscapeCompact) {
+        slotHeightEstimate = Math.min(46, Math.max(30, window.innerHeight * 0.102));
+      } else {
+        slotHeightEstimate = Math.min(58, Math.max(36, window.innerHeight * 0.105));
+      }
       const baseFontPx = Math.round(slotHeightEstimate * 0.74);
-      const scaledFontPx = Math.max(14, Math.round(baseFontPx * scaleFactor));
-      const slotGapPx = colsPerRow > 12 ? 2 : (isLandscapeCompact ? 3 : 4);
+      const scaledFontPx = Math.max(12, Math.round(baseFontPx * scaleFactor));
+      const slotGapPx = colsPerRow > 12 ? 2 : (isFullscreen ? 2.5 : (isLandscapeCompact ? 3 : 4));
 
       topRowEl.style.gridTemplateColumns = `repeat(${colsPerRow}, minmax(0, 1fr))`;
       bottomRowEl.style.gridTemplateColumns = `repeat(${colsPerRow}, minmax(0, 1fr))`;
@@ -3021,7 +3028,6 @@
     }
 
     window.addEventListener('resize', () => {
-      checkPortraitOrientationOverlay();
       if (gameState && gameState.phase === 'playing') {
         renderTableMelds();
         renderRack();
