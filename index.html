@@ -352,12 +352,6 @@
         padding: 6px max(14px, var(--safe-right), 34px) 6px max(14px, var(--safe-left), 34px);
       }
 
-      body.active-game-mode #turn-status-banner {
-        margin-bottom: 6px;
-        padding: 3px 10px;
-        font-size: 11px;
-      }
-
       body.active-game-mode #table-melds-container {
         gap: 6px;
         padding-bottom: 6px;
@@ -971,6 +965,21 @@
         <div class="bg-emerald-950/65 backdrop-blur-md border border-emerald-400/25 px-2.5 py-1 rounded-xl flex items-center gap-1 shadow-lg" title="牌庫剩餘張數">
           <span class="text-[11px] text-emerald-200/85 font-bold">牌庫</span>
           <span class="text-xs">🀄</span>
+      <!-- Floating Translucent Turn Status Pill (Top-Left of Table, Non-Blocking) -->
+      <div id="floating-turn-pill" class="absolute top-2 left-2.5 z-20 flex items-center gap-1.5 pointer-events-none select-none">
+        <span id="turn-indicator-badge" class="px-2.5 py-1 rounded-xl text-xs font-black bg-amber-400/95 text-emerald-950 shadow-lg backdrop-blur-md">
+          ✨ 輪到你出牌
+        </span>
+        <span id="turn-points-preview" class="hidden px-2 py-1 rounded-xl text-[11px] font-bold bg-emerald-950/75 border border-amber-400/40 text-amber-300 shadow-lg backdrop-blur-md">
+          破冰 <span id="current-meld-points" class="font-mono font-black">0</span>/30分
+        </span>
+      </div>
+
+      <!-- Floating Translucent Pool & Countdown HUD (Top-Right of Table, Non-Blocking) -->
+      <div id="floating-table-hud" class="absolute top-2 right-2.5 z-20 flex items-center gap-1.5 pointer-events-none select-none">
+        <div class="bg-emerald-950/65 backdrop-blur-md border border-emerald-400/25 px-2.5 py-1 rounded-xl flex items-center gap-1 shadow-lg" title="牌庫剩餘張數">
+          <span class="text-[11px] text-emerald-200/85 font-bold">牌庫</span>
+          <span class="text-xs">🀄</span>
           <span id="pool-count" class="font-mono font-black text-amber-300 text-xs sm:text-sm">0</span>
         </div>
         <div id="timer-badge" class="bg-emerald-950/65 backdrop-blur-md border border-emerald-400/25 px-2.5 py-1 rounded-xl flex items-center gap-1 font-mono font-bold text-xs sm:text-sm text-emerald-100 shadow-lg">
@@ -979,23 +988,8 @@
         </div>
       </div>
 
-      <!-- Turn Status & Helper Banner -->
-      <div id="turn-status-banner" class="w-full max-w-5xl mx-auto mb-1.5 pr-32 sm:pr-40 flex flex-wrap items-center justify-between gap-1.5 bg-emerald-950/65 border border-emerald-700/40 rounded-2xl px-3 py-1 text-xs sm:text-sm shrink-0">
-        <div class="flex items-center gap-2">
-          <span id="turn-indicator-badge" class="px-2.5 py-0.5 rounded-full font-black bg-amber-400 text-emerald-950">
-            輪到你出牌
-          </span>
-          <span id="turn-instruction-text" class="text-emerald-100/90 truncate max-w-[55vw] sm:max-w-none">
-            可多選多張牌後按「打出所選牌」，或直接拖曳到牌桌。
-          </span>
-        </div>
-        <div id="turn-points-preview" class="hidden font-bold text-amber-300">
-          本回合打出點數：<span id="current-meld-points" class="font-mono text-base">0</span> / 30 分
-        </div>
-      </div>
-
       <!-- Auto-Fit Melds Container (Strictly Fits Inside Fixed Table Bounds) -->
-      <div id="table-melds-wrapper">
+      <div id="table-melds-wrapper" class="pt-7">
         <div id="table-melds-container" class="max-w-6xl mx-auto"></div>
       </div>
 
@@ -3679,19 +3673,14 @@
       const me = gameState.players.find(p => p.id === myPlayerId);
 
       const badge = document.getElementById('turn-indicator-badge');
-      const instr = document.getElementById('turn-instruction-text');
       const ptsBox = document.getElementById('turn-points-preview');
 
       if (myTurn) {
         badge.textContent = '✨ 輪到你出牌';
-        badge.className = 'px-2.5 py-0.5 rounded-full font-black bg-amber-400 text-emerald-950';
-        instr.textContent = me.brokenIce
-          ? '已破冰：可多選牌組打出或重組桌上牌組，完成後按「✅ 結束回合」。'
-          : '未破冰：請選取手牌打出總和 ≥ 30 分的合法牌組（不可移動桌上舊牌）。';
+        badge.className = 'px-2.5 py-1 rounded-xl text-xs font-black bg-amber-400/95 text-emerald-950 shadow-lg backdrop-blur-md';
       } else {
-        badge.textContent = `⏳ 等待 ${activePlayer.name}`;
-        badge.className = 'px-2.5 py-0.5 rounded-full font-bold bg-emerald-800 text-emerald-200';
-        instr.textContent = activePlayer.isBot ? 'AI 正在思考出牌策略...' : '對手正在思考與操作牌桌...';
+        badge.textContent = `⏳ ${activePlayer.name}`;
+        badge.className = 'px-2.5 py-1 rounded-xl text-xs font-bold bg-emerald-950/75 border border-emerald-500/30 text-emerald-200 shadow-lg backdrop-blur-md';
       }
 
       if (myTurn && me && !me.brokenIce && turnSnapshot) {
