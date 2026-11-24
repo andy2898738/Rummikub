@@ -2274,6 +2274,7 @@
       startTurnTimer();
 
       if (curr.id === myPlayerId) {
+        isProcessingTurn = false;
         saveTurnSnapshot();
         SoundFX.turn();
         showToast('輪到你出牌了！', 'info');
@@ -2291,48 +2292,116 @@
     }
 
     function startTurnTimer() {
-      if (timerInterval) {
-        clearInterval(timerInterval);
-        timerInterval = null;
-      }
-      const timerBox = document.getElementById('timer-box');
-      if (turnDuration <= 0) {
-        timerBox.classList.add('hidden');
-        return;
-      }
-      timerBox.classList.remove('hidden');
-      if (!gameState.timeLeft || gameState.timeLeft <= 0) {
-        gameState.timeLeft = turnDuration;
-      }
+      if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
       updateTimerDisplay();
+      if (!turnDuration || turnDuration <= 0) return;
 
       timerInterval = setInterval(() => {
-        if (gameState.status !== 'playing') {
-          clearInterval(timerInterval);
-          timerInterval = null;
-          return;
+        if (gameState.status !== 'playing') return;
+        if (gameState.timeLeft > 0) {
+          gameState.timeLeft -= 1;
+          updateTimerDisplay();
         }
-        gameState.timeLeft = Math.max(0, gameState.timeLeft - 1);
-        updateTimerDisplay();
         if (gameState.timeLeft <= 0) {
           clearInterval(timerInterval);
           timerInterval = null;
           if (isMyTurn()) {
-            showToast('思考時間到！自動重置並抽牌結束回合', 'error');
-            resetCurrentTurn(true);
-            drawTileAndEndTurn();
-          } else if (gameMode === 'online_host') {
-            const activePlayer = getCurrentPlayer();
-            if (activePlayer && !activePlayer.isBot) {
-              if (gameState.deck.length > 0) {
-                activePlayer.rack.push(gameState.deck.pop());
-              }
-              showToast(`${activePlayer.name} 超時未出牌，自動抽牌換下一位`, 'info');
-              advanceToNextPlayer();
-            }
+            handleTurnTimeoutOnMyTurn();
+          } else if (gameMode === 'online_host' && getCurrentPlayer()?.isBot) {
+            advanceToNextPlayer();
           }
         }
       }, 1000);
+    }
+
+    function evaluateCurrentTurnSubmission() {
+      const me = getMyPlayer();
+      if (!me || !turnSnapshot) {
+        return { ok: false, reason: '缺少回合快照' };
+      }
+
+      const snapMe = turnSnapshot.players.find(p => p.id === me.id);
+      const origRackCount = snapMe ? snapMe.rack.length : me.rack.length;
+      if (me.rack.length >= origRackCount) {
+        return { ok: false, reason: '尚未打出任何手牌' };
+      }
+
+      if (!Array.isArray(gameState.tableMelds) || gameState.tableMelds.length === 0) {
+        return { ok: false, reason: '牌桌上沒有任何牌組' };
+      }
+
+      let totalCurrentTablePoints = 0;
+      for (const meld of gameState.tableMelds) {
+        const res = validateMeld(meld.tiles);
+        if (!res.valid) {
+          return { ok: false, reason: `牌桌上有不合法的牌組：${res.reason}` };
+        }
+        meld.tiles = res.orderedTiles;
+        totalCurrentTablePoints += res.points;
+      }
+
+      if (!me.hasBrokenIce) {
+        const origIds = new Set();
+        turnSnapshot.tableMelds.forEach(m => m.tiles.forEach(t => origIds.add(t.id)));
+        const currentIds = new Set();
+        gameState.tableMelds.forEach(m => m.tiles.forEach(t => currentIds.add(t.id)));
+
+        for (const id of origIds) {
+          if (!currentIds.has(id)) {
+            return { ok: false, reason: '首次破冰不能動用桌面原本的牌' };
+          }
+        }
+
+        let origTablePoints = 0;
+        turnSnapshot.tableMelds.forEach(m => {
+          origTablePoints += validateMeld(m.tiles).points;
+        });
+
+        const newlyPlayedPoints = totalCurrentTablePoints - origTablePoints;
+        if (newlyPlayedPoints < 30) {
+          return { ok: false, reason: `首次破冰點數不足（目前 ${newlyPlayedPoints} 分，需至少 30 分）` };
+        }
+        me.hasBrokenIce = true;
+      }
+
+      return { ok: true, player: me };
+    }
+
+    function handleTurnTimeoutOnMyTurn() {
+      if (!isMyTurn() || isProcessingTurn) return;
+      const check = evaluateCurrentTurnSubmission();
+      if (check.ok) {
+        const me = check.player;
+        isProcessingTurn = true;
+        selectedItems = [];
+        SoundFX.place();
+        showToast('⏱ 時間到，你的出牌合法，視同完成出牌！', 'success');
+
+        if (gameMode === 'online_guest') {
+          if (hostConn && hostConn.open) {
+            hostConn.send({
+              type: 'ACTION_END_TURN',
+              tableMelds: gameState.tableMelds,
+              playerRack: me.rack,
+              hasBrokenIce: me.hasBrokenIce,
+              chips: me.chips
+            });
+          }
+          updateTurnButtons();
+          renderAll();
+          return;
+        }
+
+        if (me.rack.length === 0) {
+          endGameWithWinner(me.id);
+        } else {
+          advanceToNextPlayer();
+        }
+        return;
+      }
+
+      showToast('時間到！自動抽牌並結束回合', 'info');
+      drawTileAndEndTurn();
     }
 
     function updateTimerDisplay() {
@@ -2636,13 +2705,15 @@
       SoundFX.place();
 
       if (gameMode === 'online_guest') {
-        hostConn.send({
-          type: 'ACTION_END_TURN',
-          tableMelds: gameState.tableMelds,
-          playerRack: me.rack,
-          hasBrokenIce: me.hasBrokenIce,
-          chips: me.chips
-        });
+        if (hostConn && hostConn.open) {
+          hostConn.send({
+            type: 'ACTION_END_TURN',
+            tableMelds: gameState.tableMelds,
+            playerRack: me.rack,
+            hasBrokenIce: me.hasBrokenIce,
+            chips: me.chips
+          });
+        }
         updateTurnButtons();
         renderAll();
         return;
