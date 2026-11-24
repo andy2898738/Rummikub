@@ -1798,28 +1798,36 @@
 
       peer.on('connection', (conn) => {
         conn.on('open', () => {
-          if (Object.keys(guestConns).length >= 3 || (gameState && gameState.phase === 'playing')) {
+          const isPlaying = Boolean(gameState && gameState.phase === 'playing');
+          const hasBotSeatToReclaim = isPlaying && gameState.players.some(p => p.isBot && p.deviceId && !p.deviceId.startsWith('BOT-'));
+          if ((Object.keys(guestConns).length >= 3 && !hasBotSeatToReclaim) || (isPlaying && !hasBotSeatToReclaim)) {
             conn.send({ type: 'REJECT', reason: '房間已滿或遊戲已開始' });
             setTimeout(() => conn.close(), 300);
             return;
           }
           guestConns[conn.peer] = conn;
-          conn.send({ type: 'WAITING_LIST', players: waitingRoomPlayers });
+          if (!isPlaying) {
+            conn.send({ type: 'WAITING_LIST', players: waitingRoomPlayers });
+          }
         });
 
         conn.on('data', (data) => handleHostReceiveData(conn.peer, data));
 
         conn.on('close', () => {
           delete guestConns[conn.peer];
-          waitingRoomPlayers = waitingRoomPlayers.filter(p => p.id !== conn.peer);
-          broadcastWaitingRoom();
-          if (gameState && gameState.phase === 'playing') {
+          const isPlaying = Boolean(gameState && gameState.phase === 'playing');
+          if (!isPlaying) {
+            waitingRoomPlayers = waitingRoomPlayers.filter(p => p.id !== conn.peer);
+            broadcastWaitingRoom();
+          } else {
             const leftPlayer = gameState.players.find(p => p.id === conn.peer);
-            if (leftPlayer) {
+            if (leftPlayer && !leftPlayer.isBot) {
               leftPlayer.isBot = true;
               leftPlayer.difficulty = 'challenge';
-              leftPlayer.name += ' (AI接管)';
-              showToast(`${leftPlayer.name} 已由 AI 接管`, 'warn');
+              if (!leftPlayer.name.endsWith('(AI接管)')) {
+                leftPlayer.name += ' (AI接管)';
+              }
+              showToast(`${leftPlayer.name} 暫時離線，已由 AI 代管（重連可取回座位）`, 'warn');
               broadcastGameState();
               renderAll();
               checkIfBotTurn();
@@ -2001,18 +2009,34 @@
 
     function handleHostReceiveData(senderId, msg) {
       if (msg.type === 'JOIN_REQ') {
-        // Reconnect support during active game if matching deviceId returns
-        if (gameState && gameState.phase === 'playing' && msg.deviceId) {
-          const existingPlayer = gameState.players.find(p => p.deviceId === msg.deviceId);
+        // Reconnect support during active game if matching deviceId returns (reclaiming AI-managed seat)
+        if (gameState && gameState.phase === 'playing') {
+          let existingPlayer = msg.deviceId
+            ? gameState.players.find(p => p.deviceId === msg.deviceId)
+            : null;
+          // Fallback: if deviceId wasn't matched (e.g. incognito/other browser), allow matching exact nickname of an AI-taken-over human seat
+          if (!existingPlayer && msg.name) {
+            existingPlayer = gameState.players.find(
+              p => p.isBot && p.deviceId && !p.deviceId.startsWith('BOT-') &&
+              p.name.replace(/\s*\(AI接管\)$/, '') === msg.name.trim()
+            );
+          }
+
           if (existingPlayer) {
             const oldId = existingPlayer.id;
             existingPlayer.id = senderId;
             existingPlayer.isBot = false;
+            if (msg.deviceId) existingPlayer.deviceId = msg.deviceId;
             existingPlayer.name = (msg.name || existingPlayer.name).replace(/\s*\(AI接管\)$/, '');
             if (oldId !== senderId && guestConns[oldId]) {
               delete guestConns[oldId];
             }
-            showToast(`📱 ${existingPlayer.name} (${msg.deviceId}) 已重新連線並取回手牌！`, 'success');
+            const waitingEntry = waitingRoomPlayers.find(p => p.id === oldId || (msg.deviceId && p.deviceId === msg.deviceId));
+            if (waitingEntry) {
+              waitingEntry.id = senderId;
+              waitingEntry.name = existingPlayer.name;
+            }
+            showToast(`📱 ${existingPlayer.name} 已重新連線並解除 AI 代管！`, 'success');
             sendToGuest(senderId, { type: 'RECONNECTED_AS', playerId: senderId, state: gameState });
             broadcastGameState();
             renderAll();
@@ -2065,6 +2089,8 @@
         waitingRoomPlayers = msg.players;
         renderWaitingRoom();
       } else if (msg.type === 'RECONNECTED_AS') {
+        clearTimeout(onlineConnectTimeout);
+        clearInterval(joinHandshakeInterval);
         myPlayerId = msg.playerId;
         gameState = msg.state;
         enterActiveGameDisplay();
@@ -2072,8 +2098,11 @@
           takeTurnSnapshot();
         }
         renderAll();
-        showToast('已透過手機專屬 ID 自動恢復原對局手牌！', 'success');
+        startTurnTimer(true);
+        showToast('已重新連回對局並解除 AI 代管，取回原手牌！', 'success');
       } else if (msg.type === 'GAME_STATE') {
+        const prevTurnIdx = gameState ? gameState.currentTurnIdx : -1;
+        const prevPhase = gameState ? gameState.phase : null;
         const wasMyTurn = gameState && gameState.players[gameState.currentTurnIdx]?.id === myPlayerId;
         gameState = msg.state;
         // Sync playerId by deviceId if host updated connection ID
@@ -2082,6 +2111,7 @@
           if (matchedByDevice) myPlayerId = matchedByDevice.id;
         }
         const isNowMyTurn = gameState.players[gameState.currentTurnIdx]?.id === myPlayerId;
+        const turnChanged = prevTurnIdx !== gameState.currentTurnIdx || prevPhase !== gameState.phase;
 
         enterActiveGameDisplay();
 
@@ -2090,6 +2120,9 @@
           SoundFX.playSuccess();
         }
         renderAll();
+        if (turnChanged || !turnTimerInterval) {
+          startTurnTimer(true);
+        }
       } else if (msg.type === 'ACTION_REJECTED') {
         showToast(msg.reason, 'error');
         SoundFX.playError();
@@ -2468,8 +2501,9 @@
     /*************************************************************************
      * 8. TILE MULTI-SELECTION, DRAG & DROP, AND TURN TIMER
      *************************************************************************/
-    function startTurnTimer() {
+    function startTurnTimer(preserveExistingTime = false) {
       clearInterval(turnTimerInterval);
+      turnTimerInterval = null;
       if (!gameState || gameState.phase !== 'playing') return;
 
       const timerBadge = document.getElementById('timer-badge');
@@ -2482,16 +2516,29 @@
         return;
       }
 
-      gameState.timeLeft = gameState.turnDuration;
+      if (!preserveExistingTime || typeof gameState.timeLeft !== 'number' || gameState.timeLeft <= 0) {
+        gameState.timeLeft = gameState.turnDuration;
+      }
       if (timerText) timerText.textContent = `${gameState.timeLeft}s`;
       if (progressBar) {
-        progressBar.style.width = '100%';
-        progressBar.className = 'h-full bg-amber-400 transition-all duration-500';
+        const initPct = (gameState.timeLeft / gameState.turnDuration) * 100;
+        progressBar.style.width = `${initPct}%`;
+        progressBar.className = gameState.timeLeft <= 15
+          ? 'h-full bg-red-500 transition-all duration-500'
+          : 'h-full bg-amber-400 transition-all duration-500';
+      }
+      if (timerBadge) {
+        if (gameState.timeLeft <= 15) {
+          timerBadge.classList.add('border-red-400', 'text-red-300');
+        } else {
+          timerBadge.classList.remove('border-red-400', 'text-red-300');
+        }
       }
 
       turnTimerInterval = setInterval(() => {
         if (!gameState || gameState.phase !== 'playing') {
           clearInterval(turnTimerInterval);
+          turnTimerInterval = null;
           return;
         }
         gameState.timeLeft = Math.max(0, gameState.timeLeft - 1);
@@ -2509,6 +2556,7 @@
 
         if (gameState.timeLeft <= 0) {
           clearInterval(turnTimerInterval);
+          turnTimerInterval = null;
           if (isMyTurn()) {
             showToast('⏰ 思考時間到！自動還原桌面並抽 1 張牌', 'warn');
             playerDrawTile();
@@ -3299,6 +3347,7 @@
     function advanceToNextPlayer() {
       selectedTiles = [];
       gameState.currentTurnIdx = (gameState.currentTurnIdx + 1) % gameState.players.length;
+      gameState.timeLeft = gameState.turnDuration;
       const nextPlayer = gameState.players[gameState.currentTurnIdx];
 
       if (nextPlayer.id === myPlayerId) {
