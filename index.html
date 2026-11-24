@@ -79,7 +79,6 @@
       font-family: 'Fredoka', 'Noto Sans TC', sans-serif;
     }
 
-    /* Realistic Rummikub Tile Styling - Full Bleed Bold Digits & Large Joker */
     .rummi-tile {
       position: relative;
       background: linear-gradient(155deg, #ffffff 0%, #f9f6ee 68%, #ebe3d0 100%);
@@ -149,7 +148,6 @@
       transform: none;
     }
 
-    /* Table Tile Sizes */
     .rummi-tile.table-tile {
       width: 34px;
       height: 46px;
@@ -166,7 +164,6 @@
       font-size: 26px;
     }
 
-    /* Rack Tile Sizes */
     .rummi-tile.rack-tile {
       width: 35px;
       height: 48px;
@@ -215,13 +212,11 @@
       }
     }
 
-    /* Tile Colors */
     .tile-red { color: #dc2626; }
     .tile-blue { color: #1d4ed8; }
     .tile-black { color: #111827; }
     .tile-orange { color: #d97706; }
 
-    /* Wooden Tile Rack */
     .wooden-rack {
       background: linear-gradient(180deg, #9c602a 0%, #7c4719 52%, #59300d 100%);
       border-top: 3px solid #b87a3d;
@@ -270,7 +265,6 @@
       box-shadow: 0 0 12px rgba(239, 68, 68, 0.35);
     }
 
-    /* Fullscreen & Safe-Area Notch / Punch-Hole Camera Adaptation */
     body.active-game-mode #top-bar {
       padding-top: calc(var(--effective-safe-top) + 4px);
       padding-left: calc(var(--effective-safe-left) + 8px);
@@ -312,7 +306,6 @@
       }
     }
 
-    /* Animations */
     @keyframes popIn {
       0% { transform: scale(0.86); opacity: 0; }
       100% { transform: scale(1); opacity: 1; }
@@ -342,7 +335,6 @@
       border-radius: 4px;
     }
 
-    /* Single-Screen Zero-Scroll Lobby Layout */
     #lobby-view {
       width: 100%;
       height: 100dvh;
@@ -412,7 +404,6 @@
   ========================================================= -->
   <div id="lobby-view">
     <div class="lobby-card bg-emerald-950/90 backdrop-blur-md border border-emerald-700/50 rounded-2xl sm:rounded-3xl p-3 sm:p-5 shadow-2xl animate-pop">
-      <!-- Two-Line Centered Title & Subtitle Header with Full Unclipped Text -->
       <div class="relative flex flex-col items-center text-center mb-2 sm:mb-3 pb-2 border-b border-emerald-800/60">
         <button onclick="toggleRulesModal(true)" class="absolute top-0 right-0 px-2 py-1 rounded-xl bg-emerald-900/90 hover:bg-emerald-800 border border-emerald-700/70 text-[11px] font-bold text-amber-200 cursor-pointer">
           📖 規則
@@ -431,7 +422,7 @@
         </p>
       </div>
 
-      <!-- Player Nickname, Device ID & Chips Card (Compact) -->
+      <!-- Player Nickname, Device ID & Chips Card -->
       <div class="mb-2 sm:mb-3 bg-emerald-900/55 border border-emerald-700/60 rounded-xl sm:rounded-2xl p-2 sm:p-2.5">
         <div class="flex items-center justify-between gap-1.5 mb-1.5">
           <div class="flex items-center gap-1 min-w-0 flex-wrap">
@@ -514,7 +505,6 @@
 
       <!-- Online Multiplayer Panel -->
       <div id="panel-online" class="hidden space-y-2 sm:space-y-2.5">
-        <!-- Create Room -->
         <div id="create-room-card" class="bg-emerald-900/45 border border-emerald-700/50 rounded-xl p-2.5">
           <div class="flex items-center justify-between mb-1.5">
             <h3 class="font-bold text-amber-300 text-xs">建立新房間（當房主）</h3>
@@ -525,7 +515,6 @@
           </button>
         </div>
 
-        <!-- Join Room -->
         <div id="join-room-card" class="bg-emerald-900/45 border border-emerald-700/50 rounded-xl p-2.5">
           <h3 class="font-bold text-amber-300 text-xs mb-1.5">輸入房號加入好友房間</h3>
           <div class="flex gap-2">
@@ -537,7 +526,6 @@
           </div>
         </div>
 
-        <!-- Waiting Room Box -->
         <div id="waiting-room-box" class="hidden bg-black/40 border border-amber-400/50 rounded-xl p-2.5 space-y-2">
           <div class="flex items-center justify-between gap-1.5">
             <div class="min-w-0">
@@ -593,7 +581,6 @@
         </div>
       </div>
 
-      <!-- Compact Footer -->
       <div class="mt-2 pt-1.5 border-t border-emerald-800/60 flex justify-between items-center text-[10px] text-emerald-300/80">
         <span>支援 iOS / Android 手機全螢幕</span>
         <span>純前端 P2P 連線版</span>
@@ -605,13 +592,9 @@
        VIEW 2: ACTIVE GAME TABLE
   ========================================================= -->
   <div id="game-view" class="hidden flex-1 flex flex-col h-full overflow-hidden">
-
-    <!-- Top Bar: Players Status & Controls -->
     <header id="top-bar" class="bg-emerald-950/95 border-b border-emerald-800/80 px-2 py-1.5 sm:px-4 sm:py-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-1.5 z-20 shrink-0 shadow-md">
-      <!-- Players Status Strip -->
       <div id="players-bar" class="grid grid-cols-2 sm:flex sm:flex-nowrap items-center gap-1.5 sm:gap-2 w-full sm:w-auto sm:flex-1 sm:overflow-x-auto"></div>
 
-      <!-- Controls -->
       <div class="flex items-center justify-end gap-1.5 shrink-0">
         <button id="btn-ingame-host-reconnect" onclick="manualHostReconnect()" class="hidden px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg bg-sky-500 hover:bg-sky-400 text-xs font-black text-sky-950 shadow cursor-pointer" title="房主重新連上房間信令">
           🔄 重連房間
@@ -625,11 +608,9 @@
       </div>
     </header>
 
-    <!-- Center Board: Melds on the Table -->
     <main id="table-area" onclick="handleTableBackgroundClick(event)"
       class="flex-1 min-h-0 overflow-hidden p-2 sm:p-4 flex flex-col justify-between relative select-none">
 
-      <!-- Floating Top-Left Active Turn Indicator -->
       <div id="floating-turn-hud" class="absolute top-2 left-2 z-10 pointer-events-none select-none flex items-center gap-1.5">
         <div id="floating-turn-pill" class="bg-emerald-950/75 backdrop-blur-md border border-emerald-500/40 rounded-full px-2.5 py-1 flex items-center gap-1.5 shadow-lg text-[11px] sm:text-xs font-black text-emerald-100">
           <span id="floating-turn-text">出牌方：--</span>
@@ -639,7 +620,6 @@
         </div>
       </div>
 
-      <!-- Floating Top-Right Deck & Timer HUD -->
       <div id="floating-table-hud" class="absolute top-2 right-2 z-10 pointer-events-none select-none flex items-center gap-1.5">
         <div class="bg-emerald-950/70 backdrop-blur-md border border-emerald-500/35 rounded-full px-2.5 py-1 flex items-center gap-1 shadow-lg">
           <span class="text-[11px] sm:text-xs">🎴</span>
@@ -653,15 +633,12 @@
         </div>
       </div>
 
-      <!-- Melds Grid Container -->
       <div id="table-melds-container" onclick="handleTableBackgroundClick(event)"
         class="w-full h-full flex-1 min-h-0 overflow-hidden flex flex-wrap content-center justify-center items-center pt-7 pb-1">
       </div>
     </main>
 
-    <!-- Bottom Area: Action Controls & Wooden Player Rack -->
     <section id="rack-section" class="wooden-rack px-2 pt-1.5 pb-2 sm:px-4 sm:pt-2.5 sm:pb-3 z-20 shrink-0">
-      <!-- Selected Tiles Floating Action Toolbar -->
       <div id="selection-toolbar" class="hidden max-w-4xl mx-auto mb-1 bg-amber-950/90 border border-amber-400/70 rounded-lg px-2 py-1 flex items-center justify-between gap-1.5 shadow">
         <div class="flex items-center gap-1 text-[11px] leading-none min-w-0 truncate">
           <span id="selected-count-badge" class="bg-amber-400 text-emerald-950 font-black px-1.5 py-0.5 rounded-full text-[10px] shrink-0">0</span>
@@ -680,9 +657,7 @@
         </div>
       </div>
 
-      <!-- Main Turn Action Buttons -->
       <div class="max-w-4xl mx-auto flex flex-wrap items-center justify-between gap-1.5 mb-2">
-        <!-- Left: Smart Sorting & Auto-Select Tools -->
         <div class="flex items-center gap-1 sm:gap-1.5 flex-wrap">
           <button onclick="sortPlayerRack('group')" class="px-2 py-1.5 rounded-lg bg-amber-950/80 hover:bg-amber-900 border border-amber-700/70 text-[11px] sm:text-xs font-bold text-amber-100 cursor-pointer" title="依同數字不同色智慧分類，可出牌組自動集中標示">
             🔢 777理牌
@@ -696,7 +671,6 @@
           <span id="rack-count-label" class="text-[11px] text-amber-200/80 ml-0.5 hidden sm:inline">手牌: 14 張</span>
         </div>
 
-        <!-- Right: Turn Commit / Draw / Reset -->
         <div class="flex items-center gap-1.5 sm:gap-2">
           <button id="btn-reset-turn" onclick="resetCurrentTurn()" disabled
             class="px-2.5 py-1.5 rounded-lg bg-stone-800/90 hover:bg-stone-700 disabled:opacity-40 disabled:pointer-events-none border border-stone-600 text-xs font-bold text-stone-200 cursor-pointer">
@@ -713,12 +687,9 @@
         </div>
       </div>
 
-      <!-- Player's Two-Tier Wooden Tile Rack (10 Slots Top + 10 Slots Bottom) -->
       <div class="max-w-4xl mx-auto">
         <div id="rack-rows-wrapper" class="flex flex-col gap-1.5">
-          <!-- Tier 1 (Slots 0 - 9) -->
           <div id="player-rack-row-1" class="rack-tier-ledge flex items-center justify-center gap-1 sm:gap-1.5 px-1.5 py-1 min-h-[54px] sm:min-h-[64px]"></div>
-          <!-- Tier 2 (Slots 10 - 19) -->
           <div id="player-rack-row-2" class="rack-tier-ledge flex items-center justify-center gap-1 sm:gap-1.5 px-1.5 py-1 min-h-[54px] sm:min-h-[64px]"></div>
         </div>
       </div>
@@ -776,7 +747,6 @@
       <h2 id="winner-title" class="text-2xl sm:text-3xl font-black text-amber-300 mb-1">玩家獲勝！</h2>
       <p id="winner-subtitle" class="text-emerald-200 text-xs sm:text-sm mb-3">所有手牌已清空，恭喜成為拉密大師！</p>
 
-      <!-- Chip Rules Summary Banner -->
       <div class="bg-amber-500/15 border border-amber-400/40 rounded-xl px-3 py-1.5 mb-3 text-[11px] text-amber-200 flex items-center justify-between">
         <span>🎫 入場費：100元</span>
         <span>🏆 名次獎金：200 / 100 / 60 / 40</span>
@@ -806,369 +776,109 @@
   ========================================================= -->
   <script>
     // =========================================================
-    // 1. SOUND EFFECTS (Web Audio API - No external files)
+    // 1. SOUND EFFECTS SYNTHESIZER (WEB AUDIO API)
     // =========================================================
     const SoundFX = (() => {
       let ctx = null;
       let enabled = true;
 
       function getCtx() {
-        if (!ctx) {
+        if (!ctx && (window.AudioContext || window.webkitAudioContext)) {
           const AudioCtx = window.AudioContext || window.webkitAudioContext;
-          if (AudioCtx) ctx = new AudioCtx();
+          ctx = new AudioCtx();
         }
-        if (ctx && ctx.state === 'suspended') ctx.resume();
+        if (ctx && ctx.state === 'suspended') {
+          ctx.resume().catch(() => {});
+        }
         return ctx;
       }
 
-      function playTone(freq, duration = 0.08, type = 'triangle', volume = 0.15, delay = 0) {
+      function playTone(freq, type = 'sine', duration = 0.12, gainVal = 0.12, delay = 0) {
         if (!enabled) return;
-        try {
-          const c = getCtx();
-          if (!c) return;
-          const osc = c.createOscillator();
-          const gain = c.createGain();
-          osc.type = type;
-          osc.frequency.setValueAtTime(freq, c.currentTime + delay);
-          gain.gain.setValueAtTime(volume, c.currentTime + delay);
-          gain.gain.exponentialRampToValueAtTime(0.001, c.currentTime + delay + duration);
-          osc.connect(gain);
-          gain.connect(c.destination);
-          osc.start(c.currentTime + delay);
-          osc.stop(c.currentTime + delay + duration);
-        } catch (e) {}
+        const c = getCtx();
+        if (!c) return;
+        const start = c.currentTime + delay;
+        const osc = c.createOscillator();
+        const gain = c.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, start);
+        gain.gain.setValueAtTime(gainVal, start);
+        gain.gain.exponentialRampToValueAtTime(0.001, start + duration);
+        osc.connect(gain);
+        gain.connect(c.destination);
+        osc.start(start);
+        osc.stop(start + duration);
       }
 
       return {
-        toggle() {
+        click: () => playTone(620, 'triangle', 0.06, 0.08),
+        place: () => {
+          playTone(440, 'triangle', 0.08, 0.12, 0);
+          playTone(660, 'triangle', 0.1, 0.1, 0.04);
+        },
+        draw: () => playTone(340, 'sine', 0.11, 0.1),
+        turn: () => {
+          playTone(523.25, 'sine', 0.12, 0.12, 0);
+          playTone(659.25, 'sine', 0.16, 0.12, 0.1);
+        },
+        error: () => playTone(190, 'sawtooth', 0.18, 0.1),
+        win: () => {
+          [523.25, 659.25, 783.99, 1046.5].forEach((f, idx) => {
+            playTone(f, 'triangle', 0.2, 0.14, idx * 0.11);
+          });
+        },
+        toggle: () => {
           enabled = !enabled;
           return enabled;
         },
-        isEnabled: () => enabled,
-        click() { playTone(520, 0.045, 'sine', 0.12); },
-        place() {
-          playTone(300, 0.06, 'triangle', 0.22);
-          playTone(460, 0.07, 'sine', 0.16, 0.03);
-        },
-        draw() { playTone(260, 0.09, 'sine', 0.14); },
-        error() {
-          playTone(180, 0.12, 'sawtooth', 0.14);
-          playTone(145, 0.16, 'sawtooth', 0.14, 0.1);
-        },
-        turn() {
-          playTone(587.33, 0.09, 'sine', 0.12);
-          playTone(880, 0.14, 'sine', 0.12, 0.08);
-        },
-        win() {
-          [523.25, 659.25, 783.99, 1046.5].forEach((f, idx) => {
-            playTone(f, 0.22, 'triangle', 0.18, idx * 0.11);
-          });
-        }
+        isEnabled: () => enabled
       };
     })();
 
     // =========================================================
-    // 2. TILE & MELD RULE ENGINE
+    // 2. DECK FACTORY & OFFICIAL RUMMIKUB VALIDATION RULES
     // =========================================================
     const COLORS = ['red', 'blue', 'black', 'orange'];
-    const COLOR_ORDER = { red: 0, blue: 1, black: 2, orange: 3 };
     const COLOR_NAMES = { red: '紅', blue: '藍', black: '黑', orange: '橘' };
+    const COLOR_ORDER = { red: 0, blue: 1, black: 2, orange: 3 };
 
-    function createFullDeck() {
-      const deck = [];
-      let uid = 1;
-      for (let set = 0; set < 2; set++) {
-        for (const color of COLORS) {
-          for (let num = 1; num <= 13; num++) {
-            deck.push({
-              id: `t_${uid++}`,
-              color,
-              number: num,
-              isJoker: false
-            });
-          }
-        }
-      }
-      deck.push({ id: `t_${uid++}`, color: 'red', number: 0, isJoker: true });
-      deck.push({ id: `t_${uid++}`, color: 'black', number: 0, isJoker: true });
-      return shuffleArray(deck);
-    }
-
-    function shuffleArray(arr) {
-      const a = [...arr];
-      for (let i = a.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [a[i], a[j]] = [a[j], a[i]];
-      }
-      return a;
-    }
-
-    function validateMeld(tiles) {
-      if (!tiles || tiles.length < 3) {
-        return { valid: false, type: null, points: 0, orderedTiles: tiles || [], reason: '牌組至少需要 3 張牌' };
-      }
-
-      const jokers = tiles.filter(t => t.isJoker);
-      const normals = tiles.filter(t => !t.isJoker);
-
-      if (normals.length === 0) {
-        return { valid: false, type: null, points: 0, orderedTiles: tiles, reason: '不能全為鬼牌' };
-      }
-
-      // Check 1: GROUP (Same number, distinct colors, max 4 tiles)
-      if (tiles.length <= 4) {
-        const targetNum = normals[0].number;
-        const allSameNum = normals.every(t => t.number === targetNum);
-        const colorsSet = new Set(normals.map(t => t.color));
-        if (allSameNum && colorsSet.size === normals.length) {
-          const ordered = [...normals].sort((a, b) => COLOR_ORDER[a.color] - COLOR_ORDER[b.color]);
-          const usedColors = new Set(ordered.map(t => t.color));
-          const missingColors = COLORS.filter(c => !usedColors.has(c));
-          const jokerCopies = jokers.map((jk, i) => ({
-            ...jk,
-            assignedNumber: targetNum,
-            assignedColor: missingColors[i] || 'black'
-          }));
-          const combined = [...ordered, ...jokerCopies];
-          return {
-            valid: true,
-            type: 'group',
-            points: targetNum * tiles.length,
-            orderedTiles: combined,
-            reason: `合法群組 (${targetNum}點 × ${tiles.length}張 = ${targetNum * tiles.length}分)`
-          };
-        }
-      }
-
-      // Check 2: RUN (Same color, consecutive numbers 1..13)
-      const targetColor = normals[0].color;
-      const allSameColor = normals.every(t => t.color === targetColor);
-      if (allSameColor) {
-        const sortedNormals = [...normals].sort((a, b) => a.number - b.number);
-        let hasDuplicate = false;
-        for (let i = 1; i < sortedNormals.length; i++) {
-          if (sortedNormals[i].number === sortedNormals[i - 1].number) {
-            hasDuplicate = true;
-            break;
-          }
-        }
-        if (!hasDuplicate) {
-          let internalGaps = 0;
-          for (let i = 1; i < sortedNormals.length; i++) {
-            internalGaps += (sortedNormals[i].number - sortedNormals[i - 1].number - 1);
-          }
-
-          if (internalGaps <= jokers.length) {
-            let remainingJokers = jokers.length - internalGaps;
-            let startNum = sortedNormals[0].number;
-            let endNum = sortedNormals[sortedNormals.length - 1].number;
-
-            while (remainingJokers > 0 && endNum < 13) {
-              endNum++;
-              remainingJokers--;
-            }
-            while (remainingJokers > 0 && startNum > 1) {
-              startNum--;
-              remainingJokers--;
-            }
-
-            if (remainingJokers === 0 && startNum >= 1 && endNum <= 13 && (endNum - startNum + 1) === tiles.length) {
-              const ordered = [];
-              let jIdx = 0;
-              let nIdx = 0;
-              let points = 0;
-              for (let num = startNum; num <= endNum; num++) {
-                points += num;
-                if (nIdx < sortedNormals.length && sortedNormals[nIdx].number === num) {
-                  ordered.push(sortedNormals[nIdx++]);
-                } else {
-                  ordered.push({
-                    ...jokers[jIdx++],
-                    assignedNumber: num,
-                    assignedColor: targetColor
-                  });
-                }
-              }
-              return {
-                valid: true,
-                type: 'run',
-                points,
-                orderedTiles: ordered,
-                reason: `合法順子 (${COLOR_NAMES[targetColor]}${startNum}~${endNum} = ${points}分)`
-              };
-            }
-          }
-        }
-      }
-
-      return { valid: false, type: null, points: 0, orderedTiles: tiles, reason: '不符合群組(同數異色)或順子(同色連號)' };
-    }
-
-    function autoOrderMeldIfPossible(tiles) {
-      const res = validateMeld(tiles);
-      return res.valid ? res.orderedTiles : tiles;
-    }
-
-    function trySmartSplitCombinedMeld(tiles) {
-      if (!tiles || tiles.length < 6) return null;
-
-      const normals = tiles.filter(t => !t.isJoker);
-      const jokers = tiles.filter(t => t.isJoker);
-      if (normals.length > 0 && normals.every(t => t.color === normals[0].color)) {
-        const sortedNormals = [...normals].sort((a, b) => a.number - b.number);
-        const minNum = sortedNormals[0].number;
-        const maxNum = sortedNormals[sortedNormals.length - 1].number;
-
-        for (let splitVal = minNum + 2; splitVal <= maxNum - 1; splitVal++) {
-          const leftNormals = [];
-          const rightNormals = [];
-          const boundaryNormals = [];
-
-          for (const t of sortedNormals) {
-            if (t.number < splitVal) leftNormals.push(t);
-            else if (t.number > splitVal) rightNormals.push(t);
-            else boundaryNormals.push(t);
-          }
-
-          if (boundaryNormals.length === 2) {
-            const leftCandidate = [...leftNormals, boundaryNormals[0]];
-            const rightCandidate = [boundaryNormals[1], ...rightNormals];
-
-            for (let lj = 0; lj <= jokers.length; lj++) {
-              const rj = jokers.length - lj;
-              const lTiles = [...leftCandidate, ...jokers.slice(0, lj)];
-              const rTiles = [...rightCandidate, ...jokers.slice(lj, lj + rj)];
-              const vLeft = validateMeld(lTiles);
-              const vRight = validateMeld(rTiles);
-              if (vLeft.valid && vRight.valid) {
-                return [vLeft.orderedTiles, vRight.orderedTiles];
-              }
-            }
-          }
-
-          if (boundaryNormals.length <= 1) {
-            const leftCandidate = [...leftNormals, ...boundaryNormals];
-            const rightCandidate = [...rightNormals];
-            if (leftCandidate.length + jokers.length >= 3 && rightCandidate.length + jokers.length >= 3) {
-              for (let lj = 0; lj <= jokers.length; lj++) {
-                const rj = jokers.length - lj;
-                const lTiles = [...leftCandidate, ...jokers.slice(0, lj)];
-                const rTiles = [...rightCandidate, ...jokers.slice(lj, lj + rj)];
-                const vLeft = validateMeld(lTiles);
-                const vRight = validateMeld(rTiles);
-                if (vLeft.valid && vRight.valid) {
-                  return [vLeft.orderedTiles, vRight.orderedTiles];
-                }
-              }
-            }
-          }
-        }
-      }
-
-      if (tiles.length <= 12) {
-        const n = tiles.length;
-        const maxMask = (1 << n) - 1;
-        for (let mask = 1; mask < maxMask; mask++) {
-          const left = [];
-          const right = [];
-          for (let i = 0; i < n; i++) {
-            if (mask & (1 << i)) left.push(tiles[i]);
-            else right.push(tiles[i]);
-          }
-          if (left.length < 3 || right.length < 3) continue;
-          const vLeft = validateMeld(left);
-          if (!vLeft.valid) continue;
-          const vRight = validateMeld(right);
-          if (vRight.valid) {
-            return [vLeft.orderedTiles, vRight.orderedTiles];
-          }
-        }
-      }
-
-      return null;
-    }
-
-    function trySmartSplitAfterRemoval(originalMeldTiles, removedTileId) {
-      if (!originalMeldTiles || originalMeldTiles.length < 7) return null;
-
-      const idx = originalMeldTiles.findIndex(t => t.id === removedTileId);
-      if (idx === -1) return null;
-
-      if (idx >= 3 && (originalMeldTiles.length - 1 - idx) >= 3) {
-        const leftPart = originalMeldTiles.slice(0, idx);
-        const rightPart = originalMeldTiles.slice(idx + 1);
-        const vLeft = validateMeld(leftPart);
-        const vRight = validateMeld(rightPart);
-        if (vLeft.valid && vRight.valid) {
-          return [vLeft.orderedTiles, vRight.orderedTiles];
-        }
-      }
-
-      const remainingTiles = originalMeldTiles.filter(t => t.id !== removedTileId);
-      return trySmartSplitCombinedMeld(remainingTiles);
-    }
-
-    function calculateHandPenalty(rack) {
-      return rack.reduce((sum, tile) => sum + (tile.isJoker ? 30 : tile.number), 0);
-    }
-
-    // =========================================================
-    // 3. PERSISTENT DEVICE ID & CHIPS SYSTEM
-    // =========================================================
-    const DEVICE_PROFILE_STORAGE_KEY = 'rummikub_device_profile_v1';
     const INITIAL_CHIPS = 1000;
     const ENTRY_FEE_CHIPS = 100;
-    const MIN_FLOOR_CHIPS = 100;
     const RANK_PRIZE_CHIPS = [200, 100, 60, 40];
-
-    function generateDeviceId() {
-      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-      let part1 = '';
-      let part2 = '';
-      try {
-        const arr = new Uint8Array(8);
-        crypto.getRandomValues(arr);
-        for (let i = 0; i < 4; i++) part1 += chars[arr[i] % chars.length];
-        for (let i = 4; i < 8; i++) part2 += chars[arr[i] % chars.length];
-      } catch (e) {
-        for (let i = 0; i < 4; i++) part1 += chars[Math.floor(Math.random() * chars.length)];
-        for (let i = 0; i < 4; i++) part2 += chars[Math.floor(Math.random() * chars.length)];
-      }
-      return `DEV-${part1}-${part2}`;
-    }
+    const MIN_FLOOR_CHIPS = 100;
+    const DEVICE_PROFILE_STORAGE_KEY = 'rummikub_device_profile_v1';
 
     function normalizeChips(val) {
-      const n = Number(val);
-      if (!Number.isFinite(n)) return INITIAL_CHIPS;
-      return Math.max(MIN_FLOOR_CHIPS, Math.round(n));
+      const num = Number(val);
+      if (!Number.isFinite(num)) return INITIAL_CHIPS;
+      return Math.max(MIN_FLOOR_CHIPS, Math.round(num));
     }
 
-    let deviceProfile = null;
+    function generateDeviceId() {
+      const part1 = Math.floor(1000 + Math.random() * 9000).toString(36).toUpperCase().padStart(4, '0');
+      const part2 = Math.floor(1000 + Math.random() * 9000).toString(36).toUpperCase().padStart(4, '0');
+      return `DEV-${part1}-${part2}`;
+    }
 
     function loadDeviceProfile() {
       try {
         const raw = localStorage.getItem(DEVICE_PROFILE_STORAGE_KEY);
         if (raw) {
           const parsed = JSON.parse(raw);
-          if (parsed && typeof parsed.deviceId === 'string' && parsed.deviceId.trim()) {
-            const hasChipsField = parsed.chips !== undefined && parsed.chips !== null && Number.isFinite(Number(parsed.chips));
-            const normalizedChips = hasChipsField ? normalizeChips(parsed.chips) : INITIAL_CHIPS;
-            const profile = {
-              deviceId: parsed.deviceId.trim().toUpperCase(),
+          if (parsed && parsed.deviceId) {
+            return {
+              deviceId: String(parsed.deviceId).toUpperCase(),
               nickname: typeof parsed.nickname === 'string' ? parsed.nickname : '',
               aiCount: parsed.aiCount || '3',
               aiLevel: parsed.aiLevel || 'hard',
               turnTime: parsed.turnTime !== undefined ? String(parsed.turnTime) : '90',
-              chips: normalizedChips
+              chips: normalizeChips(parsed.chips !== undefined ? parsed.chips : INITIAL_CHIPS)
             };
-            if (!hasChipsField || Number(parsed.chips) < MIN_FLOOR_CHIPS) {
-              saveDeviceProfile(profile);
-            }
-            return profile;
           }
         }
       } catch (e) {}
-      const freshProfile = {
+
+      const fresh = {
         deviceId: generateDeviceId(),
         nickname: '',
         aiCount: '3',
@@ -1176,12 +886,24 @@
         turnTime: '90',
         chips: INITIAL_CHIPS
       };
-      saveDeviceProfile(freshProfile);
-      return freshProfile;
+      try {
+        localStorage.setItem(DEVICE_PROFILE_STORAGE_KEY, JSON.stringify(fresh));
+      } catch (e) {}
+      return fresh;
     }
 
+    let deviceProfile = null;
+
     function saveDeviceProfile(patch = {}) {
-      deviceProfile = { ...(deviceProfile || {}), ...patch };
+      const base = deviceProfile || {
+        deviceId: generateDeviceId(),
+        nickname: '',
+        aiCount: '3',
+        aiLevel: 'hard',
+        turnTime: '90',
+        chips: INITIAL_CHIPS
+      };
+      deviceProfile = { ...base, ...patch };
       deviceProfile.chips = normalizeChips(deviceProfile.chips);
       try {
         localStorage.setItem(DEVICE_PROFILE_STORAGE_KEY, JSON.stringify(deviceProfile));
@@ -1196,134 +918,186 @@
       }
     }
 
-    function applyEntryFeeToPlayers(players) {
-      if (!Array.isArray(players)) return;
-      players.forEach(p => {
-        const startChips = normalizeChips(p.chips !== undefined ? p.chips : INITIAL_CHIPS);
-        const afterEntry = Math.max(0, startChips - ENTRY_FEE_CHIPS);
-        p.chipsBeforeMatch = startChips;
-        p.chipsAfterEntry = afterEntry;
-        p.chips = afterEntry;
-      });
-      if (deviceProfile) {
-        const me = players.find(p => p.id === myPlayerId || (p.deviceId && p.deviceId === deviceProfile.deviceId));
-        if (me) {
-          const syncedAfterEntry = Math.max(0, normalizeChips(deviceProfile.chips) - ENTRY_FEE_CHIPS);
-          me.chipsBeforeMatch = normalizeChips(deviceProfile.chips);
-          me.chipsAfterEntry = syncedAfterEntry;
-          me.chips = syncedAfterEntry;
+    function createFullDeck() {
+      const deck = [];
+      let uid = 1;
+      for (let copy = 0; copy < 2; copy++) {
+        for (const color of COLORS) {
+          for (let num = 1; num <= 13; num++) {
+            deck.push({
+              id: `t_${uid++}_${color}_${num}`,
+              color,
+              number: num,
+              isJoker: false
+            });
+          }
         }
       }
+      deck.push({ id: `t_${uid++}_joker_1`, color: 'black', number: 0, isJoker: true });
+      deck.push({ id: `t_${uid++}_joker_2`, color: 'red', number: 0, isJoker: true });
+
+      for (let i = deck.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [deck[i], deck[j]] = [deck[j], deck[i]];
+      }
+      return deck;
     }
 
-    function settleMatchChips(rankedPlayers) {
-      const results = [];
-      rankedPlayers.forEach((p, idx) => {
-        const prize = RANK_PRIZE_CHIPS[idx] !== undefined ? RANK_PRIZE_CHIPS[idx] : 40;
-        const isLocalUser = p.id === myPlayerId || (deviceProfile && p.deviceId === deviceProfile.deviceId);
-        const beforeMatch = isLocalUser && deviceProfile
-          ? normalizeChips(deviceProfile.chips)
-          : normalizeChips(p.chipsBeforeMatch !== undefined ? p.chipsBeforeMatch : INITIAL_CHIPS);
-        const afterEntry = p.chipsAfterEntry !== undefined
-          ? Math.max(0, Number(p.chipsAfterEntry))
-          : Math.max(0, beforeMatch - ENTRY_FEE_CHIPS);
+    function validateMeld(tiles) {
+      if (!Array.isArray(tiles) || tiles.length < 3) {
+        return { valid: false, reason: '至少需要 3 張牌', points: 0, orderedTiles: tiles };
+      }
 
-        const rawFinal = afterEntry + prize;
-        const floorTriggered = rawFinal < MIN_FLOOR_CHIPS;
-        const finalChips = Math.max(MIN_FLOOR_CHIPS, rawFinal);
-        const netDelta = finalChips - beforeMatch;
+      const jokers = tiles.filter(t => t.isJoker);
+      const normals = tiles.filter(t => !t.isJoker);
 
-        p.chips = finalChips;
-        if (isLocalUser && deviceProfile) {
-          saveDeviceProfile({ chips: finalChips });
+      if (normals.length === 0) {
+        const ordered = jokers.map(j => ({ ...j, assignedNumber: 10, assignedColor: j.color }));
+        return { valid: true, type: 'jokers', points: jokers.length * 10, orderedTiles: ordered };
+      }
+
+      if (tiles.length <= 4) {
+        const targetNum = normals[0].number;
+        const sameNum = normals.every(t => t.number === targetNum);
+        const colorSet = new Set(normals.map(t => t.color));
+        const distinctColors = colorSet.size === normals.length;
+        if (sameNum && distinctColors) {
+          const unusedColors = COLORS.filter(c => !colorSet.has(c));
+          let jIdx = 0;
+          const ordered = tiles.map(t => {
+            if (t.isJoker) {
+              const assignedCol = unusedColors[jIdx++] || t.color;
+              return { ...t, assignedNumber: targetNum, assignedColor: assignedCol };
+            }
+            return { ...t, assignedNumber: null, assignedColor: null };
+          });
+          return {
+            valid: true,
+            type: 'group',
+            points: tiles.length * targetNum,
+            orderedTiles: ordered
+          };
         }
+      }
 
-        results.push({
-          playerId: p.id,
-          name: p.name,
-          isBot: p.isBot,
-          rank: idx + 1,
-          remainingCount: p.rack.length,
-          penalty: calculateHandPenalty(p.rack),
-          beforeMatch,
-          prize,
-          netDelta,
-          floorTriggered,
-          finalChips
-        });
-      });
-      return results;
+      const targetColor = normals[0].color;
+      const sameColor = normals.every(t => t.color === targetColor);
+      if (sameColor) {
+        const sortedNormals = [...normals].sort((a, b) => a.number - b.number);
+        const numSet = new Set(sortedNormals.map(t => t.number));
+        if (numSet.size === sortedNormals.length) {
+          const minN = sortedNormals[0].number;
+          const maxN = sortedNormals[sortedNormals.length - 1].number;
+
+          for (let start = Math.max(1, maxN - tiles.length + 1); start <= Math.min(13 - tiles.length + 1, minN); start++) {
+            const end = start + tiles.length - 1;
+            if (end > 13) continue;
+            let fitsAll = true;
+            for (const n of numSet) {
+              if (n < start || n > end) {
+                fitsAll = false;
+                break;
+              }
+            }
+            if (!fitsAll) continue;
+
+            const ordered = [];
+            let jIdx = 0;
+            let points = 0;
+            for (let num = start; num <= end; num++) {
+              const found = sortedNormals.find(t => t.number === num);
+              if (found) {
+                ordered.push({ ...found, assignedNumber: null, assignedColor: null });
+                points += num;
+              } else if (jIdx < jokers.length) {
+                const jk = jokers[jIdx++];
+                ordered.push({ ...jk, assignedNumber: num, assignedColor: targetColor });
+                points += num;
+              }
+            }
+            if (ordered.length === tiles.length && jIdx === jokers.length) {
+              return { valid: true, type: 'run', points, orderedTiles: ordered };
+            }
+          }
+        }
+      }
+
+      return { valid: false, reason: '須為同數字不同色(3~4張)或同色連續順子(3張以上)', points: 0, orderedTiles: tiles };
     }
 
-    deviceProfile = loadDeviceProfile();
-
-    function initDeviceProfileUI() {
-      const idEl = document.getElementById('lobby-device-id');
-      if (idEl) idEl.textContent = deviceProfile.deviceId;
-      renderLobbyChipBalance();
-
-      const nameInput = document.getElementById('player-name-input');
-      if (nameInput) {
-        if (deviceProfile.nickname) nameInput.value = deviceProfile.nickname;
-        nameInput.addEventListener('input', () => {
-          saveDeviceProfile({ nickname: nameInput.value.trim() });
-        });
-      }
-
-      const aiCountSel = document.getElementById('ai-count-select');
-      const aiLevelSel = document.getElementById('ai-level-select');
-      const turnTimeSel = document.getElementById('turn-time-select');
-
-      if (aiCountSel && deviceProfile.aiCount) {
-        aiCountSel.value = deviceProfile.aiCount;
-        aiCountSel.addEventListener('change', () => saveDeviceProfile({ aiCount: aiCountSel.value }));
-      }
-      if (aiLevelSel && deviceProfile.aiLevel) {
-        aiLevelSel.value = deviceProfile.aiLevel;
-        aiLevelSel.addEventListener('change', () => saveDeviceProfile({ aiLevel: aiLevelSel.value }));
-      }
-      if (turnTimeSel && deviceProfile.turnTime !== undefined) {
-        turnTimeSel.value = deviceProfile.turnTime;
-        turnTimeSel.addEventListener('change', () => saveDeviceProfile({ turnTime: turnTimeSel.value }));
-      }
+    function autoOrderMeldIfPossible(tiles) {
+      const res = validateMeld(tiles);
+      return res.valid ? res.orderedTiles : tiles;
     }
 
-    function copyDeviceId() {
-      copyTextToClipboard(deviceProfile.deviceId, `已複製手機專屬 ID：${deviceProfile.deviceId}`);
+    function trySmartSplitAfterRemoval(originalTiles, removedTileId) {
+      if (!Array.isArray(originalTiles) || originalTiles.length < 4) return null;
+      const removedIdx = originalTiles.findIndex(t => t.id === removedTileId);
+      if (removedIdx <= 0 || removedIdx >= originalTiles.length - 1) return null;
+
+      const leftRaw = originalTiles.slice(0, removedIdx);
+      const rightRaw = originalTiles.slice(removedIdx + 1);
+      if (leftRaw.length < 3 || rightRaw.length < 3) return null;
+
+      const leftRes = validateMeld(leftRaw);
+      const rightRes = validateMeld(rightRaw);
+      if (leftRes.valid && rightRes.valid) {
+        return [leftRes.orderedTiles, rightRes.orderedTiles];
+      }
+      return null;
     }
 
-    function toggleDeviceIdEditor() {
-      const editor = document.getElementById('device-id-editor');
-      const input = document.getElementById('custom-device-id-input');
-      if (!editor) return;
-      editor.classList.toggle('hidden');
-      if (!editor.classList.contains('hidden') && input) {
-        input.value = deviceProfile.deviceId;
-        input.focus();
-        input.select();
+    function trySmartSplitCombinedMeld(tiles) {
+      if (!Array.isArray(tiles) || tiles.length < 6) return null;
+      const normals = tiles.filter(t => !t.isJoker);
+      if (normals.length < 2) return null;
+
+      const color = normals[0].color;
+      if (!normals.every(t => t.color === color)) return null;
+
+      const sorted = [...normals].sort((a, b) => a.number - b.number);
+      const jokers = tiles.filter(t => t.isJoker);
+
+      for (let i = 0; i < sorted.length - 1; i++) {
+        const gap = sorted[i + 1].number - sorted[i].number - 1;
+        if (gap >= 1 && gap <= jokers.length) {
+          const leftPool = sorted.slice(0, i + 1);
+          const rightPool = sorted.slice(i + 1);
+          const neededForGap = jokers.splice(0, gap);
+          const leftWithGap = [...leftPool, ...neededForGap];
+
+          for (let splitPoint = 0; splitPoint <= jokers.length; splitPoint++) {
+            const lCand = [...leftWithGap, ...jokers.slice(0, splitPoint)];
+            const rCand = [...rightPool, ...jokers.slice(splitPoint)];
+            const vL = validateMeld(lCand);
+            const vR = validateMeld(rCand);
+            if (vL.valid && vR.valid) {
+              return [vL.orderedTiles, vR.orderedTiles];
+            }
+          }
+          jokers.unshift(...neededForGap);
+        }
       }
+
+      for (let splitIdx = 3; splitIdx <= tiles.length - 3; splitIdx++) {
+        const vL = validateMeld(tiles.slice(0, splitIdx));
+        const vR = validateMeld(tiles.slice(splitIdx));
+        if (vL.valid && vR.valid) {
+          return [vL.orderedTiles, vR.orderedTiles];
+        }
+      }
+
+      return null;
     }
 
-    function applyCustomDeviceId() {
-      const input = document.getElementById('custom-device-id-input');
-      if (!input) return;
-      const cleaned = input.value.trim().toUpperCase().replace(/[^A-Z0-9-]/g, '');
-      if (cleaned.length < 4) {
-        showToast('請輸入至少 4 碼有效的手機 ID', 'error');
-        return;
-      }
-      saveDeviceProfile({ deviceId: cleaned });
-      const idEl = document.getElementById('lobby-device-id');
-      if (idEl) idEl.textContent = cleaned;
-      document.getElementById('device-id-editor').classList.add('hidden');
-      showToast(`已綁定專屬 ID：${cleaned}`, 'success');
+    function calculateHandPenalty(rack) {
+      return rack.reduce((sum, t) => sum + (t.isJoker ? 30 : t.number), 0);
     }
 
     // =========================================================
-    // 4. GAME STATE & TURN SNAPSHOT MANAGEMENT
+    // 3. GAME STATE & TURN SNAPSHOT MANAGEMENT
     // =========================================================
     const RACK_CAPACITY = 20;
-    const RACK_ROW_SLOTS = 10;
 
     let gameMode = 'solo'; // 'solo' | 'online_host' | 'online_guest'
     let myPlayerId = 'p_local';
@@ -1331,7 +1105,7 @@
     let turnDuration = 90;
 
     let gameState = {
-      status: 'lobby', // 'lobby' | 'playing' | 'ended'
+      status: 'lobby',
       deck: [],
       tableMelds: [],
       players: [],
@@ -1429,8 +1203,131 @@
     }
 
     // =========================================================
-    // 5. LOBBY & SOLO GAME INITIALIZATION
+    // 4. LOBBY, DEVICE PROFILE & CHIPS
     // =========================================================
+    deviceProfile = loadDeviceProfile();
+
+    function initDeviceProfileUI() {
+      const idEl = document.getElementById('lobby-device-id');
+      if (idEl && deviceProfile) idEl.textContent = deviceProfile.deviceId;
+      renderLobbyChipBalance();
+
+      const nameInput = document.getElementById('player-name-input');
+      if (nameInput && deviceProfile) {
+        if (deviceProfile.nickname) nameInput.value = deviceProfile.nickname;
+        nameInput.addEventListener('input', () => {
+          saveDeviceProfile({ nickname: nameInput.value.trim() });
+        });
+      }
+
+      const aiCountSel = document.getElementById('ai-count-select');
+      const aiLevelSel = document.getElementById('ai-level-select');
+      const turnTimeSel = document.getElementById('turn-time-select');
+
+      if (aiCountSel && deviceProfile?.aiCount) {
+        aiCountSel.value = deviceProfile.aiCount;
+        aiCountSel.addEventListener('change', () => saveDeviceProfile({ aiCount: aiCountSel.value }));
+      }
+      if (aiLevelSel && deviceProfile?.aiLevel) {
+        aiLevelSel.value = deviceProfile.aiLevel;
+        aiLevelSel.addEventListener('change', () => saveDeviceProfile({ aiLevel: aiLevelSel.value }));
+      }
+      if (turnTimeSel && deviceProfile?.turnTime !== undefined) {
+        turnTimeSel.value = deviceProfile.turnTime;
+        turnTimeSel.addEventListener('change', () => saveDeviceProfile({ turnTime: turnTimeSel.value }));
+      }
+    }
+
+    function copyDeviceId() {
+      copyTextToClipboard(deviceProfile.deviceId, `已複製手機專屬 ID：${deviceProfile.deviceId}`);
+    }
+
+    function toggleDeviceIdEditor() {
+      const editor = document.getElementById('device-id-editor');
+      const input = document.getElementById('custom-device-id-input');
+      if (!editor) return;
+      editor.classList.toggle('hidden');
+      if (!editor.classList.contains('hidden') && input) {
+        input.value = deviceProfile.deviceId;
+        input.focus();
+        input.select();
+      }
+    }
+
+    function applyCustomDeviceId() {
+      const input = document.getElementById('custom-device-id-input');
+      if (!input) return;
+      const cleaned = input.value.trim().toUpperCase().replace(/[^A-Z0-9-]/g, '');
+      if (cleaned.length < 4) {
+        showToast('請輸入至少 4 碼有效的手機 ID', 'error');
+        return;
+      }
+      saveDeviceProfile({ deviceId: cleaned });
+      const idEl = document.getElementById('lobby-device-id');
+      if (idEl) idEl.textContent = cleaned;
+      document.getElementById('device-id-editor').classList.add('hidden');
+      showToast(`已綁定專屬 ID：${cleaned}`, 'success');
+    }
+
+    function applyEntryFeeToPlayers(players) {
+      if (!Array.isArray(players)) return;
+      players.forEach(p => {
+        const startChips = normalizeChips(p.chips !== undefined ? p.chips : INITIAL_CHIPS);
+        const afterEntry = Math.max(0, startChips - ENTRY_FEE_CHIPS);
+        p.chipsBeforeMatch = startChips;
+        p.chipsAfterEntry = afterEntry;
+        p.chips = afterEntry;
+      });
+      if (deviceProfile) {
+        const me = players.find(p => p.id === myPlayerId || (p.deviceId && p.deviceId === deviceProfile.deviceId));
+        if (me) {
+          const syncedAfterEntry = Math.max(0, normalizeChips(deviceProfile.chips) - ENTRY_FEE_CHIPS);
+          me.chipsBeforeMatch = normalizeChips(deviceProfile.chips);
+          me.chipsAfterEntry = syncedAfterEntry;
+          me.chips = syncedAfterEntry;
+        }
+      }
+    }
+
+    function settleMatchChips(rankedPlayers) {
+      const results = [];
+      rankedPlayers.forEach((p, idx) => {
+        const prize = RANK_PRIZE_CHIPS[idx] !== undefined ? RANK_PRIZE_CHIPS[idx] : 40;
+        const isLocalUser = p.id === myPlayerId || (deviceProfile && p.deviceId === deviceProfile.deviceId);
+        const beforeMatch = isLocalUser && deviceProfile
+          ? normalizeChips(deviceProfile.chips)
+          : normalizeChips(p.chipsBeforeMatch !== undefined ? p.chipsBeforeMatch : INITIAL_CHIPS);
+        const afterEntry = p.chipsAfterEntry !== undefined
+          ? Math.max(0, Number(p.chipsAfterEntry))
+          : Math.max(0, beforeMatch - ENTRY_FEE_CHIPS);
+
+        const rawFinal = afterEntry + prize;
+        const floorTriggered = rawFinal < MIN_FLOOR_CHIPS;
+        const finalChips = Math.max(MIN_FLOOR_CHIPS, rawFinal);
+        const netDelta = finalChips - beforeMatch;
+
+        p.chips = finalChips;
+        if (isLocalUser && deviceProfile) {
+          saveDeviceProfile({ chips: finalChips });
+        }
+
+        results.push({
+          playerId: p.id,
+          name: p.name,
+          isBot: p.isBot,
+          rank: idx + 1,
+          remainingCount: p.rack.length,
+          penalty: calculateHandPenalty(p.rack),
+          beforeMatch,
+          prize,
+          netDelta,
+          floorTriggered,
+          finalChips
+        });
+      });
+      return results;
+    }
+
     function switchLobbyTab(tab) {
       const isSolo = tab === 'solo';
       document.getElementById('tab-solo').className = isSolo
@@ -1446,7 +1343,7 @@
 
     function getPlayerNickname() {
       const raw = document.getElementById('player-name-input').value.trim();
-      const name = raw || `玩家_${deviceProfile.deviceId.slice(-4)}`;
+      const name = raw || `玩家_${(deviceProfile?.deviceId || '0000').slice(-4)}`;
       saveDeviceProfile({ nickname: name });
       return name;
     }
@@ -1515,7 +1412,7 @@
     }
 
     // =========================================================
-    // 6. SERVERLESS P2P MULTIPLAYER (WITH AUTO-RECONNECT & KEEP-ALIVE)
+    // 5. SERVERLESS P2P MULTIPLAYER (WITH AUTO-RECONNECT & KEEP-ALIVE)
     // =========================================================
     let peer = null;
     let hostConn = null;
@@ -1905,7 +1802,7 @@
         return;
       }
 
-      showToast('正在建立雲端房間...', 'info');
+      showToast('正在建立連線房間...', 'info');
       try {
         peer = new Peer(hostPeerId, PEER_ICE_CONFIG);
       } catch (e) {
@@ -2339,7 +2236,7 @@
     });
 
     // =========================================================
-    // 7. TURN FLOW & TIMERS
+    // 6. TURN FLOW & TIMERS
     // =========================================================
     function enterGameScreen() {
       document.body.classList.add('active-game-mode');
@@ -2455,7 +2352,7 @@
     }
 
     // =========================================================
-    // 8. PLAYER BOARD & RACK INTERACTIONS
+    // 7. PLAYER BOARD & RACK INTERACTIONS
     // =========================================================
     function toggleSelectRackTile(tileId) {
       if (!isMyTurn()) {
@@ -2759,7 +2656,7 @@
     }
 
     // =========================================================
-    // 8.5 SMART RACK SORTING & PLAYABLE MELD VISUAL GROUPING
+    // 8. SMART RACK SORTING & PLAYABLE MELD VISUAL GROUPING
     // =========================================================
     function extractBestPlayableMeldsFromHand(tiles) {
       let pool = [...tiles];
@@ -3793,7 +3690,6 @@
       });
     }
 
-    // Prevent Mobile Pull-to-Refresh Gestures
     let touchStartY = 0;
     document.addEventListener('touchstart', (e) => {
       if (e.touches && e.touches.length === 1) {
