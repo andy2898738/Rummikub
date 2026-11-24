@@ -34,12 +34,17 @@
       --effective-safe-right: var(--safe-right);
     }
 
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+
     body.is-fullscreen-mode,
     body.ios-pseudo-fullscreen {
       --effective-safe-top: max(var(--safe-top), 24px);
       --effective-safe-bottom: max(var(--safe-bottom), 14px);
       --effective-safe-left: max(var(--safe-left), 14px);
       --effective-safe-right: max(var(--safe-right), 14px);
+      --ui-scale: 1.08;
     }
 
     @media screen and (orientation: landscape) {
@@ -49,10 +54,29 @@
         --effective-safe-bottom: max(var(--safe-bottom), 8px);
         --effective-safe-left: max(var(--safe-left), 42px);
         --effective-safe-right: max(var(--safe-right), 42px);
+        --ui-scale: 1.04;
       }
     }
 
+    body.is-fullscreen-mode #top-bar,
+    body.ios-pseudo-fullscreen #top-bar {
+      font-size: calc(1rem * var(--ui-scale, 1));
+    }
+
+    body.is-fullscreen-mode #table-hud-strip,
+    body.ios-pseudo-fullscreen #table-hud-strip {
+      font-size: calc(1rem * var(--ui-scale, 1));
+      padding-top: calc(2px * var(--ui-scale, 1));
+      padding-bottom: calc(4px * var(--ui-scale, 1));
+    }
+
+    body.is-fullscreen-mode #rack-section,
+    body.ios-pseudo-fullscreen #rack-section {
+      font-size: calc(1rem * var(--ui-scale, 1));
+    }
+
     html {
+      width: 100%;
       height: 100%;
       overflow: hidden;
       overscroll-behavior: none;
@@ -67,8 +91,10 @@
       overscroll-behavior: none;
       position: fixed;
       inset: 0;
-      width: 100vw;
+      width: 100%;
+      max-width: 100vw;
       height: 100dvh;
+      max-height: 100dvh;
       overflow: hidden;
       margin: 0;
       padding: 0;
@@ -83,19 +109,23 @@
       position: relative;
       background: linear-gradient(155deg, #ffffff 0%, #f9f6ee 68%, #ebe3d0 100%);
       border: 1.5px solid #e0d6be;
-      border-bottom-width: 3.5px;
+      border-bottom-width: 3px;
       border-bottom-color: #c5b696;
-      border-radius: 7px;
-      box-shadow: 0 3px 6px rgba(0, 0, 0, 0.36), inset 0 1px 0 rgba(255, 255, 255, 0.95);
-      transition: transform 0.14s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.14s ease, border-color 0.14s ease;
-      cursor: pointer;
+      border-radius: 6px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.95);
+      transition: transform 0.12s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.12s ease, opacity 0.1s ease;
+      cursor: grab;
       display: inline-flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      touch-action: manipulation;
+      touch-action: none;
       overflow: hidden;
       padding: 0;
+    }
+
+    .rummi-tile:active {
+      cursor: grabbing;
     }
 
     .rummi-tile:hover {
@@ -103,11 +133,14 @@
     }
 
     .rummi-tile.selected {
-      transform: translateY(-8px) scale(1.06);
-      border-color: #f59e0b;
-      border-bottom-color: #b45309;
-      box-shadow: 0 10px 18px rgba(245, 158, 11, 0.55), 0 0 0 2.5px #fbbf24;
-      z-index: 25;
+      transform: translateY(-8px) scale(1.04);
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.48), inset 0 1px 0 rgba(255, 255, 255, 1);
+      z-index: 12;
+    }
+
+    .rummi-tile.dragging-source {
+      opacity: 0.28;
+      transform: scale(0.95);
     }
 
     .rummi-tile.from-table {
@@ -125,7 +158,7 @@
     .rummi-tile .tile-digit {
       font-family: 'Fredoka', sans-serif;
       font-weight: 700;
-      font-size: 27px;
+      font-size: 26px;
       line-height: 0.92;
       letter-spacing: -0.05em;
       transform: scaleY(1.06);
@@ -135,15 +168,16 @@
       width: 100%;
       height: 100%;
       text-shadow: 0 1px 0 rgba(255, 255, 255, 0.85);
+      pointer-events: none;
     }
 
     .rummi-tile.two-digits .tile-digit {
-      font-size: 23px;
+      font-size: 22px;
       letter-spacing: -0.07em;
     }
 
     .rummi-tile.joker-tile .tile-digit {
-      font-size: 27px;
+      font-size: 25px;
       line-height: 1;
       transform: none;
     }
@@ -155,29 +189,29 @@
       border-bottom-width: 3px;
     }
     .rummi-tile.table-tile .tile-digit {
-      font-size: 27px;
+      font-size: 26px;
     }
     .rummi-tile.table-tile.two-digits .tile-digit {
-      font-size: 23px;
+      font-size: 22px;
     }
     .rummi-tile.table-tile.joker-tile .tile-digit {
-      font-size: 26px;
+      font-size: 25px;
     }
 
     .rummi-tile.rack-tile {
-      width: 35px;
-      height: 48px;
+      width: 34px;
+      height: 46px;
       border-radius: 6px;
       border-bottom-width: 3px;
     }
     .rummi-tile.rack-tile .tile-digit {
-      font-size: 28px;
+      font-size: 26px;
     }
     .rummi-tile.rack-tile.two-digits .tile-digit {
-      font-size: 24px;
+      font-size: 22px;
     }
     .rummi-tile.rack-tile.joker-tile .tile-digit {
-      font-size: 27px;
+      font-size: 25px;
     }
 
     @media (min-width: 640px) {
@@ -221,10 +255,16 @@
       background: linear-gradient(180deg, #9c602a 0%, #7c4719 52%, #59300d 100%);
       border-top: 3px solid #b87a3d;
       box-shadow: 0 -6px 18px rgba(0, 0, 0, 0.55), inset 0 2px 4px rgba(255, 255, 255, 0.16);
+      width: 100%;
+      max-width: 100vw;
+      overflow: hidden;
     }
 
     .rack-tier-ledge {
       position: relative;
+      width: 100%;
+      max-width: 100%;
+      overflow: hidden;
       background: rgba(34, 16, 4, 0.42);
       border: 1px solid rgba(255, 210, 155, 0.16);
       border-bottom: 3px solid #3f2007;
@@ -238,20 +278,26 @@
       border-radius: 6px;
       transition: background-color 0.15s ease, border-color 0.15s ease;
     }
-    .rack-slot-empty:hover {
-      background: rgba(251, 191, 36, 0.14);
-      border-color: rgba(251, 191, 36, 0.5);
+    .rack-slot-empty:hover,
+    .rack-slot-empty.drop-slot-hover {
+      background: rgba(251, 191, 36, 0.22);
+      border-color: rgba(251, 191, 36, 0.75);
+    }
+
+    .wooden-rack.rack-return-hover {
+      box-shadow: 0 -6px 22px rgba(251, 191, 36, 0.55), inset 0 0 0 2px rgba(251, 191, 36, 0.85);
     }
 
     .meld-group {
       background: rgba(255, 255, 255, 0.08);
       border: 1.5px solid rgba(255, 255, 255, 0.16);
-      border-radius: 10px;
-      padding: 4px 5px;
+      border-radius: 9px;
+      padding: 3px 4px;
       display: inline-flex;
       align-items: center;
       gap: 2px;
-      transition: all 0.2s ease;
+      max-width: 100%;
+      transition: border-color 0.15s ease, background-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
     }
 
     .meld-group.valid {
@@ -265,24 +311,72 @@
       box-shadow: 0 0 12px rgba(239, 68, 68, 0.35);
     }
 
+    .meld-group.snap-hover {
+      border-color: #fbbf24 !important;
+      background: rgba(251, 191, 36, 0.28) !important;
+      box-shadow: 0 0 0 2px #fbbf24, 0 8px 20px rgba(251, 191, 36, 0.45) !important;
+      transform: scale(1.04);
+      z-index: 20;
+    }
+
+    #table-area.table-drop-hover {
+      box-shadow: inset 0 0 0 2px rgba(251, 191, 36, 0.55);
+      background: rgba(251, 191, 36, 0.05);
+    }
+
+    .drag-ghost-container {
+      position: fixed;
+      left: 0;
+      top: 0;
+      pointer-events: none;
+      z-index: 9999;
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      padding: 3px;
+      border-radius: 9px;
+      background: rgba(251, 191, 36, 0.28);
+      border: 1.5px solid rgba(251, 191, 36, 0.85);
+      box-shadow: 0 16px 28px rgba(0, 0, 0, 0.58);
+      will-change: transform;
+      transform: translate3d(-9999px, -9999px, 0);
+    }
+
+    body.active-game-mode #game-view {
+      width: 100%;
+      max-width: 100vw;
+      height: 100dvh;
+      max-height: 100dvh;
+      overflow: hidden;
+    }
+
     body.active-game-mode #top-bar {
+      width: 100%;
+      max-width: 100vw;
+      overflow: visible;
       padding-top: calc(var(--effective-safe-top) + 4px);
-      padding-left: calc(var(--effective-safe-left) + 8px);
-      padding-right: calc(var(--effective-safe-right) + 8px);
+      padding-left: calc(var(--effective-safe-left) + 6px);
+      padding-right: calc(var(--effective-safe-right) + 6px);
       padding-bottom: 4px;
     }
 
     body.active-game-mode #table-area {
       flex: 1 1 0%;
+      width: 100%;
+      max-width: 100vw;
       min-height: 0;
       height: 100%;
       max-height: 100%;
       overflow: hidden !important;
-      padding-left: calc(var(--effective-safe-left) + 8px);
-      padding-right: calc(var(--effective-safe-right) + 8px);
+      padding-top: 4px;
+      padding-bottom: 4px;
+      padding-left: calc(var(--effective-safe-left) + 6px);
+      padding-right: calc(var(--effective-safe-right) + 6px);
+      transition: background-color 0.15s ease, box-shadow 0.15s ease;
     }
 
     body.active-game-mode #rack-section {
+      padding-top: 6px;
       padding-left: calc(var(--effective-safe-left) + 6px);
       padding-right: calc(var(--effective-safe-right) + 6px);
       padding-bottom: calc(var(--effective-safe-bottom) + 4px);
@@ -322,6 +416,18 @@
       animation: pulseBorder 1.8s infinite;
     }
 
+    @keyframes chatBubbleFloat {
+      0% { opacity: 0; transform: translate(-50%, 3px) scale(0.92); }
+      15% { opacity: 0.88; transform: translate(-50%, 0) scale(1); }
+      72% { opacity: 0.88; transform: translate(-50%, 0) scale(1); }
+      100% { opacity: 0; transform: translate(-50%, -4px) scale(0.95); }
+    }
+    .player-chat-bubble {
+      animation: chatBubbleFloat 2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+      pointer-events: none;
+      z-index: 45;
+    }
+
     ::-webkit-scrollbar {
       width: 4px;
       height: 4px;
@@ -337,6 +443,7 @@
 
     #lobby-view {
       width: 100%;
+      max-width: 100vw;
       height: 100dvh;
       max-height: 100dvh;
       overflow: hidden;
@@ -348,7 +455,6 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      box-sizing: border-box;
     }
 
     .lobby-card {
@@ -490,8 +596,8 @@
           <div class="flex items-center justify-between gap-2">
             <label class="text-xs text-emerald-200 font-bold shrink-0">每回合思考時間</label>
             <select id="turn-time-select" class="w-40 sm:w-44 bg-emerald-950 border border-emerald-600 rounded-lg px-2 py-1 text-xs text-white focus:outline-none focus:border-amber-400">
-              <option value="60">60 秒</option>
-              <option value="90" selected>90 秒 (標準)</option>
+              <option value="60" selected>60 秒 (標準)</option>
+              <option value="90">90 秒</option>
               <option value="120">120 秒</option>
               <option value="0">不限時</option>
             </select>
@@ -589,108 +695,156 @@
   </div>
 
   <!-- =========================================================
-       VIEW 2: ACTIVE GAME TABLE
+       VIEW 2: ACTIVE GAME TABLE (100% WITHIN MOBILE VIEWPORT)
   ========================================================= -->
-  <div id="game-view" class="hidden flex-1 flex flex-col h-full overflow-hidden">
-    <header id="top-bar" class="bg-emerald-950/95 border-b border-emerald-800/80 px-2 py-1.5 sm:px-4 sm:py-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-1.5 z-20 shrink-0 shadow-md">
-      <div id="players-bar" class="grid grid-cols-2 sm:flex sm:flex-nowrap items-center gap-1.5 sm:gap-2 w-full sm:w-auto sm:flex-1 sm:overflow-x-auto"></div>
+  <div id="game-view" class="hidden flex-1 flex flex-col w-full max-w-[100vw] h-full overflow-hidden">
+    <header id="top-bar" class="bg-emerald-950/95 border-b border-emerald-800/80 px-2 py-1.5 sm:px-4 sm:py-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-1 z-20 shrink-0 shadow-md">
+      <div id="players-bar" class="grid grid-cols-2 sm:flex sm:flex-nowrap items-center gap-1 sm:gap-2 w-full sm:w-auto sm:flex-1 sm:overflow-visible"></div>
 
-      <div class="flex items-center justify-end gap-1.5 shrink-0">
-        <button id="btn-ingame-host-reconnect" onclick="manualHostReconnect()" class="hidden px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg bg-sky-500 hover:bg-sky-400 text-xs font-black text-sky-950 shadow cursor-pointer" title="房主重新連上房間信令">
+      <div class="flex items-center justify-end gap-1 sm:gap-1.5 shrink-0 flex-wrap">
+        <button id="btn-ingame-host-reconnect" onclick="manualHostReconnect()" class="hidden px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg bg-sky-500 hover:bg-sky-400 text-[11px] sm:text-xs font-black text-sky-950 shadow cursor-pointer" title="房主重新連上房間信令">
           🔄 重連房間
         </button>
-        <button id="btn-fullscreen" onclick="toggleFullScreen()" class="px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg bg-emerald-800 hover:bg-emerald-700 border border-emerald-600/80 text-xs font-bold text-amber-200 cursor-pointer flex items-center gap-1" title="切換全螢幕並自動避開前鏡頭">
+        <button id="btn-chat-toggle" onclick="toggleChatDrawer()" class="relative px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg bg-amber-900/90 hover:bg-amber-800 border border-amber-500/60 text-[11px] sm:text-xs font-bold text-amber-200 cursor-pointer flex items-center gap-1" title="聊天與嗆聲表情">
+          <span>💬</span><span class="hidden xs:inline sm:inline">聊天</span>
+          <span id="chat-unread-badge" class="hidden -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center shadow">0</span>
+        </button>
+        <button id="btn-fullscreen" onclick="toggleFullScreen()" class="px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg bg-emerald-800 hover:bg-emerald-700 border border-emerald-600/80 text-[11px] sm:text-xs font-bold text-amber-200 cursor-pointer flex items-center gap-1" title="切換全螢幕並自動避開前鏡頭">
           <span id="fullscreen-icon">⛶</span><span id="fullscreen-label">全螢幕</span>
         </button>
-        <button id="btn-sound" onclick="toggleSound()" class="p-1.5 rounded-lg bg-emerald-900 hover:bg-emerald-800 border border-emerald-700 text-xs cursor-pointer" title="音效開關">🔊</button>
-        <button onclick="toggleRulesModal(true)" class="p-1.5 rounded-lg bg-emerald-900 hover:bg-emerald-800 border border-emerald-700 text-xs cursor-pointer" title="規則說明">📖</button>
-        <button onclick="confirmLeaveGame()" class="px-2 py-1.5 rounded-lg bg-red-950/80 hover:bg-red-900 border border-red-800 text-xs text-red-200 cursor-pointer">離開</button>
+        <button id="btn-sound" onclick="toggleSound()" class="p-1 sm:p-1.5 rounded-lg bg-emerald-900 hover:bg-emerald-800 border border-emerald-700 text-xs cursor-pointer" title="音效開關">🔊</button>
+        <button onclick="toggleRulesModal(true)" class="p-1 sm:p-1.5 rounded-lg bg-emerald-900 hover:bg-emerald-800 border border-emerald-700 text-xs cursor-pointer" title="規則說明">📖</button>
+        <button onclick="confirmLeaveGame()" class="px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg bg-red-950/80 hover:bg-red-900 border border-red-800 text-[11px] sm:text-xs text-red-200 cursor-pointer">離開</button>
       </div>
     </header>
 
     <main id="table-area" onclick="handleTableBackgroundClick(event)"
-      class="flex-1 min-h-0 overflow-hidden p-2 sm:p-4 flex flex-col justify-between relative select-none">
+      class="flex-1 w-full min-h-0 overflow-hidden p-1.5 sm:p-3 flex flex-col justify-between relative select-none">
 
-      <div id="floating-turn-hud" class="absolute top-2 left-2 z-10 pointer-events-none select-none flex items-center gap-1.5">
-        <div id="floating-turn-pill" class="bg-emerald-950/75 backdrop-blur-md border border-emerald-500/40 rounded-full px-2.5 py-1 flex items-center gap-1.5 shadow-lg text-[11px] sm:text-xs font-black text-emerald-100">
-          <span id="floating-turn-text">出牌方：--</span>
+      <!-- Clean Top HUD Strip -->
+      <div id="table-hud-strip" class="w-full flex items-center justify-between gap-1 shrink-0 pointer-events-none select-none z-10 pb-1">
+        <div class="flex items-center gap-1 min-w-0">
+          <div id="floating-turn-pill" class="bg-emerald-950/80 backdrop-blur-md border border-emerald-500/40 rounded-full px-2 py-0.5 flex items-center gap-1 shadow text-[10px] sm:text-xs font-black text-emerald-100 truncate">
+            <span id="floating-turn-text" class="truncate">--</span>
+          </div>
+          <div id="floating-ice-pill" class="hidden bg-amber-950/85 backdrop-blur-md border border-amber-400/50 rounded-full px-1.5 py-0.5 text-[10px] sm:text-[11px] font-bold text-amber-300 shadow shrink-0">
+            破冰 <span id="floating-ice-score">0</span>/30
+          </div>
         </div>
-        <div id="floating-ice-pill" class="hidden bg-amber-950/80 backdrop-blur-md border border-amber-400/50 rounded-full px-2 py-1 text-[10px] sm:text-[11px] font-bold text-amber-300 shadow-lg">
-          破冰 <span id="floating-ice-score">0</span>/30分
+
+        <div class="flex items-center gap-1 shrink-0">
+          <div class="bg-emerald-950/75 backdrop-blur-md border border-emerald-500/35 rounded-full px-2 py-0.5 flex items-center gap-1 shadow">
+            <span class="text-[10px] sm:text-xs">🎴</span>
+            <span id="deck-count-badge" class="font-mono font-black text-amber-300 text-[11px] sm:text-sm">0</span>
+          </div>
+          <div id="timer-box" class="bg-emerald-950/75 backdrop-blur-md border border-emerald-500/35 rounded-full px-2 py-0.5 flex items-center gap-1 shadow">
+            <span class="text-[10px] sm:text-xs">⏱</span>
+            <span id="turn-timer-text" class="font-mono font-black text-[11px] sm:text-sm text-white">60s</span>
+          </div>
         </div>
       </div>
 
-      <div id="floating-table-hud" class="absolute top-2 right-2 z-10 pointer-events-none select-none flex items-center gap-1.5">
-        <div class="bg-emerald-950/70 backdrop-blur-md border border-emerald-500/35 rounded-full px-2.5 py-1 flex items-center gap-1 shadow-lg">
-          <span class="text-[11px] sm:text-xs">🎴</span>
-          <span class="text-[10px] sm:text-[11px] text-emerald-200/90 font-medium">牌庫</span>
-          <span id="deck-count-badge" class="font-mono font-black text-amber-300 text-xs sm:text-sm">0</span>
-        </div>
-        <div id="timer-box" class="bg-emerald-950/70 backdrop-blur-md border border-emerald-500/35 rounded-full px-2.5 py-1 flex items-center gap-1 shadow-lg">
-          <span class="text-[11px] sm:text-xs">⏱</span>
-          <span class="text-[10px] sm:text-[11px] text-emerald-200/90 font-medium">剩餘</span>
-          <span id="turn-timer-text" class="font-mono font-black text-xs sm:text-sm text-white">90s</span>
-        </div>
-      </div>
-
+      <!-- Clean Adaptive Table Melds Container (Drag-to-snap & Auto-ordered) -->
       <div id="table-melds-container" onclick="handleTableBackgroundClick(event)"
-        class="w-full h-full flex-1 min-h-0 overflow-hidden flex flex-wrap content-center justify-center items-center pt-7 pb-1">
+        class="w-full flex-1 min-h-0 overflow-hidden flex flex-wrap content-start justify-start items-start">
+      </div>
+
+      <!-- Chat & Taunt Emoji Drawer -->
+      <div id="chat-drawer" class="hidden pointer-events-auto absolute top-10 right-2 sm:right-4 z-30 w-[min(320px,92vw)] bg-emerald-950/95 backdrop-blur-md border border-amber-400/60 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-pop" style="max-height: min(360px, 58dvh);">
+        <div class="px-3 py-2 bg-emerald-900/80 border-b border-emerald-800 flex items-center justify-between">
+          <span class="text-xs font-black text-amber-300">💬 牌桌聊天室（嗆聲專區）</span>
+          <button type="button" onclick="toggleChatDrawer(false)" class="w-6 h-6 rounded-full bg-emerald-950/80 hover:bg-emerald-800 text-emerald-200 text-xs font-bold cursor-pointer">✕</button>
+        </div>
+
+        <!-- Quick Taunt Emoji Bar -->
+        <div class="px-2.5 py-1.5 bg-black/25 border-b border-emerald-800/80 flex items-center gap-1 overflow-x-auto shrink-0">
+          <button type="button" onclick="sendQuickTaunt('😏', '穩了啦，這手牌很可以！')" class="px-2 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/35 border border-amber-400/40 text-xs font-bold text-amber-200 shrink-0 cursor-pointer">😏 穩了啦</button>
+          <button type="button" onclick="sendQuickTaunt('🔥', '30分破冰了嗎？慢慢算喔～')" class="px-2 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/35 border border-rose-400/40 text-xs font-bold text-rose-200 shrink-0 cursor-pointer">🔥 破冰沒</button>
+          <button type="button" onclick="sendQuickTaunt('⚡', '快點出牌啦，秒針在走欸！')" class="px-2 py-1 rounded-lg bg-sky-500/20 hover:bg-sky-500/35 border border-sky-400/40 text-xs font-bold text-sky-200 shrink-0 cursor-pointer">⚡ 快一點</button>
+          <button type="button" onclick="sendQuickTaunt('😂', '感謝送牌，收下囉！')" class="px-2 py-1 rounded-lg bg-emerald-700/40 hover:bg-emerald-700/60 border border-emerald-500/40 text-xs font-bold text-emerald-100 shrink-0 cursor-pointer">😂 感謝送</button>
+          <button type="button" onclick="sendQuickTaunt('👑', '準備聽牌收官囉！')" class="px-2 py-1 rounded-lg bg-amber-400/25 hover:bg-amber-400/40 border border-amber-300/50 text-xs font-bold text-amber-300 shrink-0 cursor-pointer">👑 要收官</button>
+        </div>
+
+        <!-- Standalone Emoji Picker Bar (No Auto Keyboard) -->
+        <div class="px-2.5 py-1.5 bg-emerald-950/70 border-b border-emerald-800/70 flex items-center justify-between gap-1 overflow-x-auto shrink-0">
+          <button type="button" onclick="sendStandaloneEmoji('😏')" class="w-7 h-7 rounded-lg bg-white/5 hover:bg-amber-400/25 border border-emerald-700/60 text-base flex items-center justify-center shrink-0 cursor-pointer" title="傳送 😏">😏</button>
+          <button type="button" onclick="sendStandaloneEmoji('🤡')" class="w-7 h-7 rounded-lg bg-white/5 hover:bg-amber-400/25 border border-emerald-700/60 text-base flex items-center justify-center shrink-0 cursor-pointer" title="傳送 🤡">🤡</button>
+          <button type="button" onclick="sendStandaloneEmoji('🙄')" class="w-7 h-7 rounded-lg bg-white/5 hover:bg-amber-400/25 border border-emerald-700/60 text-base flex items-center justify-center shrink-0 cursor-pointer" title="傳送 🙄">🙄</button>
+          <button type="button" onclick="sendStandaloneEmoji('💅')" class="w-7 h-7 rounded-lg bg-white/5 hover:bg-amber-400/25 border border-emerald-700/60 text-base flex items-center justify-center shrink-0 cursor-pointer" title="傳送 💅">💅</button>
+          <button type="button" onclick="sendStandaloneEmoji('🥱')" class="w-7 h-7 rounded-lg bg-white/5 hover:bg-amber-400/25 border border-emerald-700/60 text-base flex items-center justify-center shrink-0 cursor-pointer" title="傳送 🥱">🥱</button>
+          <button type="button" onclick="sendStandaloneEmoji('👀')" class="w-7 h-7 rounded-lg bg-white/5 hover:bg-amber-400/25 border border-emerald-700/60 text-base flex items-center justify-center shrink-0 cursor-pointer" title="傳送 👀">👀</button>
+          <button type="button" onclick="sendStandaloneEmoji('😎')" class="w-7 h-7 rounded-lg bg-white/5 hover:bg-amber-400/25 border border-emerald-700/60 text-base flex items-center justify-center shrink-0 cursor-pointer" title="傳送 😎">😎</button>
+          <button type="button" onclick="sendStandaloneEmoji('💀')" class="w-7 h-7 rounded-lg bg-white/5 hover:bg-amber-400/25 border border-emerald-700/60 text-base flex items-center justify-center shrink-0 cursor-pointer" title="傳送 💀">💀</button>
+        </div>
+
+        <!-- Messages List -->
+        <div id="chat-messages-list" class="flex-1 min-h-[110px] overflow-y-auto px-3 py-2 space-y-1.5 text-xs">
+          <div class="text-[11px] text-emerald-300/75 text-center py-2">點選上方表情快捷鍵嗆聲，或輸入訊息傳送！</div>
+        </div>
+
+        <!-- Input Form -->
+        <form onsubmit="handleChatSubmit(event)" class="p-2 bg-black/35 border-t border-emerald-800 flex items-center gap-1.5 shrink-0">
+          <input id="chat-message-input" type="text" maxlength="80" placeholder="輸入聊天或嗆聲內容..."
+            class="flex-1 min-w-0 bg-emerald-950 border border-emerald-700 focus:border-amber-400 rounded-xl px-2.5 py-1.5 text-xs text-white placeholder-emerald-400/50 focus:outline-none" />
+          <button type="submit" class="px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-emerald-950 font-black text-xs shrink-0 cursor-pointer">
+            送出
+          </button>
+        </form>
       </div>
     </main>
 
-    <section id="rack-section" class="wooden-rack px-2 pt-1.5 pb-2 sm:px-4 sm:pt-2.5 sm:pb-3 z-20 shrink-0">
-      <div id="selection-toolbar" class="hidden max-w-4xl mx-auto mb-1 bg-amber-950/90 border border-amber-400/70 rounded-lg px-2 py-1 flex items-center justify-between gap-1.5 shadow">
-        <div class="flex items-center gap-1 text-[11px] leading-none min-w-0 truncate">
+    <section id="rack-section" class="wooden-rack relative overflow-visible px-1.5 pt-1.5 pb-1.5 sm:px-4 sm:pt-2.5 sm:pb-3 z-20 shrink-0">
+      <div id="selection-toolbar" class="hidden absolute -top-9 left-1/2 -translate-x-1/2 z-30 w-auto max-w-[92vw] bg-amber-950/95 backdrop-blur-md border border-amber-400/80 rounded-full px-2.5 py-1 flex items-center justify-between gap-2 shadow-xl">
+        <div class="flex items-center gap-1.5 text-[11px] leading-none min-w-0 truncate">
           <span id="selected-count-badge" class="bg-amber-400 text-emerald-950 font-black px-1.5 py-0.5 rounded-full text-[10px] shrink-0">0</span>
-          <span id="selection-validation-text" class="font-bold text-amber-200 truncate">請選至少3張</span>
+          <span id="selection-validation-text" class="font-bold text-amber-200 truncate"></span>
         </div>
         <div class="flex items-center gap-1 shrink-0">
-          <button onclick="playSelectedAsNewMeld()" class="px-2 py-1 rounded bg-emerald-500 hover:bg-emerald-400 text-emerald-950 font-black text-[11px] leading-none shadow cursor-pointer">
+          <button onclick="playSelectedAsNewMeld()" class="px-2.5 py-1 rounded-full bg-emerald-500 hover:bg-emerald-400 text-emerald-950 font-black text-[11px] leading-none shadow cursor-pointer">
             🃏 出牌
           </button>
-          <button onclick="returnSelectedTableTilesToBoard()" id="btn-return-table-tiles" class="hidden px-1.5 py-1 rounded bg-sky-500 hover:bg-sky-400 text-sky-950 font-bold text-[11px] leading-none cursor-pointer">
-            ↩ 放回
-          </button>
-          <button onclick="clearSelection()" class="px-1.5 py-1 rounded bg-stone-700 hover:bg-stone-600 text-stone-200 text-[11px] leading-none cursor-pointer">
+          <button onclick="clearSelection()" class="px-1.5 py-1 rounded-full bg-stone-700 hover:bg-stone-600 text-stone-200 text-[11px] leading-none cursor-pointer">
             ✕
           </button>
         </div>
       </div>
 
-      <div class="max-w-4xl mx-auto flex flex-wrap items-center justify-between gap-1.5 mb-2">
-        <div class="flex items-center gap-1 sm:gap-1.5 flex-wrap">
-          <button onclick="sortPlayerRack('group')" class="px-2 py-1.5 rounded-lg bg-amber-950/80 hover:bg-amber-900 border border-amber-700/70 text-[11px] sm:text-xs font-bold text-amber-100 cursor-pointer" title="依同數字不同色智慧分類，可出牌組自動集中標示">
-            🔢 777理牌
+      <!-- Compact Single-Line / Auto-Fit Controls Bar -->
+      <div class="w-full max-w-4xl mx-auto flex flex-wrap items-center justify-between gap-1 mb-1.5">
+        <div class="flex items-center gap-1 shrink-0">
+          <button onclick="sortPlayerRack('group')" class="px-1.5 sm:px-2 py-1 sm:py-1.5 rounded-lg bg-amber-950/85 hover:bg-amber-900 border border-amber-700/70 text-[10px] sm:text-xs font-bold text-amber-100 cursor-pointer whitespace-nowrap">
+            🔢 777
           </button>
-          <button onclick="sortPlayerRack('run')" class="px-2 py-1.5 rounded-lg bg-amber-950/80 hover:bg-amber-900 border border-amber-700/70 text-[11px] sm:text-xs font-bold text-amber-100 cursor-pointer" title="依同色連續順子智慧分類，可出牌組自動集中標示">
-            🌈 789理牌
+          <button onclick="sortPlayerRack('run')" class="px-1.5 sm:px-2 py-1 sm:py-1.5 rounded-lg bg-amber-950/85 hover:bg-amber-900 border border-amber-700/70 text-[10px] sm:text-xs font-bold text-amber-100 cursor-pointer whitespace-nowrap">
+            🌈 789
           </button>
-          <button onclick="autoSelectBestPlayableMeld()" class="px-2 py-1.5 rounded-lg bg-emerald-800/90 hover:bg-emerald-700 border border-emerald-500/70 text-[11px] sm:text-xs font-bold text-emerald-100 cursor-pointer" title="自動幫你選取手牌中最佳可出牌組">
-            ✨ 智慧選牌
+          <button onclick="autoSelectBestPlayableMeld()" class="px-1.5 sm:px-2 py-1 sm:py-1.5 rounded-lg bg-emerald-800/90 hover:bg-emerald-700 border border-emerald-500/70 text-[10px] sm:text-xs font-bold text-emerald-100 cursor-pointer whitespace-nowrap">
+            ✨ 選牌
           </button>
-          <span id="rack-count-label" class="text-[11px] text-amber-200/80 ml-0.5 hidden sm:inline">手牌: 14 張</span>
+          <span id="rack-count-label" class="text-[11px] text-amber-200/80 ml-0.5 hidden md:inline">14 張</span>
         </div>
 
-        <div class="flex items-center gap-1.5 sm:gap-2">
+        <div class="flex items-center gap-1 sm:gap-1.5 shrink-0 ml-auto">
           <button id="btn-reset-turn" onclick="resetCurrentTurn()" disabled
-            class="px-2.5 py-1.5 rounded-lg bg-stone-800/90 hover:bg-stone-700 disabled:opacity-40 disabled:pointer-events-none border border-stone-600 text-xs font-bold text-stone-200 cursor-pointer">
-            ↺ 重置本回合
+            class="px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg bg-stone-800/90 hover:bg-stone-700 disabled:opacity-40 disabled:pointer-events-none border border-stone-600 text-[10px] sm:text-xs font-bold text-stone-200 cursor-pointer whitespace-nowrap">
+            ↺ 重置
           </button>
           <button id="btn-draw-tile" onclick="drawTileAndEndTurn()" disabled
-            class="px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 disabled:opacity-40 disabled:pointer-events-none text-xs sm:text-sm font-black text-white shadow cursor-pointer">
-            🎴 抽牌結束回合
+            class="px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 disabled:opacity-40 disabled:pointer-events-none text-[10px] sm:text-sm font-black text-white shadow cursor-pointer whitespace-nowrap">
+            🎴 抽牌
           </button>
           <button id="btn-end-turn" onclick="confirmEndTurn()" disabled
-            class="px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-emerald-400 to-emerald-500 hover:from-emerald-300 hover:to-emerald-400 disabled:opacity-40 disabled:pointer-events-none text-xs sm:text-sm font-black text-emerald-950 shadow-lg cursor-pointer">
+            class="px-2.5 py-1 sm:px-3.5 sm:py-1.5 rounded-lg bg-gradient-to-r from-emerald-400 to-emerald-500 hover:from-emerald-300 hover:to-emerald-400 disabled:opacity-40 disabled:pointer-events-none text-[10px] sm:text-sm font-black text-emerald-950 shadow-lg cursor-pointer whitespace-nowrap">
             ✅ 確認出牌
           </button>
         </div>
       </div>
 
-      <div class="max-w-4xl mx-auto">
-        <div id="rack-rows-wrapper" class="flex flex-col gap-1.5">
-          <div id="player-rack-row-1" class="rack-tier-ledge flex items-center justify-center gap-1 sm:gap-1.5 px-1.5 py-1 min-h-[54px] sm:min-h-[64px]"></div>
-          <div id="player-rack-row-2" class="rack-tier-ledge flex items-center justify-center gap-1 sm:gap-1.5 px-1.5 py-1 min-h-[54px] sm:min-h-[64px]"></div>
+      <!-- Two-Tier Wooden Rack Strictly Fitted Within Screen Width -->
+      <div class="w-full max-w-4xl mx-auto overflow-hidden">
+        <div id="rack-rows-wrapper" class="flex flex-col gap-1 w-full">
+          <div id="player-rack-row-1" class="rack-tier-ledge flex items-center justify-center px-1 py-1 min-h-[44px] sm:min-h-[62px]"></div>
+          <div id="player-rack-row-2" class="rack-tier-ledge flex items-center justify-center px-1 py-1 min-h-[44px] sm:min-h-[62px]"></div>
         </div>
       </div>
     </section>
@@ -723,12 +877,11 @@
           <p>每位玩家第一次出牌時，<strong>必須僅使用自己手牌</strong>排出總點數 <strong>至少 30 分</strong> 的牌組（可一組或多組相加，鬼牌依所代替的牌面數字計分），且破冰前不能動用牌桌上的牌。破冰成功後，之後的回合就能自由拆解與重組桌面牌組！</p>
         </div>
         <div>
-          <h3 class="font-bold text-amber-300 text-base mb-1">4. 手機與電腦操作方式</h3>
+          <h3 class="font-bold text-amber-300 text-base mb-1">4. 手機點選與懸空拖移雙操作</h3>
           <ul class="list-disc pl-5 space-y-1">
-            <li><strong>組牌出新牌組</strong>：點擊手牌選取多張牌（牌會浮起發光），再點擊操作列的「<strong>🃏 出牌</strong>」或直接點擊牌桌空白處即可放上牌桌。</li>
-            <li><strong>智慧理牌與視覺區隔</strong>：點擊「<strong>777理牌</strong>」或「<strong>789理牌</strong>」時，手牌中已成組的 3 張以上合法牌組會自動排到前方並以<strong>淡綠牌底＋金色分隔線</strong>標示；按「<strong>✨ 智慧選牌</strong>」還可一鍵選取最佳可出牌組！</li>
-            <li><strong>智慧牌組自動拆分</strong>：在既有的牌組兩側點擊「<strong>＋</strong>」加入新牌，或從長牌組移出一張牌時，若能拆成兩組 3 張以上的合法牌組，系統會自動智能拆分！</li>
-            <li><strong>抽牌 / 確認出牌</strong>：本回合若無法出牌，點擊「<strong>🎴 抽牌結束回合</strong>」抽 1 張牌；若有出牌且桌上所有牌組皆為綠框合法狀態，點擊「<strong>✅ 確認出牌</strong>」（若倒數結束時已打出合法牌組，系統也會自動判定完成出牌）。</li>
+            <li><strong>點選牌張出牌／換位</strong>：輕點卡牌即可選取（上浮提示），可連續點選多張牌後按「<strong>🃏 出牌</strong>」或點擊牌桌空白處打出；點選單張手牌再點木架空位可調整擺放位置。</li>
+            <li><strong>觸碰懸空順勢拖移</strong>：觸碰牌張會立即懸空浮起並跟隨滑動（未先點選其他牌時若可湊成 3 張以上合法組合會自動帶起整組），拖至目標牌組放開自動吸附並依序排列，拖至牌桌空白處放開則成立新牌組。</li>
+            <li><strong>智慧理牌</strong>：點擊「<strong>777</strong>」或「<strong>789</strong>」理牌時，可出牌組會自動排到前方並以淡綠牌底＋金色分隔線區隔。</li>
           </ul>
         </div>
       </div>
@@ -772,7 +925,7 @@
   </div>
 
   <!-- =========================================================
-       JAVASCRIPT: RUMMIKUB ENGINE, AI, & P2P + TURN MULTIPLAYER
+       JAVASCRIPT: RUMMIKUB ENGINE, TAP-SELECT + DRAG-SNAP, AI & MULTIPLAYER
   ========================================================= -->
   <script>
     // =========================================================
@@ -818,8 +971,14 @@
         },
         draw: () => playTone(340, 'sine', 0.11, 0.1),
         turn: () => {
-          playTone(523.25, 'sine', 0.12, 0.12, 0);
-          playTone(659.25, 'sine', 0.16, 0.12, 0.1);
+          playTone(587.33, 'triangle', 0.13, 0.15, 0);
+          playTone(783.99, 'triangle', 0.16, 0.15, 0.11);
+          playTone(1046.5, 'sine', 0.2, 0.14, 0.22);
+        },
+        countdown: (secLeft) => {
+          const urgentBoost = secLeft <= 3 ? 1.18 : 1.0;
+          const baseFreq = secLeft <= 3 ? 987.77 : 783.99;
+          playTone(baseFreq, secLeft <= 3 ? 'sawtooth' : 'square', 0.085, 0.11 * urgentBoost, 0);
         },
         error: () => playTone(190, 'sawtooth', 0.18, 0.1),
         win: () => {
@@ -836,7 +995,7 @@
     })();
 
     // =========================================================
-    // 2. DECK FACTORY & OFFICIAL RUMMIKUB VALIDATION RULES
+    // 2. DECK FACTORY & OFFICIAL RUMMIKUB VALIDATION (WITH AUTO-ORDER)
     // =========================================================
     const COLORS = ['red', 'blue', 'black', 'orange'];
     const COLOR_NAMES = { red: '紅', blue: '藍', black: '黑', orange: '橘' };
@@ -867,24 +1026,23 @@
           const parsed = JSON.parse(raw);
           if (parsed && parsed.deviceId) {
             return {
-              deviceId: String(parsed.deviceId).toUpperCase(),
+              deviceId: String(parsed.deviceId).trim().toUpperCase(),
               nickname: typeof parsed.nickname === 'string' ? parsed.nickname : '',
-              aiCount: parsed.aiCount || '3',
-              aiLevel: parsed.aiLevel || 'hard',
-              turnTime: parsed.turnTime !== undefined ? String(parsed.turnTime) : '90',
+              aiCount: parsed.aiCount ? String(parsed.aiCount) : '3',
+              aiLevel: parsed.aiLevel === 'normal' ? 'normal' : 'hard',
+              turnTime: parsed.turnTime !== undefined ? String(parsed.turnTime) : '60',
               chips: normalizeChips(parsed.chips !== undefined ? parsed.chips : INITIAL_CHIPS)
             };
           }
         }
       } catch (e) {}
-
       const fresh = {
         deviceId: generateDeviceId(),
         nickname: '',
         aiCount: '3',
         aiLevel: 'hard',
-        turnTime: '90',
-        chips: INITIAL_CHIPS
+        turnTime: '60',
+        chips: normalizeChips(INITIAL_CHIPS)
       };
       try {
         localStorage.setItem(DEVICE_PROFILE_STORAGE_KEY, JSON.stringify(fresh));
@@ -900,7 +1058,7 @@
         nickname: '',
         aiCount: '3',
         aiLevel: 'hard',
-        turnTime: '90',
+        turnTime: '60',
         chips: INITIAL_CHIPS
       };
       deviceProfile = { ...base, ...patch };
@@ -909,6 +1067,7 @@
         localStorage.setItem(DEVICE_PROFILE_STORAGE_KEY, JSON.stringify(deviceProfile));
       } catch (e) {}
       renderLobbyChipBalance();
+      return deviceProfile;
     }
 
     function renderLobbyChipBalance() {
@@ -943,17 +1102,29 @@
       return deck;
     }
 
+    function sortTilesForDisplay(tiles) {
+      if (!Array.isArray(tiles)) return [];
+      return [...tiles].sort((a, b) => {
+        const numA = a.isJoker ? (a.assignedNumber || 99) : a.number;
+        const numB = b.isJoker ? (b.assignedNumber || 99) : b.number;
+        if (numA !== numB) return numA - numB;
+        const colA = COLOR_ORDER[a.isJoker ? (a.assignedColor || a.color) : a.color] ?? 99;
+        const colB = COLOR_ORDER[b.isJoker ? (b.assignedColor || b.color) : b.color] ?? 99;
+        return colA - colB;
+      });
+    }
+
     function validateMeld(tiles) {
       if (!Array.isArray(tiles) || tiles.length < 3) {
-        return { valid: false, reason: '至少需要 3 張牌', points: 0, orderedTiles: tiles };
+        return { valid: false, reason: '至少需要 3 張牌', points: 0, orderedTiles: sortTilesForDisplay(tiles) };
       }
 
       const jokers = tiles.filter(t => t.isJoker);
       const normals = tiles.filter(t => !t.isJoker);
 
       if (normals.length === 0) {
-        const ordered = jokers.map(j => ({ ...j, assignedNumber: 10, assignedColor: j.color }));
-        return { valid: true, type: 'jokers', points: jokers.length * 10, orderedTiles: ordered };
+        const preserved = tiles.map(j => ({ ...j, assignedNumber: 10, assignedColor: j.color }));
+        return { valid: true, type: 'jokers', points: jokers.length * 10, orderedTiles: preserved };
       }
 
       if (tiles.length <= 4) {
@@ -964,18 +1135,23 @@
         if (sameNum && distinctColors) {
           const unusedColors = COLORS.filter(c => !colorSet.has(c));
           let jIdx = 0;
-          const ordered = tiles.map(t => {
+          const mapped = tiles.map(t => {
             if (t.isJoker) {
               const assignedCol = unusedColors[jIdx++] || t.color;
               return { ...t, assignedNumber: targetNum, assignedColor: assignedCol };
             }
             return { ...t, assignedNumber: null, assignedColor: null };
           });
+          const orderedGroup = mapped.sort((a, b) => {
+            const cA = COLOR_ORDER[a.isJoker ? a.assignedColor : a.color] ?? 99;
+            const cB = COLOR_ORDER[b.isJoker ? b.assignedColor : b.color] ?? 99;
+            return cA - cB;
+          });
           return {
             valid: true,
             type: 'group',
             points: tiles.length * targetNum,
-            orderedTiles: ordered
+            orderedTiles: orderedGroup
           };
         }
       }
@@ -1001,42 +1177,56 @@
             }
             if (!fitsAll) continue;
 
-            const ordered = [];
-            let jIdx = 0;
-            let points = 0;
+            const neededNums = [];
             for (let num = start; num <= end; num++) {
-              const found = sortedNormals.find(t => t.number === num);
-              if (found) {
-                ordered.push({ ...found, assignedNumber: null, assignedColor: null });
-                points += num;
-              } else if (jIdx < jokers.length) {
-                const jk = jokers[jIdx++];
-                ordered.push({ ...jk, assignedNumber: num, assignedColor: targetColor });
-                points += num;
-              }
+              if (!numSet.has(num)) neededNums.push(num);
             }
-            if (ordered.length === tiles.length && jIdx === jokers.length) {
-              return { valid: true, type: 'run', points, orderedTiles: ordered };
+
+            if (neededNums.length === jokers.length) {
+              const normalByNum = new Map(sortedNormals.map(t => [t.number, t]));
+              const jokerQueue = [...jokers];
+              const orderedRun = [];
+              let points = 0;
+
+              for (let num = start; num <= end; num++) {
+                if (normalByNum.has(num)) {
+                  const nt = normalByNum.get(num);
+                  orderedRun.push({ ...nt, assignedNumber: null, assignedColor: null });
+                  points += nt.number;
+                } else {
+                  const jk = jokerQueue.shift();
+                  orderedRun.push({ ...jk, assignedNumber: num, assignedColor: targetColor });
+                  points += num;
+                }
+              }
+
+              return { valid: true, type: 'run', points, orderedTiles: orderedRun };
             }
           }
         }
       }
 
-      return { valid: false, reason: '須為同數字不同色(3~4張)或同色連續順子(3張以上)', points: 0, orderedTiles: tiles };
+      return {
+        valid: false,
+        reason: '須為同數字不同色(3~4張)或同色連續順子(3張以上)',
+        points: 0,
+        orderedTiles: sortTilesForDisplay(tiles)
+      };
     }
 
     function autoOrderMeldIfPossible(tiles) {
       const res = validateMeld(tiles);
-      return res.valid ? res.orderedTiles : tiles;
+      return res.orderedTiles;
     }
 
     function trySmartSplitAfterRemoval(originalTiles, removedTileId) {
       if (!Array.isArray(originalTiles) || originalTiles.length < 4) return null;
-      const removedIdx = originalTiles.findIndex(t => t.id === removedTileId);
-      if (removedIdx <= 0 || removedIdx >= originalTiles.length - 1) return null;
+      const orderedOrig = autoOrderMeldIfPossible(originalTiles);
+      const removedIdx = orderedOrig.findIndex(t => t.id === removedTileId);
+      if (removedIdx <= 0 || removedIdx >= orderedOrig.length - 1) return null;
 
-      const leftRaw = originalTiles.slice(0, removedIdx);
-      const rightRaw = originalTiles.slice(removedIdx + 1);
+      const leftRaw = orderedOrig.slice(0, removedIdx);
+      const rightRaw = orderedOrig.slice(removedIdx + 1);
       if (leftRaw.length < 3 || rightRaw.length < 3) return null;
 
       const leftRes = validateMeld(leftRaw);
@@ -1049,39 +1239,11 @@
 
     function trySmartSplitCombinedMeld(tiles) {
       if (!Array.isArray(tiles) || tiles.length < 6) return null;
-      const normals = tiles.filter(t => !t.isJoker);
-      if (normals.length < 2) return null;
+      const sorted = sortTilesForDisplay(tiles);
 
-      const color = normals[0].color;
-      if (!normals.every(t => t.color === color)) return null;
-
-      const sorted = [...normals].sort((a, b) => a.number - b.number);
-      const jokers = tiles.filter(t => t.isJoker);
-
-      for (let i = 0; i < sorted.length - 1; i++) {
-        const gap = sorted[i + 1].number - sorted[i].number - 1;
-        if (gap >= 1 && gap <= jokers.length) {
-          const leftPool = sorted.slice(0, i + 1);
-          const rightPool = sorted.slice(i + 1);
-          const neededForGap = jokers.splice(0, gap);
-          const leftWithGap = [...leftPool, ...neededForGap];
-
-          for (let splitPoint = 0; splitPoint <= jokers.length; splitPoint++) {
-            const lCand = [...leftWithGap, ...jokers.slice(0, splitPoint)];
-            const rCand = [...rightPool, ...jokers.slice(splitPoint)];
-            const vL = validateMeld(lCand);
-            const vR = validateMeld(rCand);
-            if (vL.valid && vR.valid) {
-              return [vL.orderedTiles, vR.orderedTiles];
-            }
-          }
-          jokers.unshift(...neededForGap);
-        }
-      }
-
-      for (let splitIdx = 3; splitIdx <= tiles.length - 3; splitIdx++) {
-        const vL = validateMeld(tiles.slice(0, splitIdx));
-        const vR = validateMeld(tiles.slice(splitIdx));
+      for (let splitIdx = 3; splitIdx <= sorted.length - 3; splitIdx++) {
+        const vL = validateMeld(sorted.slice(0, splitIdx));
+        const vR = validateMeld(sorted.slice(splitIdx));
         if (vL.valid && vR.valid) {
           return [vL.orderedTiles, vR.orderedTiles];
         }
@@ -1091,7 +1253,7 @@
     }
 
     function calculateHandPenalty(rack) {
-      return rack.reduce((sum, t) => sum + (t.isJoker ? 30 : t.number), 0);
+      return (Array.isArray(rack) ? rack : []).reduce((sum, t) => sum + (t.isJoker ? 30 : t.number), 0);
     }
 
     // =========================================================
@@ -1099,10 +1261,10 @@
     // =========================================================
     const RACK_CAPACITY = 20;
 
-    let gameMode = 'solo'; // 'solo' | 'online_host' | 'online_guest'
+    let gameMode = 'solo';
     let myPlayerId = 'p_local';
     let aiDifficulty = 'hard';
-    let turnDuration = 90;
+    let turnDuration = 60;
 
     let gameState = {
       status: 'lobby',
@@ -1110,7 +1272,7 @@
       tableMelds: [],
       players: [],
       currentTurnIndex: 0,
-      timeLeft: 90,
+      timeLeft: 60,
       winnerId: null,
       settlementResults: null
     };
@@ -1142,7 +1304,8 @@
     }
 
     function syncRackSlotsWithHand(handTiles) {
-      const handMap = new Map(handTiles.map(t => [t.id, t]));
+      const safeHand = Array.isArray(handTiles) ? handTiles : [];
+      const handMap = new Map(safeHand.map(t => [t.id, t]));
       const placedIds = new Set();
 
       for (let i = 0; i < rackSlots.length; i++) {
@@ -1154,7 +1317,7 @@
         }
       }
 
-      const unplaced = handTiles.filter(t => !placedIds.has(t.id));
+      const unplaced = safeHand.filter(t => !placedIds.has(t.id));
       for (const tile of unplaced) {
         const emptyIdx = rackSlots.findIndex(slot => slot === null);
         if (emptyIdx !== -1) {
@@ -1175,7 +1338,22 @@
     function handleRackSlotClick(slotIndex) {
       if (selectedItems.length !== 1) return;
       const item = selectedItems[0];
-      if (item.source !== 'rack') return;
+
+      if (item.source === 'table') {
+        if (!isMyTurn() || !isTilePlayedThisTurn(item.tile.id)) {
+          showToast('只能將本回合打出的牌拿回手牌', 'error');
+          SoundFX.error();
+          clearSelection();
+          return;
+        }
+        returnSelectedTableTilesToRack(slotIndex);
+        return;
+      }
+
+      if (item.source !== 'rack') {
+        clearSelection();
+        return;
+      }
 
       const fromSlotIndex = rackSlots.findIndex(id => id === item.tile.id);
       if (fromSlotIndex === -1 || fromSlotIndex === slotIndex) {
@@ -1190,6 +1368,23 @@
       clearSelection();
       SoundFX.place();
       renderRack();
+    }
+
+    function getOriginalTableTileIdSet() {
+      const origIds = new Set();
+      if (turnSnapshot && Array.isArray(turnSnapshot.tableMelds)) {
+        turnSnapshot.tableMelds.forEach(m => {
+          if (Array.isArray(m.tiles)) {
+            m.tiles.forEach(t => origIds.add(t.id));
+          }
+        });
+      }
+      return origIds;
+    }
+
+    function isTilePlayedThisTurn(tileId) {
+      if (!turnSnapshot) return false;
+      return !getOriginalTableTileIdSet().has(tileId);
     }
 
     function saveTurnSnapshot() {
@@ -1357,7 +1552,7 @@
         const aiCount = parseInt(document.getElementById('ai-count-select').value, 10) || 3;
         aiDifficulty = document.getElementById('ai-level-select').value || 'hard';
         turnDuration = parseInt(document.getElementById('turn-time-select').value, 10);
-        if (Number.isNaN(turnDuration)) turnDuration = 90;
+        if (Number.isNaN(turnDuration)) turnDuration = 60;
 
         const deck = createFullDeck();
         const botNames = ['🤖 小智 AI', '🤖 艾莉絲 AI', '🤖 馬可仕 AI'];
@@ -1398,6 +1593,7 @@
           settlementResults: null
         };
 
+        resetChatMessages();
         rackSlots = new Array(RACK_CAPACITY).fill(null);
         rackReadyHighlightIds.clear();
         rackGroupDividerBeforeIndices.clear();
@@ -2010,7 +2206,12 @@
           const activePlayer = gameState.players[gameState.currentTurnIndex];
           if (!activePlayer || activePlayer.id !== conn.peer) return;
 
-          if (Array.isArray(data.tableMelds)) gameState.tableMelds = data.tableMelds;
+          if (Array.isArray(data.tableMelds)) {
+            gameState.tableMelds = data.tableMelds.map(m => ({
+              ...m,
+              tiles: autoOrderMeldIfPossible(m.tiles)
+            }));
+          }
           if (Array.isArray(data.playerRack)) activePlayer.rack = data.playerRack;
           activePlayer.hasBrokenIce = Boolean(data.hasBrokenIce);
           if (typeof data.chips === 'number') {
@@ -2032,6 +2233,11 @@
             activePlayer.rack.push(drawn);
           }
           advanceToNextPlayer();
+        } else if (data.type === 'CHAT_MSG') {
+          if (data.message) {
+            appendChatMessage(data.message);
+            broadcastChatMessage(data.message, conn.peer);
+          }
         }
       } catch (err) {
         console.warn('Host message handling warning:', err);
@@ -2051,6 +2257,8 @@
           document.getElementById('host-start-controls').classList.add('hidden');
           document.getElementById('guest-waiting-msg').classList.remove('hidden');
           updateWaitingRoomUI();
+        } else if (data.type === 'CHAT_MSG') {
+          if (data.message) appendChatMessage(data.message);
         } else if (data.type === 'GAME_START' || data.type === 'GAME_STATE' || data.type === 'RECONNECTED') {
           const prevTurnIdx = gameState.currentTurnIndex;
           const wasLobby = gameState.status !== 'playing';
@@ -2062,14 +2270,12 @@
           }
 
           if (data.type === 'GAME_START' || data.type === 'RECONNECTED' || wasLobby) {
+            if (data.type === 'GAME_START') resetChatMessages();
             rackSlots = new Array(RACK_CAPACITY).fill(null);
             rackReadyHighlightIds.clear();
             rackGroupDividerBeforeIndices.clear();
             if (me) syncRackSlotsWithHand(me.rack || []);
             enterGameScreen();
-            if (data.type === 'RECONNECTED') {
-              showToast('📱 已成功重連並恢復你的手牌與回合！', 'success');
-            }
           }
 
           if (gameState.status === 'ended') {
@@ -2092,7 +2298,6 @@
             if (isMyTurn()) {
               saveTurnSnapshot();
               SoundFX.turn();
-              showToast('輪到你出牌了！', 'info');
             } else {
               updateTurnButtons();
             }
@@ -2164,7 +2369,7 @@
 
         applyEntryFeeToPlayers(gameState.players);
 
-        turnDuration = 90;
+        turnDuration = 60;
         aiDifficulty = 'hard';
         gameState.status = 'playing';
         gameState.deck = deck;
@@ -2174,6 +2379,7 @@
         gameState.winnerId = null;
         gameState.settlementResults = null;
 
+        resetChatMessages();
         rackSlots = new Array(RACK_CAPACITY).fill(null);
         rackReadyHighlightIds.clear();
         rackGroupDividerBeforeIndices.clear();
@@ -2287,7 +2493,6 @@
         isProcessingTurn = false;
         saveTurnSnapshot();
         SoundFX.turn();
-        showToast('輪到你出牌了！', 'info');
       } else {
         selectedItems = [];
         updateTurnButtons();
@@ -2311,6 +2516,9 @@
         if (gameState.timeLeft > 0) {
           gameState.timeLeft -= 1;
           updateTimerDisplay();
+          if (isMyTurn() && gameState.timeLeft > 0 && gameState.timeLeft <= 5) {
+            SoundFX.countdown(gameState.timeLeft);
+          }
         }
         if (gameState.timeLeft <= 0) {
           clearInterval(timerInterval);
@@ -2385,7 +2593,6 @@
         isProcessingTurn = true;
         selectedItems = [];
         SoundFX.place();
-        showToast('⏱ 時間到，你的出牌合法，視同完成出牌！', 'success');
 
         if (gameMode === 'online_guest') {
           if (hostConn && hostConn.open) {
@@ -2410,17 +2617,17 @@
         return;
       }
 
-      showToast('時間到！自動抽牌並結束回合', 'info');
       drawTileAndEndTurn();
     }
 
     function updateTimerDisplay() {
       const el = document.getElementById('turn-timer-text');
+      if (!el) return;
       el.textContent = `${gameState.timeLeft}s`;
       if (gameState.timeLeft <= 15) {
-        el.className = 'font-mono font-black text-xs sm:text-sm text-red-400 animate-pulse';
+        el.className = 'font-mono font-black text-[11px] sm:text-sm text-red-400 animate-pulse';
       } else {
-        el.className = 'font-mono font-black text-xs sm:text-sm text-white';
+        el.className = 'font-mono font-black text-[11px] sm:text-sm text-white';
       }
     }
 
@@ -2431,21 +2638,423 @@
     }
 
     // =========================================================
-    // 7. PLAYER BOARD & RACK INTERACTIONS
+    // 7. TAP-SELECT + IMMEDIATE FLOAT & DRAG-TO-SNAP ENGINE
     // =========================================================
-    function toggleSelectRackTile(tileId) {
-      if (!isMyTurn()) {
-        showToast('現在還不是你的回合喔！', 'info');
-        return;
-      }
+    function findBestPlayableMeldContainingTile(targetTileId) {
       const me = getMyPlayer();
-      const tile = me.rack.find(t => t.id === tileId);
-      if (!tile) return;
+      if (!me) return null;
+      const anchorTile = me.rack.find(t => t.id === targetTileId);
+      if (!anchorTile) return null;
 
+      let bestMeld = null;
+      let bestScore = -1;
+
+      const considerCandidate = (candTiles) => {
+        if (!candTiles || candTiles.length < 3) return;
+        const v = validateMeld(candTiles);
+        if (!v.valid) return;
+        const score = v.points + candTiles.length * 4;
+        if (score > bestScore) {
+          bestScore = score;
+          bestMeld = v.orderedTiles;
+        }
+      };
+
+      const jokers = me.rack.filter(t => t.isJoker && t.id !== anchorTile.id);
+
+      if (!anchorTile.isJoker) {
+        const sameColor = me.rack.filter(t => !t.isJoker && t.color === anchorTile.color);
+        const byNum = new Map();
+        for (const t of sameColor) {
+          if (!byNum.has(t.number)) byNum.set(t.number, t);
+        }
+        byNum.set(anchorTile.number, anchorTile);
+
+        let minN = anchorTile.number;
+        let maxN = anchorTile.number;
+        while (minN > 1 && byNum.has(minN - 1)) minN--;
+        while (maxN < 13 && byNum.has(maxN + 1)) maxN++;
+        if (maxN - minN + 1 >= 3) {
+          const runTiles = [];
+          for (let n = minN; n <= maxN; n++) runTiles.push(byNum.get(n));
+          considerCandidate(runTiles);
+        }
+
+        if (jokers.length > 0) {
+          const jk = jokers[0];
+          for (let start = Math.max(1, anchorTile.number - 4); start <= anchorTile.number; start++) {
+            for (let len = 3; len <= 5 && start + len - 1 <= 13; len++) {
+              const end = start + len - 1;
+              if (anchorTile.number < start || anchorTile.number > end) continue;
+              const cand = [];
+              let missing = 0;
+              for (let n = start; n <= end; n++) {
+                if (byNum.has(n)) cand.push(byNum.get(n));
+                else {
+                  missing++;
+                  cand.push(jk);
+                }
+              }
+              if (missing === 1) considerCandidate(cand);
+            }
+          }
+        }
+
+        const sameNum = me.rack.filter(t => !t.isJoker && t.number === anchorTile.number && t.color !== anchorTile.color);
+        const distinctColorTiles = [anchorTile];
+        const usedCols = new Set([anchorTile.color]);
+        for (const t of sameNum) {
+          if (!usedCols.has(t.color)) {
+            usedCols.add(t.color);
+            distinctColorTiles.push(t);
+          }
+        }
+        if (distinctColorTiles.length >= 3) {
+          considerCandidate(distinctColorTiles);
+        } else if (distinctColorTiles.length === 2 && jokers.length > 0) {
+          considerCandidate([...distinctColorTiles, jokers[0]]);
+        }
+      } else {
+        const { melds } = extractBestPlayableMeldsFromHand(me.rack);
+        for (const m of melds) {
+          if (m.some(t => t.id === anchorTile.id)) {
+            considerCandidate(m);
+          }
+        }
+      }
+
+      return bestMeld;
+    }
+
+    let dragState = null;
+
+    function cleanupAllDragArtifacts() {
+      if (dragState && dragState.rafId) {
+        cancelAnimationFrame(dragState.rafId);
+      }
+      document.querySelectorAll('.drag-ghost-container').forEach(el => {
+        if (el.parentNode) el.parentNode.removeChild(el);
+      });
+      document.querySelectorAll('.meld-group.snap-hover').forEach(el => el.classList.remove('snap-hover'));
+      document.querySelectorAll('.rack-slot-empty.drop-slot-hover').forEach(el => el.classList.remove('drop-slot-hover'));
+      document.querySelectorAll('.rummi-tile.dragging-source').forEach(el => el.classList.remove('dragging-source'));
+      const tableAreaEl = document.getElementById('table-area');
+      if (tableAreaEl) tableAreaEl.classList.remove('table-drop-hover');
+      const rackSectionEl = document.getElementById('rack-section');
+      if (rackSectionEl) rackSectionEl.classList.remove('rack-return-hover');
+      dragState = null;
+    }
+
+    function positionDragGhost(ghostEl, x, y) {
+      if (!ghostEl) return;
+      ghostEl.style.transform = `translate3d(${Math.round(x)}px, ${Math.round(y)}px, 0) translate(-50%, -62%) scale(1.08)`;
+    }
+
+    function handleTilePointerDown(event, source, tileId, meldId = null) {
+      if (event.button !== undefined && event.button !== 0) return;
+      if (gameState.status !== 'playing') return;
+
+      cleanupAllDragArtifacts();
+
+      const me = getMyPlayer();
+      if (!me) return;
+
+      let clickedTile = null;
+      if (source === 'rack') {
+        clickedTile = me.rack.find(t => t.id === tileId);
+      } else if (source === 'table') {
+        if (!isMyTurn()) return;
+        const playedThisTurn = isTilePlayedThisTurn(tileId);
+        if (!me.hasBrokenIce && !playedThisTurn) {
+          showToast('首次破冰前不能動用牌桌原本的牌（本回合打出的牌可拿回）', 'error');
+          SoundFX.error();
+          return;
+        }
+        const m = gameState.tableMelds.find(item => item.id === meldId);
+        if (m) clickedTile = m.tiles.find(t => t.id === tileId);
+      }
+      if (!clickedTile) return;
+
+      const startX = event.clientX;
+      const startY = event.clientY;
+      const pointerId = event.pointerId;
+      const sourceEl = event.currentTarget;
+      let hasMoved = false;
+      let gestureFinished = false;
+
+      if (sourceEl && typeof sourceEl.setPointerCapture === 'function' && pointerId !== undefined) {
+        try { sourceEl.setPointerCapture(pointerId); } catch (e) {}
+      }
+
+      const isAlreadySelected = selectedItems.some(i => i.source === source && i.tile.id === tileId);
+      let itemsToDrag = [];
+
+      if (isAlreadySelected && selectedItems.length > 0) {
+        itemsToDrag = [...selectedItems];
+      } else if (source === 'rack' && selectedItems.length === 0) {
+        const autoMeld = findBestPlayableMeldContainingTile(tileId);
+        if (autoMeld && autoMeld.length >= 3) {
+          itemsToDrag = autoMeld.map(t => ({
+            source: 'rack',
+            tile: me.rack.find(rt => rt.id === t.id) || t
+          }));
+        } else {
+          itemsToDrag = [{ source: 'rack', tile: clickedTile }];
+        }
+      } else if (source === 'table') {
+        itemsToDrag = [{ source: 'table', tile: clickedTile, originMeldId: meldId }];
+      } else {
+        itemsToDrag = [{ source: 'rack', tile: clickedTile }];
+      }
+
+      const startDragVisual = (curX, curY) => {
+        if (gestureFinished) return;
+        cleanupAllDragArtifacts();
+
+        const ghost = document.createElement('div');
+        ghost.className = 'drag-ghost-container';
+        ghost.innerHTML = itemsToDrag.map(item => {
+          const t = item.tile;
+          const col = t.isJoker ? (t.assignedColor || t.color) : t.color;
+          const txt = t.isJoker ? '☺' : t.number;
+          return `<div class="rummi-tile rack-tile tile-${col}" style="width:36px;height:48px;box-shadow:none;"><span class="tile-digit" style="font-size:25px;">${txt}</span></div>`;
+        }).join('');
+        positionDragGhost(ghost, curX, curY);
+        document.body.appendChild(ghost);
+
+        const cachedMelds = [];
+        document.querySelectorAll('.meld-group[data-meld-id]').forEach(el => {
+          const id = el.getAttribute('data-meld-id');
+          const isSameOnlyMeld = itemsToDrag.every(i => i.source === 'table' && i.originMeldId === id);
+          if (!isSameOnlyMeld) {
+            cachedMelds.push({ id, el, rect: el.getBoundingClientRect() });
+          }
+        });
+
+        const cachedRackSlots = [];
+        const canDropOnRackSlots =
+          (itemsToDrag.length === 1 && itemsToDrag[0].source === 'rack') ||
+          itemsToDrag.every(i => i.source === 'table' && isTilePlayedThisTurn(i.tile.id));
+
+        if (canDropOnRackSlots) {
+          document.querySelectorAll('[data-rack-slot-idx]').forEach(el => {
+            const sIdx = parseInt(el.getAttribute('data-rack-slot-idx'), 10);
+            if (!Number.isNaN(sIdx)) {
+              cachedRackSlots.push({
+                idx: sIdx,
+                el,
+                isEmpty: el.classList.contains('rack-slot-empty'),
+                rect: el.getBoundingClientRect()
+              });
+            }
+          });
+        }
+
+        const tableAreaEl = document.getElementById('table-area');
+        const tableRect = tableAreaEl ? tableAreaEl.getBoundingClientRect() : null;
+        const rackSectionEl = document.getElementById('rack-section');
+        const rackRect = rackSectionEl ? rackSectionEl.getBoundingClientRect() : null;
+
+        dragState = {
+          source,
+          tileId,
+          meldId,
+          itemsToDrag,
+          ghostEl: ghost,
+          hoverMeldId: null,
+          hoverMeldEl: null,
+          hoverTableEmpty: false,
+          hoverRackArea: false,
+          hoverRackSlotIdx: null,
+          hoverRackSlotEl: null,
+          cachedMelds,
+          cachedRackSlots,
+          tableAreaEl,
+          tableRect,
+          rackSectionEl,
+          rackRect,
+          latestX: curX,
+          latestY: curY,
+          rafId: null
+        };
+
+        const dragIds = new Set(itemsToDrag.map(i => i.tile.id));
+        document.querySelectorAll('[data-tile-id]').forEach(el => {
+          if (dragIds.has(el.getAttribute('data-tile-id'))) {
+            el.classList.add('dragging-source');
+          }
+        });
+      };
+
+      startDragVisual(startX, startY);
+
+      const evaluateDragFrame = () => {
+        if (!dragState || gestureFinished) return;
+        dragState.rafId = null;
+
+        const clientX = dragState.latestX;
+        const clientY = dragState.latestY;
+        positionDragGhost(dragState.ghostEl, clientX, clientY);
+
+        if (dragState.hoverMeldEl) {
+          dragState.hoverMeldEl.classList.remove('snap-hover');
+          dragState.hoverMeldEl = null;
+        }
+        if (dragState.hoverRackSlotEl) {
+          dragState.hoverRackSlotEl.classList.remove('drop-slot-hover');
+          dragState.hoverRackSlotEl = null;
+        }
+        if (dragState.hoverTableEmpty && dragState.tableAreaEl) {
+          dragState.tableAreaEl.classList.remove('table-drop-hover');
+        }
+        if (dragState.hoverRackArea && dragState.rackSectionEl) {
+          dragState.rackSectionEl.classList.remove('rack-return-hover');
+        }
+
+        dragState.hoverMeldId = null;
+        dragState.hoverTableEmpty = false;
+        dragState.hoverRackArea = false;
+        dragState.hoverRackSlotIdx = null;
+
+        for (let i = 0; i < dragState.cachedRackSlots.length; i++) {
+          const slot = dragState.cachedRackSlots[i];
+          const r = slot.rect;
+          if (clientX >= r.left && clientX <= r.right && clientY >= r.top && clientY <= r.bottom) {
+            dragState.hoverRackSlotIdx = slot.idx;
+            if (slot.isEmpty) {
+              dragState.hoverRackSlotEl = slot.el;
+              slot.el.classList.add('drop-slot-hover');
+            }
+            break;
+          }
+        }
+
+        const rr = dragState.rackRect;
+        if (rr && clientX >= rr.left && clientX <= rr.right && clientY >= rr.top && clientY <= rr.bottom) {
+          const allReturnableToRack = dragState.itemsToDrag.every(
+            i => i.source === 'table' && isTilePlayedThisTurn(i.tile.id)
+          );
+          if (allReturnableToRack && isMyTurn()) {
+            dragState.hoverRackArea = true;
+            if (dragState.rackSectionEl) dragState.rackSectionEl.classList.add('rack-return-hover');
+            return;
+          }
+          if (dragState.hoverRackSlotIdx !== null) return;
+        }
+
+        if (!isMyTurn()) return;
+
+        const pad = 8;
+        for (let i = 0; i < dragState.cachedMelds.length; i++) {
+          const item = dragState.cachedMelds[i];
+          const r = item.rect;
+          if (clientX >= r.left - pad && clientX <= r.right + pad && clientY >= r.top - pad && clientY <= r.bottom + pad) {
+            dragState.hoverMeldId = item.id;
+            dragState.hoverMeldEl = item.el;
+            item.el.classList.add('snap-hover');
+            return;
+          }
+        }
+
+        const tr = dragState.tableRect;
+        if (tr && clientX >= tr.left && clientX <= tr.right && clientY >= tr.top && clientY <= tr.bottom) {
+          dragState.hoverTableEmpty = true;
+          if (dragState.tableAreaEl) dragState.tableAreaEl.classList.add('table-drop-hover');
+        }
+      };
+
+      const onPointerMove = (moveEv) => {
+        if (gestureFinished) return;
+        const dx = moveEv.clientX - startX;
+        const dy = moveEv.clientY - startY;
+        if (!hasMoved && Math.hypot(dx, dy) > 4) {
+          hasMoved = true;
+        }
+        if (dragState) {
+          dragState.latestX = moveEv.clientX;
+          dragState.latestY = moveEv.clientY;
+          if (!dragState.rafId) {
+            dragState.rafId = requestAnimationFrame(evaluateDragFrame);
+          }
+        }
+      };
+
+      const onPointerUp = () => {
+        if (gestureFinished) return;
+        gestureFinished = true;
+        if (sourceEl && typeof sourceEl.releasePointerCapture === 'function' && pointerId !== undefined) {
+          try { sourceEl.releasePointerCapture(pointerId); } catch (e) {}
+        }
+        window.removeEventListener('pointermove', onPointerMove, true);
+        window.removeEventListener('pointerup', onPointerUp, true);
+        window.removeEventListener('pointercancel', onPointerUp, true);
+        window.removeEventListener('touchend', onPointerUp, true);
+        window.removeEventListener('touchcancel', onPointerUp, true);
+
+        if (dragState && dragState.rafId) {
+          cancelAnimationFrame(dragState.rafId);
+          dragState.rafId = null;
+          evaluateDragFrame();
+        }
+
+        const activeDrag = dragState;
+        cleanupAllDragArtifacts();
+
+        if (!hasMoved) {
+          if (source === 'rack') {
+            toggleSelectRackTile(tileId);
+          } else if (source === 'table') {
+            toggleSelectTableTile(meldId, tileId);
+          }
+          return;
+        }
+
+        if (activeDrag) {
+          selectedItems = [...activeDrag.itemsToDrag];
+          const { hoverMeldId, hoverTableEmpty, hoverRackArea, hoverRackSlotIdx } = activeDrag;
+
+          if (hoverRackArea && isMyTurn()) {
+            returnSelectedTableTilesToRack(hoverRackSlotIdx);
+            return;
+          } else if (hoverMeldId && isMyTurn()) {
+            appendSelectedToExistingMeld(hoverMeldId, 'end');
+            return;
+          } else if (hoverTableEmpty && isMyTurn()) {
+            playSelectedAsNewMeld();
+            return;
+          } else if (hoverRackSlotIdx !== null && selectedItems.length === 1 && selectedItems[0].source === 'rack') {
+            handleRackSlotClick(hoverRackSlotIdx);
+            return;
+          }
+        }
+
+        selectedItems = [];
+        renderAll();
+      };
+
+      window.addEventListener('pointermove', onPointerMove, true);
+      window.addEventListener('pointerup', onPointerUp, true);
+      window.addEventListener('pointercancel', onPointerUp, true);
+      window.addEventListener('touchend', onPointerUp, true);
+      window.addEventListener('touchcancel', onPointerUp, true);
+    }
+
+    window.addEventListener('blur', () => {
+      if (dragState) {
+        cleanupAllDragArtifacts();
+        if (gameState.status === 'playing') renderAll();
+      }
+    });
+
+    function toggleSelectRackTile(tileId) {
+      const me = getMyPlayer();
+      if (!me) return;
       const existingIdx = selectedItems.findIndex(item => item.source === 'rack' && item.tile.id === tileId);
       if (existingIdx >= 0) {
         selectedItems.splice(existingIdx, 1);
       } else {
+        const tile = me.rack.find(t => t.id === tileId);
+        if (!tile) return;
         selectedItems.push({ source: 'rack', tile });
       }
       SoundFX.click();
@@ -2454,16 +3063,10 @@
     }
 
     function toggleSelectTableTile(meldId, tileId) {
-      if (!isMyTurn()) {
-        showToast('現在還不是你的回合喔！', 'info');
-        return;
-      }
+      if (!isMyTurn()) return;
       const me = getMyPlayer();
-      if (!me.hasBrokenIce) {
-        showToast('尚未破冰（需先用純手牌打出 ≥ 30 分），還不能移動牌桌上的牌！', 'error');
-        SoundFX.error();
-        return;
-      }
+      if (!me) return;
+      if (!me.hasBrokenIce && !isTilePlayedThisTurn(tileId)) return;
 
       const existingIdx = selectedItems.findIndex(item => item.source === 'table' && item.tile.id === tileId);
       if (existingIdx >= 0) {
@@ -2480,6 +3083,59 @@
       updateSelectionToolbar();
     }
 
+    function returnSelectedTableTilesToRack(preferredSlotIdx = null) {
+      if (!isMyTurn() || selectedItems.length === 0) {
+        renderAll();
+        return;
+      }
+      const me = getMyPlayer();
+      if (!me) {
+        renderAll();
+        return;
+      }
+
+      const returnableItems = selectedItems.filter(
+        i => i.source === 'table' && isTilePlayedThisTurn(i.tile.id)
+      );
+      if (returnableItems.length === 0) {
+        showToast('只能將本回合打出的牌拿回手牌', 'error');
+        SoundFX.error();
+        clearSelection();
+        return;
+      }
+
+      selectedItems = returnableItems;
+      const extractedTiles = removeSelectedItemsFromOrigins();
+      if (!extractedTiles || extractedTiles.length === 0) {
+        renderAll();
+        return;
+      }
+
+      extractedTiles.forEach((rawTile, idx) => {
+        const cleanTile = {
+          ...rawTile,
+          assignedNumber: null,
+          assignedColor: null,
+          fromTable: false
+        };
+        me.rack.push(cleanTile);
+
+        if (
+          idx === 0 &&
+          preferredSlotIdx !== null &&
+          preferredSlotIdx >= 0 &&
+          preferredSlotIdx < rackSlots.length &&
+          rackSlots[preferredSlotIdx] === null
+        ) {
+          rackSlots[preferredSlotIdx] = cleanTile.id;
+        }
+      });
+
+      syncRackSlotsWithHand(me.rack);
+      SoundFX.place();
+      renderAll();
+    }
+
     function clearSelection() {
       selectedItems = [];
       renderRack();
@@ -2489,8 +3145,43 @@
 
     function removeSelectedItemsFromOrigins() {
       const me = getMyPlayer();
-      const rackIdsToRemove = new Set(selectedItems.filter(i => i.source === 'rack').map(i => i.tile.id));
-      const tableItems = selectedItems.filter(i => i.source === 'table');
+      if (!me || !Array.isArray(selectedItems) || selectedItems.length === 0) return [];
+
+      const uniqueItems = [];
+      const seenTileIds = new Set();
+      for (const item of selectedItems) {
+        if (item && item.tile && !seenTileIds.has(item.tile.id)) {
+          seenTileIds.add(item.tile.id);
+          uniqueItems.push(item);
+        }
+      }
+
+      const extractedTiles = [];
+      const rackIdsToRemove = new Set();
+      const tableIdsToRemove = new Set();
+
+      for (const item of uniqueItems) {
+        if (item.source === 'rack') {
+          const foundInRack = me.rack.find(t => t.id === item.tile.id);
+          if (foundInRack) {
+            rackIdsToRemove.add(foundInRack.id);
+            extractedTiles.push({ ...foundInRack });
+          }
+        } else if (item.source === 'table') {
+          let foundInTable = null;
+          for (const meld of gameState.tableMelds) {
+            const match = meld.tiles.find(t => t.id === item.tile.id);
+            if (match) {
+              foundInTable = match;
+              break;
+            }
+          }
+          if (foundInTable) {
+            tableIdsToRemove.add(foundInTable.id);
+            extractedTiles.push({ ...foundInTable });
+          }
+        }
+      }
 
       if (rackIdsToRemove.size > 0) {
         me.rack = me.rack.filter(t => !rackIdsToRemove.has(t.id));
@@ -2499,8 +3190,7 @@
         rackGroupDividerBeforeIndices.clear();
       }
 
-      if (tableItems.length > 0) {
-        const tableIdsToRemove = new Set(tableItems.map(i => i.tile.id));
+      if (tableIdsToRemove.size > 0) {
         const nextMelds = [];
 
         for (const meld of gameState.tableMelds) {
@@ -2521,7 +3211,6 @@
                 id: `meld_${Date.now() + 1}_${Math.random().toString(36).slice(2, 6)}`,
                 tiles: splitParts[1]
               });
-              showToast('✨ 移出牌張後已自動智能拆分為兩組合法牌組！', 'success');
               continue;
             }
           }
@@ -2536,14 +3225,20 @@
         gameState.tableMelds = nextMelds;
       }
 
-      const extractedTiles = selectedItems.map(i => ({ ...i.tile }));
       selectedItems = [];
       return extractedTiles;
     }
 
     function playSelectedAsNewMeld() {
-      if (!isMyTurn() || selectedItems.length === 0) return;
+      if (!isMyTurn() || selectedItems.length === 0) {
+        renderAll();
+        return;
+      }
       const tilesToPlay = removeSelectedItemsFromOrigins();
+      if (!tilesToPlay || tilesToPlay.length === 0) {
+        renderAll();
+        return;
+      }
       const ordered = autoOrderMeldIfPossible(tilesToPlay);
 
       gameState.tableMelds.push({
@@ -2556,23 +3251,34 @@
     }
 
     function appendSelectedToExistingMeld(targetMeldId, position = 'end') {
-      if (!isMyTurn()) return;
-      if (selectedItems.length === 0) {
-        showToast('請先點選要加入此牌組的手牌或桌面牌', 'info');
+      if (!isMyTurn() || selectedItems.length === 0) {
+        renderAll();
         return;
       }
       const me = getMyPlayer();
+      const targetMeldIndex = gameState.tableMelds.findIndex(m => m.id === targetMeldId);
+      if (targetMeldIndex === -1) {
+        renderAll();
+        return;
+      }
+      const targetMeld = gameState.tableMelds[targetMeldIndex];
+
       if (!me.hasBrokenIce) {
-        showToast('尚未破冰前，只能建立自己的新牌組，不能併入桌面既有牌組！', 'error');
-        SoundFX.error();
+        const targetHasOrigTableTile = targetMeld.tiles.some(t => !isTilePlayedThisTurn(t.id));
+        if (targetHasOrigTableTile) {
+          showToast('尚未破冰前（需先出 ≥ 30 分），不能併入桌面原本的牌組', 'error');
+          SoundFX.error();
+          renderAll();
+          return;
+        }
+      }
+
+      const tilesToAdd = removeSelectedItemsFromOrigins();
+      if (!tilesToAdd || tilesToAdd.length === 0) {
+        renderAll();
         return;
       }
 
-      const targetMeldIndex = gameState.tableMelds.findIndex(m => m.id === targetMeldId);
-      if (targetMeldIndex === -1) return;
-      const targetMeld = gameState.tableMelds[targetMeldIndex];
-
-      const tilesToAdd = removeSelectedItemsFromOrigins();
       const combined = position === 'start'
         ? [...tilesToAdd, ...targetMeld.tiles]
         : [...targetMeld.tiles, ...tilesToAdd];
@@ -2588,9 +3294,8 @@
             tiles: mTiles
           }));
           gameState.tableMelds.splice(targetMeldIndex, 1, ...newMeldObjects);
-          showToast('✨ 已智能將牌組自動拆分為兩組合法牌組！', 'success');
         } else {
-          targetMeld.tiles = combined;
+          targetMeld.tiles = sortTilesForDisplay(combined);
         }
       }
 
@@ -2605,10 +3310,6 @@
       }
     }
 
-    function returnSelectedTableTilesToBoard() {
-      clearSelection();
-    }
-
     function resetCurrentTurn(silent = false) {
       if (!turnSnapshot) return;
       gameState.tableMelds = cloneData(turnSnapshot.tableMelds);
@@ -2619,7 +3320,6 @@
       selectedItems = [];
       if (!silent) {
         SoundFX.click();
-        showToast('已還原至本回合開始前的狀態', 'info');
       }
       renderAll();
     }
@@ -2647,9 +3347,6 @@
         const tile = gameState.deck.pop();
         me.rack.push(tile);
         syncRackSlotsWithHand(me.rack);
-        showToast(`抽了一張【${tile.isJoker ? '百搭鬼牌 ☺' : COLOR_NAMES[tile.color] + tile.number}】`, 'info');
-      } else {
-        showToast('牌庫已無牌，跳過本回合', 'info');
       }
       advanceToNextPlayer();
     }
@@ -2658,12 +3355,7 @@
       if (!isMyTurn() || isProcessingTurn) return;
       const check = evaluateCurrentTurnSubmission();
       if (!check.ok) {
-        const msg = check.reason === '尚未打出任何手牌'
-          ? '你本回合尚未打出任何手牌！若無牌可出請按「抽牌結束回合」'
-          : (check.reason === '首次破冰不能動用桌面原本的牌'
-            ? '首次破冰不能動用桌面原本的牌！請先重置本回合'
-            : check.reason);
-        showToast(msg, 'error');
+        showToast(check.reason, 'error');
         SoundFX.error();
         return;
       }
@@ -2781,7 +3473,7 @@
               for (let i = 0; i < sameColorTiles.length - 1; i++) {
                 const diff = sameColorTiles[i + 1].number - sameColorTiles[i].number;
                 if (diff === 1 || diff === 2) {
-                  const cand = [sameColorTiles[i], sameColorTiles[i + 1], jk];
+                  const cand = [sameColorTiles[i], jk, sameColorTiles[i + 1]];
                   const v = validateMeld(cand);
                   if (v.valid && v.points > bestScore) {
                     bestScore = v.points;
@@ -2883,32 +3575,22 @@
       });
 
       renderRack();
-      if (orderedMelds.length > 0) {
-        const totalPts = orderedMelds.reduce((sum, m) => sum + validateMeld(m).points, 0);
-        showToast(`✨ 已完成智慧理牌：偵測到 ${orderedMelds.length} 組可出牌組（共 ${totalPts} 分）`, 'success');
-      } else {
-        showToast('已完成理牌整理（目前手牌尚無完整 3 張組合）', 'info');
-      }
     }
 
     function autoSelectBestPlayableMeld() {
-      if (!isMyTurn()) {
-        showToast('現在還不是你的回合喔！', 'info');
-        return;
-      }
+      if (!isMyTurn()) return;
       const me = getMyPlayer();
       if (!me) return;
 
       const { melds } = extractBestPlayableMeldsFromHand(me.rack);
       if (melds.length === 0) {
-        showToast('目前手牌尚未湊齊 3 張以上的合法牌組', 'info');
         SoundFX.error();
+        showToast('目前手牌尚未湊成 3 張以上合法組合', 'info');
         return;
       }
 
       const sortedByPts = [...melds].sort((a, b) => validateMeld(b).points - validateMeld(a).points);
       const chosen = sortedByPts[0];
-      const val = validateMeld(chosen);
 
       selectedItems = chosen.map(t => ({
         source: 'rack',
@@ -2918,7 +3600,6 @@
       SoundFX.click();
       renderRack();
       updateSelectionToolbar();
-      showToast(`✨ 已選取最佳牌組（${val.points} 分），點擊「🃏 出牌」即可放上牌桌！`, 'success');
     }
 
     // =========================================================
@@ -2963,7 +3644,6 @@
           }
           bot.rack = bot.rack.filter(t => !usedIds.has(t.id));
           bot.hasBrokenIce = true;
-          showToast(`${bot.name} 成功破冰（${totalPts} 分）！`, 'info');
           return true;
         }
         return false;
@@ -2991,9 +3671,17 @@
           for (let i = 0; i < bot.rack.length; i++) {
             const candidateTile = bot.rack[i];
             for (const meld of gameState.tableMelds) {
-              const testRes = validateMeld([...meld.tiles, candidateTile]);
-              if (testRes.valid) {
-                meld.tiles = testRes.orderedTiles;
+              const endRes = validateMeld([...meld.tiles, candidateTile]);
+              if (endRes.valid) {
+                meld.tiles = endRes.orderedTiles;
+                bot.rack.splice(i, 1);
+                playedAnything = true;
+                extended = true;
+                break;
+              }
+              const startRes = validateMeld([candidateTile, ...meld.tiles]);
+              if (startRes.valid) {
+                meld.tiles = startRes.orderedTiles;
                 bot.rack.splice(i, 1);
                 playedAnything = true;
                 extended = true;
@@ -3060,7 +3748,7 @@
             for (let i = 0; i < sameColor.length - 1; i++) {
               const diff = sameColor[i + 1].number - sameColor[i].number;
               if (diff === 1 || diff === 2) {
-                const cand = [sameColor[i], sameColor[i + 1], jk];
+                const cand = [sameColor[i], jk, sameColor[i + 1]];
                 const v = validateMeld(cand);
                 if (v.valid && (!bestMeld || v.points > bestMeld.points)) bestMeld = { ...v, tiles: cand };
               }
@@ -3198,370 +3886,290 @@
     function returnToLobby() {
       clearTimers();
       cleanupNetwork();
+      cleanupAllDragArtifacts();
+      resetChatMessages();
       gameState.status = 'lobby';
       document.getElementById('toast-container').innerHTML = '';
       document.getElementById('gameover-modal').classList.add('hidden');
-      const gameEl = document.getElementById('game-view');
       const lobbyEl = document.getElementById('lobby-view');
+      const gameEl = document.getElementById('game-view');
       if (gameEl) {
         gameEl.classList.add('hidden');
-        gameEl.style.display = '';
+        gameEl.style.display = 'none';
       }
       document.body.classList.remove('active-game-mode');
       if (lobbyEl) {
         lobbyEl.classList.remove('hidden');
-        lobbyEl.style.display = '';
+        lobbyEl.style.display = 'flex';
       }
       setWaitingRoomVisible(false);
       renderLobbyChipBalance();
     }
 
     // =========================================================
-    // 11. UI RENDERING
+    // 11B. CHAT & TAUNT EMOJI SHORTCUTS
     // =========================================================
-    function renderAll() {
-      renderPlayersBar();
-      renderDeckAndTurnBanner();
-      renderTableMelds();
-      renderRack();
-      updateSelectionToolbar();
-      updateTurnButtons();
+    let chatMessages = [];
+    let chatUnreadCount = 0;
+    let isChatOpen = false;
+    const playerBubbleTimers = new Map();
+
+    function resetChatMessages() {
+      chatMessages = [];
+      chatUnreadCount = 0;
+      playerBubbleTimers.forEach(t => clearTimeout(t));
+      playerBubbleTimers.clear();
+      updateChatUnreadBadge();
+      renderChatMessages();
     }
 
-    function renderPlayersBar() {
+    function toggleChatDrawer(forceState = null) {
+      const drawer = document.getElementById('chat-drawer');
+      if (!drawer) return;
+      isChatOpen = typeof forceState === 'boolean' ? forceState : drawer.classList.contains('hidden');
+      drawer.classList.toggle('hidden', !isChatOpen);
+      SoundFX.click();
+      if (isChatOpen) {
+        chatUnreadCount = 0;
+        updateChatUnreadBadge();
+        renderChatMessages();
+      }
+    }
+
+    function updateChatUnreadBadge() {
+      const badge = document.getElementById('chat-unread-badge');
+      if (!badge) return;
+      if (chatUnreadCount > 0 && !isChatOpen) {
+        badge.textContent = chatUnreadCount > 99 ? '99+' : String(chatUnreadCount);
+        badge.classList.remove('hidden');
+      } else {
+        badge.classList.add('hidden');
+      }
+    }
+
+    function broadcastChatMessage(msgObj, excludePeerId = null) {
+      const payload = { type: 'CHAT_MSG', message: msgObj };
+      if (gameMode === 'online_host') {
+        guestConnections.forEach(c => {
+          if (c && c.open && c.peer !== excludePeerId) {
+            c.send(payload);
+          }
+        });
+      } else if (gameMode === 'online_guest' && hostConn && hostConn.open) {
+        hostConn.send(payload);
+      }
+    }
+
+    function publishMyChat(emoji, text) {
+      const cleanText = String(text || '').trim();
+      if (!emoji && !cleanText) return;
+      const me = getMyPlayer();
+      const senderName = me ? me.name : getPlayerNickname();
+      const now = new Date();
+      const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+      const msgObj = {
+        id: `msg_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        senderId: myPlayerId,
+        senderName,
+        emoji: emoji || '',
+        text: cleanText,
+        time: timeStr
+      };
+
+      appendChatMessage(msgObj, true);
+      broadcastChatMessage(msgObj);
+      SoundFX.click();
+
+      if (gameMode === 'solo') {
+        triggerSoloBotTauntReply(msgObj);
+      }
+    }
+
+    function triggerSoloBotTauntReply(userMsg) {
+      const bots = gameState.players.filter(p => p.isBot);
+      if (bots.length === 0) return;
+      const bot = bots[Math.floor(Math.random() * bots.length)];
+      const replies = [
+        { emoji: '😏', text: '放馬過來，我手牌可是很順的！' },
+        { emoji: '😂', text: '哈哈，先看看你這回合能不能湊滿30分吧～' },
+        { emoji: '🔥', text: '這局我鎖定囉，別太快認輸！' },
+        { emoji: '⚡', text: '思考太久會被我超車喔！' }
+      ];
+      const pick = replies[Math.floor(Math.random() * replies.length)];
+      setTimeout(() => {
+        if (gameState.status !== 'playing') return;
+        const now = new Date();
+        appendChatMessage({
+          id: `bot_msg_${Date.now()}`,
+          senderId: bot.id,
+          senderName: bot.name,
+          emoji: userMsg.emoji || pick.emoji,
+          text: pick.text,
+          time: `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+        });
+      }, 950);
+    }
+
+    function sendQuickTaunt(emoji, text) {
+      publishMyChat(emoji, text);
+    }
+
+    function sendStandaloneEmoji(emoji) {
+      publishMyChat(emoji, '');
+    }
+
+    function handleChatSubmit(event) {
+      event.preventDefault();
+      const input = document.getElementById('chat-message-input');
+      if (!input) return;
+      const val = input.value.trim();
+      if (!val) return;
+      publishMyChat('', val);
+      input.value = '';
+    }
+
+    function appendChatMessage(msgObj, isSelf = false) {
+      if (!msgObj || !msgObj.id) return;
+      if (chatMessages.some(m => m.id === msgObj.id)) return;
+      chatMessages.push(msgObj);
+      if (chatMessages.length > 60) chatMessages.shift();
+
+      const fromSelf = isSelf || msgObj.senderId === myPlayerId;
+      if (!fromSelf && !isChatOpen) {
+        chatUnreadCount += 1;
+        updateChatUnreadBadge();
+      }
+      renderChatMessages();
+      showPlayerFloatingBubble(msgObj);
+    }
+
+    function showPlayerFloatingBubble(msgObj) {
+      if (!msgObj || !msgObj.senderId) return;
       const bar = document.getElementById('players-bar');
-      bar.innerHTML = gameState.players.map((p, idx) => {
-        const isTurn = idx === gameState.currentTurnIndex && gameState.status === 'playing';
-        const isMe = p.id === myPlayerId;
-        const displayChips = isMe && deviceProfile && gameState.status !== 'playing'
-          ? normalizeChips(deviceProfile.chips)
-          : Math.max(0, Number(p.chips ?? INITIAL_CHIPS));
+      if (!bar) return;
+      const card = bar.querySelector(`[data-player-id="${msgObj.senderId}"]`);
+      if (!card) return;
 
+      const existingBubble = card.querySelector('.player-chat-bubble');
+      if (existingBubble) existingBubble.remove();
+      if (playerBubbleTimers.has(msgObj.senderId)) {
+        clearTimeout(playerBubbleTimers.get(msgObj.senderId));
+      }
+
+      const bubble = document.createElement('div');
+      const isPureEmoji = Boolean(msgObj.emoji) && !String(msgObj.text || '').trim();
+      bubble.className = `player-chat-bubble absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 max-w-[92%] px-2 py-0.5 rounded-lg bg-amber-300/80 backdrop-blur-[2px] text-emerald-950 font-black shadow border border-amber-400/75 whitespace-nowrap overflow-hidden text-ellipsis ${
+        isPureEmoji ? 'text-base leading-none px-1.5 py-0.5' : 'text-[10px] leading-tight'
+      }`;
+      bubble.textContent = isPureEmoji
+        ? msgObj.emoji
+        : `${msgObj.emoji ? msgObj.emoji + ' ' : ''}${msgObj.text}`;
+
+      card.appendChild(bubble);
+
+      const timerId = setTimeout(() => {
+        if (bubble.parentNode) bubble.remove();
+        playerBubbleTimers.delete(msgObj.senderId);
+      }, 2000);
+      playerBubbleTimers.set(msgObj.senderId, timerId);
+    }
+
+    function renderChatMessages() {
+      const listEl = document.getElementById('chat-messages-list');
+      if (!listEl) return;
+
+      if (chatMessages.length === 0) {
+        listEl.innerHTML = `<div class="text-[11px] text-emerald-300/75 text-center py-2">點選上方表情快捷鍵嗆聲，或輸入訊息傳送！</div>`;
+        return;
+      }
+
+      listEl.innerHTML = chatMessages.map(m => {
+        const isMine = m.senderId === myPlayerId;
+        const isPureEmoji = Boolean(m.emoji) && !String(m.text || '').trim();
+        const emojiPrefix = m.emoji && !isPureEmoji ? `<span class="text-base leading-none mr-1">${escapeHtml(m.emoji)}</span>` : '';
         return `
-          <div class="flex items-center justify-between sm:justify-start gap-1.5 px-2.5 py-1 rounded-xl border text-xs min-w-0 transition
-            ${isTurn ? 'bg-amber-500/20 border-amber-400 active-turn-ring' : 'bg-emerald-900/60 border-emerald-800/80 opacity-85'}">
-            <div class="flex items-center gap-1 min-w-0">
-              <span class="font-bold truncate ${isTurn ? 'text-amber-300' : 'text-white'}">
-                ${isTurn ? '▶ ' : ''}${escapeHtml(p.name)}${isMe ? ' (你)' : ''}
-              </span>
-              <span class="px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0 ${p.hasBrokenIce ? 'bg-emerald-500/30 text-emerald-300' : 'bg-stone-700/80 text-stone-300'}">
-                ${p.hasBrokenIce ? '已破冰' : '未破冰'}
-              </span>
-            </div>
-            <div class="flex items-center gap-1 shrink-0">
-              <span class="font-mono text-[10px] font-bold text-amber-300 bg-amber-500/15 px-1.5 py-0.5 rounded border border-amber-400/30" title="目前籌碼">
-                🪙${displayChips.toLocaleString()}
-              </span>
-              <span class="font-mono font-black text-amber-200 bg-black/35 px-1.5 py-0.5 rounded">
-                ${p.rack.length}張
-              </span>
+          <div class="flex flex-col ${isMine ? 'items-end' : 'items-start'}">
+            <div class="text-[10px] text-emerald-300/80 px-1 mb-0.5">${escapeHtml(m.senderName)} · ${escapeHtml(m.time || '')}</div>
+            <div class="${isPureEmoji ? 'px-2.5 py-1 text-2xl leading-none bg-transparent shadow-none' : 'max-w-[88%] px-2.5 py-1.5 rounded-2xl leading-snug break-words shadow'} ${
+              isPureEmoji
+                ? ''
+                : (isMine
+                    ? 'bg-amber-400 text-emerald-950 font-bold rounded-br-sm'
+                    : 'bg-emerald-900/90 border border-emerald-700/80 text-white rounded-bl-sm')
+            }">
+              ${isPureEmoji ? `<span>${escapeHtml(m.emoji)}</span>` : `${emojiPrefix}<span>${escapeHtml(m.text)}</span>`}
             </div>
           </div>
         `;
       }).join('');
-    }
 
-    function renderDeckAndTurnBanner() {
-      document.getElementById('deck-count-badge').textContent = gameState.deck.length;
-      const curr = getCurrentPlayer();
-      const me = getMyPlayer();
-      const turnTextEl = document.getElementById('floating-turn-text');
-      const turnPillEl = document.getElementById('floating-turn-pill');
-      const icePillEl = document.getElementById('floating-ice-pill');
-      const iceScoreEl = document.getElementById('floating-ice-score');
-
-      if (!curr) return;
-
-      if (isMyTurn()) {
-        turnTextEl.textContent = '出牌方：輪到你';
-        turnPillEl.className = 'bg-amber-950/85 backdrop-blur-md border border-amber-400/75 rounded-full px-2.5 py-1 flex items-center gap-1.5 shadow-lg text-[11px] sm:text-xs font-black text-amber-200';
-      } else {
-        turnTextEl.textContent = `出牌方：${curr.name}`;
-        turnPillEl.className = 'bg-emerald-950/75 backdrop-blur-md border border-emerald-500/40 rounded-full px-2.5 py-1 flex items-center gap-1.5 shadow-lg text-[11px] sm:text-xs font-bold text-emerald-100';
-      }
-
-      if (me && !me.hasBrokenIce && gameState.status === 'playing') {
-        let origPts = 0;
-        if (turnSnapshot) {
-          turnSnapshot.tableMelds.forEach(m => origPts += validateMeld(m.tiles).points);
-        }
-        let currPts = 0;
-        gameState.tableMelds.forEach(m => currPts += validateMeld(m.tiles).points);
-        const diff = Math.max(0, currPts - origPts);
-        iceScoreEl.textContent = diff;
-        icePillEl.classList.remove('hidden');
-      } else {
-        icePillEl.classList.add('hidden');
-      }
-    }
-
-    function computeAutoFitTableMetrics(melds, areaWidth, areaHeight) {
-      const isDesktop = window.innerWidth >= 640;
-      const baseTileW = isDesktop ? 40 : 34;
-      const baseTileH = isDesktop ? 54 : 46;
-      const baseFontSingle = isDesktop ? 33 : 27;
-      const baseFontDouble = isDesktop ? 28 : 23;
-      const baseFontJoker = isDesktop ? 31 : 26;
-      const baseAddBtnW = isDesktop ? 22 : 18;
-      const baseAddBtnH = isDesktop ? 32 : 28;
-      const baseGap = isDesktop ? 10 : 6;
-
-      if (!melds || melds.length === 0 || areaWidth <= 0 || areaHeight <= 0) {
-        return {
-          scale: 1,
-          tileW: baseTileW,
-          tileH: baseTileH,
-          fontSingle: baseFontSingle,
-          fontDouble: baseFontDouble,
-          fontJoker: baseFontJoker,
-          addBtnW: baseAddBtnW,
-          addBtnH: baseAddBtnH,
-          gap: baseGap
-        };
-      }
-
-      const showAddBtns = isMyTurn() && getMyPlayer()?.hasBrokenIce && selectedItems.length > 0;
-      const extraPerMeld = showAddBtns ? (baseAddBtnW * 2 + 18) : 12;
-
-      for (let scale = 1.0; scale >= 0.34; scale -= 0.03) {
-        const tW = baseTileW * scale;
-        const tH = baseTileH * scale;
-        const g = Math.max(3, baseGap * scale);
-        const rowH = tH + Math.max(6, 10 * scale) + g;
-
-        let rows = 1;
-        let curRowW = 0;
-        let fitsSingleWidth = true;
-
-        for (const m of melds) {
-          const meldW = m.tiles.length * (tW + 2) + extraPerMeld * scale;
-          if (meldW > areaWidth) {
-            fitsSingleWidth = false;
-            break;
-          }
-          if (curRowW === 0) {
-            curRowW = meldW;
-          } else if (curRowW + g + meldW <= areaWidth) {
-            curRowW += g + meldW;
-          } else {
-            rows++;
-            curRowW = meldW;
-          }
-        }
-
-        if (fitsSingleWidth && rows * rowH <= areaHeight) {
-          return {
-            scale,
-            tileW: Math.max(14, Math.round(tW)),
-            tileH: Math.max(20, Math.round(tH)),
-            fontSingle: Math.max(11, Math.round(baseFontSingle * scale)),
-            fontDouble: Math.max(10, Math.round(baseFontDouble * scale)),
-            fontJoker: Math.max(11, Math.round(baseFontJoker * scale)),
-            addBtnW: Math.max(12, Math.round(baseAddBtnW * scale)),
-            addBtnH: Math.max(16, Math.round(baseAddBtnH * scale)),
-            gap: Math.max(3, Math.round(g))
-          };
-        }
-      }
-
-      const minScale = 0.34;
-      return {
-        scale: minScale,
-        tileW: Math.max(14, Math.round(baseTileW * minScale)),
-        tileH: Math.max(20, Math.round(baseTileH * minScale)),
-        fontSingle: Math.max(11, Math.round(baseFontSingle * minScale)),
-        fontDouble: Math.max(10, Math.round(baseFontDouble * minScale)),
-        fontJoker: Math.max(11, Math.round(baseFontJoker * minScale)),
-        addBtnW: Math.max(12, Math.round(baseAddBtnW * minScale)),
-        addBtnH: Math.max(16, Math.round(baseAddBtnH * minScale)),
-        gap: 3
-      };
-    }
-
-    function renderTableMelds() {
-      const container = document.getElementById('table-melds-container');
-      const tableArea = document.getElementById('table-area');
-      const selectedTableIds = new Set(selectedItems.filter(i => i.source === 'table').map(i => i.tile.id));
-      const canAppendToMelds = isMyTurn() && getMyPlayer()?.hasBrokenIce && selectedItems.length > 0;
-
-      if (gameState.tableMelds.length === 0) {
-        container.innerHTML = '';
-        return;
-      }
-
-      const availW = Math.max(220, (tableArea ? tableArea.clientWidth : window.innerWidth) - 24);
-      const availH = Math.max(120, (tableArea ? tableArea.clientHeight : (window.innerHeight * 0.45)) - 42);
-      const fit = computeAutoFitTableMetrics(gameState.tableMelds, availW, availH);
-
-      container.style.gap = `${fit.gap}px`;
-      const meldPad = fit.scale < 0.65 ? '2px 3px' : '4px 5px';
-      const addBtnFont = Math.max(10, Math.round(13 * fit.scale));
-
-      container.innerHTML = gameState.tableMelds.map(meld => {
-        const validation = validateMeld(meld.tiles);
-        const statusClass = validation.valid ? 'valid' : 'invalid';
-
-        const addStartBtn = canAppendToMelds
-          ? `<button onclick="appendSelectedToExistingMeld('${meld.id}', 'start')" style="width:${fit.addBtnW}px;height:${fit.addBtnH}px;font-size:${addBtnFont}px;" class="rounded bg-amber-400/90 hover:bg-amber-300 text-emerald-950 font-black flex items-center justify-center shadow cursor-pointer shrink-0" title="加入前端">+</button>`
-          : '';
-        const addEndBtn = canAppendToMelds
-          ? `<button onclick="appendSelectedToExistingMeld('${meld.id}', 'end')" style="width:${fit.addBtnW}px;height:${fit.addBtnH}px;font-size:${addBtnFont}px;" class="rounded bg-amber-400/90 hover:bg-amber-300 text-emerald-950 font-black flex items-center justify-center shadow cursor-pointer shrink-0" title="加入尾端">+</button>`
-          : '';
-
-        const tilesHtml = meld.tiles.map(tile => {
-          const isSel = selectedTableIds.has(tile.id);
-          return renderTileHTML(tile, 'table-tile', isSel, `toggleSelectTableTile('${meld.id}', '${tile.id}')`, fit);
-        }).join('');
-
-        return `
-          <div class="meld-group ${statusClass}" style="padding:${meldPad};" title="${validation.reason}">
-            ${addStartBtn}
-            ${tilesHtml}
-            ${addEndBtn}
-          </div>
-        `;
-      }).join('');
-    }
-
-    function renderRack() {
-      const me = getMyPlayer();
-      const row1El = document.getElementById('player-rack-row-1');
-      const row2El = document.getElementById('player-rack-row-2');
-      const countLabel = document.getElementById('rack-count-label');
-      if (!me || !row1El || !row2El) return;
-
-      syncRackSlotsWithHand(me.rack);
-      countLabel.textContent = `手牌: ${me.rack.length} 張`;
-
-      const handMap = new Map(me.rack.map(t => [t.id, t]));
-      const selectedRackIds = new Set(selectedItems.filter(i => i.source === 'rack').map(i => i.tile.id));
-      const canSwapToEmpty = selectedItems.length === 1 && selectedItems[0].source === 'rack';
-
-      const totalDisplaySlots = Math.max(RACK_CAPACITY, rackSlots.length);
-      const row1End = Math.ceil(totalDisplaySlots / 2);
-
-      const rackContainerWidth = (row1El.parentElement?.clientWidth || window.innerWidth) - 24;
-      const perRowSlots = row1End;
-      const isDesktop = window.innerWidth >= 640;
-      const defaultW = isDesktop ? 43 : 35;
-      const defaultH = isDesktop ? 58 : 48;
-      const gapPx = isDesktop ? 6 : 4;
-      const availableSlotW = Math.floor((rackContainerWidth - gapPx * (perRowSlots - 1)) / perRowSlots);
-      const customTileW = availableSlotW < defaultW ? Math.max(24, availableSlotW) : null;
-      const customTileH = customTileW ? Math.round(customTileW * (defaultH / defaultW)) : null;
-
-      const buildRowSlotsHTML = (startIdx, endIdx) => {
-        let html = '';
-        for (let idx = startIdx; idx < endIdx; idx++) {
-          if (idx > startIdx && rackGroupDividerBeforeIndices.has(idx)) {
-            html += `<div class="w-1 h-7 sm:h-9 rounded-full bg-amber-300/75 mx-0.5 shrink-0 shadow" title="可出牌組分隔"></div>`;
-          }
-          const tileId = rackSlots[idx];
-          const tile = tileId ? handMap.get(tileId) : null;
-          if (tile) {
-            const isSel = selectedRackIds.has(tile.id);
-            const isReadyMeldTile = rackReadyHighlightIds.has(tile.id);
-            let tileHtml = renderTileHTML(tile, 'rack-tile', isSel, `toggleSelectRackTile('${tile.id}')`, null, isReadyMeldTile);
-            if (customTileW && customTileH) {
-              const fontSingle = Math.max(19, Math.round(customTileW * 0.78));
-              const fontDouble = Math.max(16, Math.round(customTileW * 0.66));
-              const fontSize = tile.isJoker ? fontSingle : (tile.number >= 10 ? fontDouble : fontSingle);
-              tileHtml = tileHtml.replace(
-                'class="rummi-tile',
-                `style="width:${customTileW}px;height:${customTileH}px;" class="rummi-tile`
-              ).replace(
-                'class="tile-digit"',
-                `style="font-size:${fontSize}px;" class="tile-digit"`
-              );
-            }
-            html += tileHtml;
-          } else {
-            const sizeClass = customTileW ? '' : 'w-[35px] h-[48px] sm:w-[43px] sm:h-[58px]';
-            const sizeStyle = customTileW ? `style="width:${customTileW}px;height:${customTileH}px;"` : '';
-            html += `
-              <div onclick="handleRackSlotClick(${idx})" ${sizeStyle}
-                class="rack-slot-empty ${sizeClass} shrink-0 flex items-center justify-center ${canSwapToEmpty ? 'cursor-pointer ring-1 ring-amber-400/50' : ''}"
-                title="${canSwapToEmpty ? '點擊將選取的手牌移到此空位' : `牌架空位 #${idx + 1}`}">
-              </div>
-            `;
-          }
-        }
-        return html;
-      };
-
-      row1El.innerHTML = buildRowSlotsHTML(0, row1End);
-      row2El.innerHTML = buildRowSlotsHTML(row1End, totalDisplaySlots);
-    }
-
-    function renderTileHTML(tile, sizeClass, isSelected, onClickStr, customFit = null, isReadyMeld = false) {
-      const displayColor = tile.isJoker ? (tile.assignedColor || tile.color) : tile.color;
-      const colorClass = `tile-${displayColor}`;
-      const selectedClass = isSelected ? 'selected' : '';
-      const fromTableClass = tile.fromTable ? 'from-table' : '';
-      const readyMeldClass = (!isSelected && isReadyMeld) ? 'in-ready-meld' : '';
-      const isTwoDigits = !tile.isJoker && tile.number >= 10;
-      const digitTypeClass = tile.isJoker ? 'joker-tile' : (isTwoDigits ? 'two-digits' : '');
-
-      let inlineTileStyle = '';
-      let inlineDigitStyle = '';
-      if (customFit) {
-        inlineTileStyle = `style="width:${customFit.tileW}px;height:${customFit.tileH}px;"`;
-        const fSize = tile.isJoker ? customFit.fontJoker : (isTwoDigits ? customFit.fontDouble : customFit.fontSingle);
-        inlineDigitStyle = `style="font-size:${fSize}px;"`;
-      }
-
-      const mainText = tile.isJoker ? '☺' : tile.number;
-      const jokerSubBadge = (tile.isJoker && tile.assignedNumber)
-        ? `<span class="absolute top-0.5 right-0.5 text-[9px] font-black leading-none opacity-85">${tile.assignedNumber}</span>`
-        : '';
-      const readyDotBadge = (!isSelected && isReadyMeld && !tile.isJoker)
-        ? `<span class="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-emerald-500"></span>`
-        : '';
-
-      return `
-        <div onclick="${onClickStr}" ${inlineTileStyle} class="rummi-tile ${sizeClass} ${digitTypeClass} ${colorClass} ${selectedClass} ${fromTableClass} ${readyMeldClass} shrink-0">
-          ${jokerSubBadge}
-          ${readyDotBadge}
-          <span class="tile-digit" ${inlineDigitStyle}>${mainText}</span>
-        </div>
-      `;
-    }
-
-    function updateSelectionToolbar() {
-      const toolbar = document.getElementById('selection-toolbar');
-      if (selectedItems.length === 0) {
-        toolbar.classList.add('hidden');
-        return;
-      }
-
-      toolbar.classList.remove('hidden');
-      document.getElementById('selected-count-badge').textContent = selectedItems.length;
-
-      const hasTableTiles = selectedItems.some(i => i.source === 'table');
-      document.getElementById('btn-return-table-tiles').classList.toggle('hidden', !hasTableTiles);
-
-      const tiles = selectedItems.map(i => i.tile);
-      const check = validateMeld(tiles);
-      const valText = document.getElementById('selection-validation-text');
-      if (check.valid) {
-        valText.textContent = `✓ ${check.points}分`;
-        valText.className = 'font-bold text-emerald-300 truncate';
-      } else {
-        valText.textContent = selectedItems.length < 3 ? '選滿3張或點牌組+' : '可點牌組+併入';
-        valText.className = 'font-bold text-amber-200 truncate';
-      }
-    }
-
-    function updateTurnButtons() {
-      const myTurn = isMyTurn() && !isProcessingTurn;
-      document.getElementById('btn-reset-turn').disabled = !myTurn;
-      document.getElementById('btn-draw-tile').disabled = !myTurn;
-      document.getElementById('btn-end-turn').disabled = !myTurn;
+      listEl.scrollTop = listEl.scrollHeight;
     }
 
     // =========================================================
-    // 12. MODALS & TOAST NOTIFICATIONS
+    // 12. MODALS, FULLSCREEN & TOAST NOTIFICATIONS
     // =========================================================
+    let iosPseudoFullscreen = false;
+
+    function isFullscreenActive() {
+      return Boolean(
+        document.fullscreenElement ||
+        document.webkitFullscreenElement ||
+        iosPseudoFullscreen
+      );
+    }
+
+    function updateFullscreenButtonUI() {
+      const active = isFullscreenActive();
+      document.body.classList.toggle('is-fullscreen-mode', active);
+      const viewportFactor = Math.min(1.22, Math.max(0.95, Math.min(window.innerWidth / 390, window.innerHeight / 780) * 1.08));
+      const scaleVal = active ? viewportFactor.toFixed(3) : '1';
+      document.body.style.setProperty('--ui-scale', scaleVal);
+      const iconEl = document.getElementById('fullscreen-icon');
+      const labelEl = document.getElementById('fullscreen-label');
+      if (iconEl) iconEl.textContent = active ? '🗗' : '⛶';
+      if (labelEl) labelEl.textContent = active ? '退出全螢幕' : '全螢幕';
+      if (gameState.status === 'playing') {
+        requestAnimationFrame(() => {
+          renderTableMelds();
+          renderRack();
+        });
+      }
+    }
+
+    async function toggleFullScreen() {
+      SoundFX.click();
+      try {
+        if (!isFullscreenActive()) {
+          const rootEl = document.documentElement;
+          if (rootEl.requestFullscreen) {
+            await rootEl.requestFullscreen();
+          } else if (rootEl.webkitRequestFullscreen) {
+            rootEl.webkitRequestFullscreen();
+          } else {
+            iosPseudoFullscreen = true;
+            document.body.classList.add('ios-pseudo-fullscreen');
+          }
+        } else {
+          if (document.exitFullscreen) {
+            await document.exitFullscreen();
+          } else if (document.webkitExitFullscreen) {
+            document.webkitExitFullscreen();
+          }
+          iosPseudoFullscreen = false;
+          document.body.classList.remove('ios-pseudo-fullscreen');
+        }
+      } catch (e) {
+        iosPseudoFullscreen = !iosPseudoFullscreen;
+        document.body.classList.toggle('ios-pseudo-fullscreen', iosPseudoFullscreen);
+      }
+      updateFullscreenButtonUI();
+    }
+
+    document.addEventListener('fullscreenchange', updateFullscreenButtonUI);
+    document.addEventListener('webkitfullscreenchange', updateFullscreenButtonUI);
+
     function toggleRulesModal(show) {
       document.getElementById('rules-modal').classList.toggle('hidden', !show);
     }
@@ -3569,7 +4177,6 @@
     function toggleSound() {
       const on = SoundFX.toggle();
       document.getElementById('btn-sound').textContent = on ? '🔊' : '🔇';
-      showToast(on ? '音效已開啟' : '音效已靜音', 'info');
     }
 
     function showToast(message, type = 'info') {
@@ -3587,7 +4194,7 @@
         el.style.opacity = '0';
         el.style.transition = 'opacity 0.25s ease';
         setTimeout(() => el.remove(), 260);
-      }, 2800);
+      }, 2400);
     }
 
     function escapeHtml(str) {
@@ -3600,166 +4207,300 @@
     }
 
     // =========================================================
-    // 13. FULLSCREEN, SAFE-AREA CAMERA ADAPTATION & URL INIT
+    // 12B. GAME BOARD, RACK & BUTTON RENDERERS
     // =========================================================
-    function isNativeFullscreenActive() {
-      return !!(
-        document.fullscreenElement ||
-        document.webkitFullscreenElement ||
-        document.mozFullScreenElement ||
-        document.msFullscreenElement
-      );
+    function renderAll() {
+      if (gameState.status === 'lobby') return;
+      renderPlayersBar();
+      renderDeckAndTurnBanner();
+      renderTableMelds();
+      renderRack();
+      updateSelectionToolbar();
+      updateTurnButtons();
+      updateTimerDisplay();
+      renderChatMessages();
     }
 
-    function isIOSDevice() {
-      return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    function renderPlayersBar() {
+      const bar = document.getElementById('players-bar');
+      if (!bar || !Array.isArray(gameState.players)) return;
+      const currPlayer = getCurrentPlayer();
+
+      bar.innerHTML = gameState.players.map((p) => {
+        const isActive = currPlayer && p.id === currPlayer.id && gameState.status === 'playing';
+        const isMe = p.id === myPlayerId;
+        const iceBadge = p.hasBrokenIce
+          ? `<span class="text-[9px] px-1 py-0.2 rounded bg-emerald-500/25 text-emerald-300 font-bold">破冰✓</span>`
+          : `<span class="text-[9px] px-1 py-0.2 rounded bg-amber-500/20 text-amber-300 font-bold">未破冰</span>`;
+
+        return `
+          <div data-player-id="${escapeHtml(p.id)}" class="relative flex items-center justify-between gap-1.5 px-2 py-1 rounded-xl border ${
+            isActive
+              ? 'bg-amber-500/20 border-amber-400 active-turn-ring'
+              : 'bg-emerald-900/65 border-emerald-700/70'
+          } min-w-0">
+            <div class="flex items-center gap-1 min-w-0">
+              <span class="text-xs font-black truncate ${isMe ? 'text-amber-300' : 'text-white'}">${escapeHtml(p.name)}</span>
+              ${iceBadge}
+            </div>
+            <div class="flex items-center gap-1.5 shrink-0 text-[10px] font-mono">
+              <span class="font-black text-emerald-200">${Array.isArray(p.rack) ? p.rack.length : 0}張</span>
+              <span class="text-amber-300 hidden sm:inline">🪙${normalizeChips(p.chips).toLocaleString()}</span>
+            </div>
+          </div>
+        `;
+      }).join('');
     }
 
-    function isStandalonePWA() {
-      return window.navigator.standalone === true ||
-        window.matchMedia('(display-mode: standalone)').matches ||
-        window.matchMedia('(display-mode: fullscreen)').matches;
-    }
-
-    function updateFullscreenButtonUI() {
-      const iconEl = document.getElementById('fullscreen-icon');
-      const labelEl = document.getElementById('fullscreen-label');
-      const isPseudo = document.body.classList.contains('ios-pseudo-fullscreen');
-      const isFull = isNativeFullscreenActive() || isPseudo || isStandalonePWA();
-      document.body.classList.toggle('is-fullscreen-mode', isFull);
-
-      if (!iconEl || !labelEl) return;
-      if (isFull) {
-        iconEl.textContent = '🗗';
-        labelEl.textContent = '退出全螢幕';
-      } else {
-        iconEl.textContent = '⛶';
-        labelEl.textContent = '全螢幕';
+    function renderDeckAndTurnBanner() {
+      const deckBadge = document.getElementById('deck-count-badge');
+      if (deckBadge) {
+        deckBadge.textContent = String(Array.isArray(gameState.deck) ? gameState.deck.length : 0);
       }
-      if (gameState.status === 'playing') {
-        renderTableMelds();
-        renderRack();
-      }
-    }
 
-    function toggleFullScreen() {
-      SoundFX.click();
-      const docEl = document.documentElement;
-      const isPseudo = document.body.classList.contains('ios-pseudo-fullscreen');
+      const turnTextEl = document.getElementById('floating-turn-text');
+      const icePill = document.getElementById('floating-ice-pill');
+      const iceScoreEl = document.getElementById('floating-ice-score');
+      const curr = getCurrentPlayer();
+      const me = getMyPlayer();
 
-      if (isNativeFullscreenActive() || isPseudo) {
-        if (isPseudo) {
-          document.body.classList.remove('ios-pseudo-fullscreen');
-          updateFullscreenButtonUI();
-          showToast('已退出全螢幕模式', 'info');
-          return;
+      if (turnTextEl) {
+        if (gameState.status === 'ended') {
+          turnTextEl.textContent = '本局已結束';
+        } else if (!curr) {
+          turnTextEl.textContent = '--';
+        } else if (curr.id === myPlayerId) {
+          turnTextEl.textContent = '🟢 輪到你出牌！';
+        } else {
+          turnTextEl.textContent = `⏳ ${curr.name} 思考中`;
         }
-        const exitFn = document.exitFullscreen ||
-          document.webkitExitFullscreen ||
-          document.mozCancelFullScreen ||
-          document.msExitFullscreen;
-        if (exitFn) {
-          Promise.resolve(exitFn.call(document)).catch(() => {});
-        }
-        return;
       }
 
-      if (isStandalonePWA()) {
-        showToast('目前已處於主畫面全螢幕模式！', 'info');
-        return;
-      }
-
-      const reqFn = docEl.requestFullscreen ||
-        docEl.webkitRequestFullscreen ||
-        docEl.mozRequestFullScreen ||
-        docEl.msRequestFullscreen;
-
-      if (reqFn) {
-        try {
-          const result = reqFn.call(docEl);
-          if (result && typeof result.catch === 'function') {
-            result.catch(() => {
-              enablePseudoFullscreen();
+      if (icePill && iceScoreEl && me) {
+        if (!me.hasBrokenIce && gameState.status === 'playing') {
+          icePill.classList.remove('hidden');
+          let currentPts = 0;
+          let origPts = 0;
+          (gameState.tableMelds || []).forEach(m => {
+            const v = validateMeld(m.tiles);
+            if (v.valid) currentPts += v.points;
+          });
+          if (turnSnapshot && Array.isArray(turnSnapshot.tableMelds)) {
+            turnSnapshot.tableMelds.forEach(m => {
+              const v = validateMeld(m.tiles);
+              if (v.valid) origPts += v.points;
             });
           }
-          return;
-        } catch (e) {}
+          iceScoreEl.textContent = String(Math.max(0, currentPts - origPts));
+        } else {
+          icePill.classList.add('hidden');
+        }
       }
-
-      enablePseudoFullscreen();
     }
 
-    function enablePseudoFullscreen() {
-      document.body.classList.add('ios-pseudo-fullscreen');
-      window.scrollTo(0, 1);
-      updateFullscreenButtonUI();
-      if (isIOSDevice()) {
-        showToast('已啟用全螢幕避讓模式！若要隱藏 Safari 網址列，可點下方「分享 → 加入主畫面」', 'success');
+    function computeAutoFitTableMetrics(melds) {
+      const container = document.getElementById('table-melds-container');
+      const cw = container && container.clientWidth ? container.clientWidth : window.innerWidth;
+      const ch = container && container.clientHeight ? container.clientHeight : Math.max(180, window.innerHeight * 0.45);
+      const count = Array.isArray(melds) ? melds.length : 0;
+      const fsBoost = isFullscreenActive() ? 1.12 : 1.0;
+
+      if (count === 0) {
+        const baseW = Math.round(34 * fsBoost);
+        const baseH = Math.round(46 * fsBoost);
+        return { scale: fsBoost, tileW: baseW, tileH: baseH, gap: 3 };
+      }
+
+      const totalTiles = melds.reduce((acc, m) => acc + (Array.isArray(m.tiles) ? m.tiles.length : 3), 0);
+      const estCols = Math.max(1, Math.floor(cw / (145 * fsBoost)));
+      const estRows = Math.max(1, Math.ceil(count / estCols));
+      const heightRatio = (ch - 12) / (estRows * 58 * fsBoost);
+      const widthRatio = totalTiles > 28 ? (cw * 0.96) / (totalTiles * 30 * fsBoost) : fsBoost;
+      const rawScale = Math.min(fsBoost, Math.max(0.45, Math.min(heightRatio, widthRatio)));
+
+      return {
+        scale: rawScale,
+        tileW: Math.max(24, Math.round(34 * rawScale)),
+        tileH: Math.max(33, Math.round(46 * rawScale)),
+        gap: count > 10 ? 1 : 2
+      };
+    }
+
+    function renderTileHTML(tile, source, meldId = null, customStyle = '', isReady = false) {
+      const displayColor = tile.isJoker ? (tile.assignedColor || tile.color) : tile.color;
+      const displayLabel = tile.isJoker ? '☺' : String(tile.number);
+      const isSelected = selectedItems.some(item => item.source === source && item.tile.id === tile.id);
+      const twoDigitsClass = !tile.isJoker && tile.number >= 10 ? 'two-digits' : '';
+      const jokerClass = tile.isJoker ? 'joker-tile' : '';
+      const selectedClass = isSelected ? 'selected' : '';
+      const readyClass = source === 'rack' && isReady ? 'in-ready-meld' : '';
+      const fromTableClass = source === 'table' && isTilePlayedThisTurn(tile.id) ? 'from-table' : '';
+      const sizeClass = source === 'table' ? 'table-tile' : 'rack-tile';
+      const meldAttr = meldId ? ` data-meld-id="${escapeHtml(meldId)}"` : '';
+      const styleAttr = customStyle ? ` style="${customStyle}"` : '';
+
+      return `
+        <button type="button"
+          data-tile-id="${escapeHtml(tile.id)}"
+          data-tile-source="${escapeHtml(source)}"${meldAttr}${styleAttr}
+          onpointerdown="handleTilePointerDown(event, '${source}', '${tile.id}', ${meldId ? `'${meldId}'` : 'null'})"
+          class="rummi-tile ${sizeClass} tile-${displayColor} ${twoDigitsClass} ${jokerClass} ${selectedClass} ${readyClass} ${fromTableClass}">
+          <span class="tile-digit">${escapeHtml(displayLabel)}</span>
+        </button>
+      `;
+    }
+
+    function renderTableMelds() {
+      const container = document.getElementById('table-melds-container');
+      if (!container) return;
+      const melds = Array.isArray(gameState.tableMelds) ? gameState.tableMelds : [];
+
+      if (melds.length === 0) {
+        container.innerHTML = `
+          <div class="w-full h-full flex items-center justify-center pointer-events-none">
+            <div class="text-center text-emerald-200/45 text-xs sm:text-sm font-bold px-4">
+              點選或拖移 3 張以上同花順子／同數群組上桌
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      const metrics = computeAutoFitTableMetrics(melds);
+      container.innerHTML = melds.map((meld) => {
+        const ordered = autoOrderMeldIfPossible(meld.tiles || []);
+        const check = validateMeld(ordered);
+        const statusClass = check.valid ? 'valid' : 'invalid';
+        const tileStyle = `width:${metrics.tileW}px;height:${metrics.tileH}px;`;
+        const tilesHtml = ordered.map(t => renderTileHTML(t, 'table', meld.id, tileStyle, false)).join('');
+
+        return `
+          <div data-meld-id="${escapeHtml(meld.id)}"
+            style="gap:${metrics.gap}px;margin:${metrics.gap}px;"
+            class="meld-group ${statusClass}">
+            ${tilesHtml}
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderRack() {
+      const row1 = document.getElementById('player-rack-row-1');
+      const row2 = document.getElementById('player-rack-row-2');
+      const countLabel = document.getElementById('rack-count-label');
+      const me = getMyPlayer();
+      if (!row1 || !row2 || !me) return;
+
+      const hand = Array.isArray(me.rack) ? me.rack : [];
+      if (countLabel) countLabel.textContent = `${hand.length} 張`;
+
+      syncRackSlotsWithHand(hand);
+      const handMap = new Map(hand.map(t => [t.id, t]));
+
+      const totalSlots = rackSlots.length;
+      const half = Math.ceil(totalSlots / 2);
+      const wrapper = document.getElementById('rack-rows-wrapper');
+      const availWidth = wrapper && wrapper.clientWidth ? wrapper.clientWidth - 14 : window.innerWidth - 24;
+      const perRowCount = Math.max(10, half);
+      const gapPx = 2;
+      const maxTileWByWidth = Math.floor((availWidth - (perRowCount + 1) * gapPx) / perRowCount);
+      const baseMaxTileW = window.innerWidth >= 640 ? 43 : 34;
+      const fsRatio = isFullscreenActive() ? 1.14 : 1.0;
+      const tileW = Math.max(24, Math.min(Math.round(baseMaxTileW * fsRatio), maxTileWByWidth));
+      const tileH = Math.round(tileW * 1.35);
+      const fontPx = Math.max(15, Math.round(tileW * 0.74));
+
+      const buildRowHtml = (startIdx, endIdx) => {
+        const parts = [];
+        for (let idx = startIdx; idx < endIdx; idx++) {
+          if (rackGroupDividerBeforeIndices.has(idx)) {
+            parts.push(`<div class="w-[2px] self-stretch bg-amber-400/80 rounded-full mx-0.5 shrink-0"></div>`);
+          }
+          const tid = rackSlots[idx];
+          const tile = tid ? handMap.get(tid) : null;
+          if (tile) {
+            const isReady = rackReadyHighlightIds.has(tile.id);
+            const customStyle = `width:${tileW}px;height:${tileH}px;--rack-font:${fontPx}px;`;
+            const rawHtml = renderTileHTML(tile, 'rack', null, customStyle, isReady);
+            parts.push(
+              rawHtml.replace(
+                '<span class="tile-digit">',
+                `<span class="tile-digit" style="font-size:${tile.isJoker ? Math.round(fontPx * 0.95) : (tile.number >= 10 ? Math.round(fontPx * 0.85) : fontPx)}px;">`
+              )
+            );
+          } else {
+            parts.push(
+              `<button type="button" data-rack-slot-idx="${idx}" onclick="handleRackSlotClick(${idx})"
+                style="width:${tileW}px;height:${tileH}px;"
+                class="rack-slot-empty shrink-0" aria-label="空牌位 ${idx + 1}"></button>`
+            );
+          }
+        }
+        return `<div class="flex items-center justify-center gap-[2px] w-full">${parts.join('')}</div>`;
+      };
+
+      row1.innerHTML = buildRowHtml(0, half);
+      row2.innerHTML = buildRowHtml(half, totalSlots);
+    }
+
+    function updateSelectionToolbar() {
+      const toolbar = document.getElementById('selection-toolbar');
+      const badge = document.getElementById('selected-count-badge');
+      const textEl = document.getElementById('selection-validation-text');
+      if (!toolbar || !badge || !textEl) return;
+
+      if (!isMyTurn() || selectedItems.length === 0) {
+        toolbar.classList.add('hidden');
+        return;
+      }
+
+      toolbar.classList.remove('hidden');
+      badge.textContent = String(selectedItems.length);
+      const tiles = selectedItems.map(i => i.tile);
+      const v = validateMeld(tiles);
+      if (v.valid) {
+        textEl.textContent = `合法牌組（${v.points} 分）`;
+        textEl.className = 'font-bold text-emerald-300 truncate';
       } else {
-        showToast('已啟用全螢幕避讓模式（自動避開前鏡頭）', 'success');
+        textEl.textContent = `已選 ${selectedItems.length} 張`;
+        textEl.className = 'font-bold text-amber-200 truncate';
       }
     }
 
-    document.addEventListener('fullscreenchange', updateFullscreenButtonUI);
-    document.addEventListener('webkitfullscreenchange', updateFullscreenButtonUI);
-    document.addEventListener('mozfullscreenchange', updateFullscreenButtonUI);
-    document.addEventListener('MSFullscreenChange', updateFullscreenButtonUI);
+    function updateTurnButtons() {
+      const canAct = isMyTurn() && !isProcessingTurn && gameState.status === 'playing';
+      const resetBtn = document.getElementById('btn-reset-turn');
+      const drawBtn = document.getElementById('btn-draw-tile');
+      const endBtn = document.getElementById('btn-end-turn');
+
+      if (resetBtn) resetBtn.disabled = !canAct;
+      if (drawBtn) drawBtn.disabled = !canAct;
+      if (endBtn) endBtn.disabled = !canAct;
+    }
 
     window.addEventListener('resize', () => {
-      if (gameState.status === 'playing') {
+      if (isFullscreenActive()) {
+        updateFullscreenButtonUI();
+      } else if (gameState.status === 'playing') {
         renderTableMelds();
         renderRack();
       }
     });
-    window.addEventListener('orientationchange', () => {
-      setTimeout(() => {
-        updateFullscreenButtonUI();
-        if (gameState.status === 'playing') {
-          renderTableMelds();
-          renderRack();
-        }
-      }, 220);
-    });
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', () => {
-        if (gameState.status === 'playing') {
-          renderTableMelds();
-          renderRack();
-        }
-      });
-    }
-
-    let touchStartY = 0;
-    document.addEventListener('touchstart', (e) => {
-      if (e.touches && e.touches.length === 1) {
-        touchStartY = e.touches[0].clientY;
-      }
-    }, { passive: true });
-
-    document.addEventListener('touchmove', (e) => {
-      if (!e.touches || e.touches.length !== 1) return;
-      const currentY = e.touches[0].clientY;
-      const isPullingDown = currentY > touchStartY + 6;
-      const isInsideScrollableModal = e.target.closest('#rules-modal .overflow-y-auto, #players-bar, #waiting-players-list');
-
-      if (!isInsideScrollableModal) {
-        if (document.body.classList.contains('active-game-mode') || isPullingDown) {
-          e.preventDefault();
-        }
-      }
-    }, { passive: false });
 
     window.addEventListener('DOMContentLoaded', () => {
       initDeviceProfileUI();
       updateFullscreenButtonUI();
-      const params = new URLSearchParams(window.location.search);
-      const roomParam = params.get('room');
-      if (roomParam) {
-        switchLobbyTab('online');
-        document.getElementById('room-code-input').value = roomParam.toUpperCase();
-        showToast(`偵測到邀請房號 ${roomParam.toUpperCase()}，輸入暱稱後按「加入」！`, 'info');
-      }
+      renderChatMessages();
+
+      try {
+        const params = new URLSearchParams(window.location.search || '');
+        const roomParam = (params.get('room') || '').trim().toUpperCase();
+        if (roomParam) {
+          switchLobbyTab('online');
+          const roomInput = document.getElementById('room-code-input');
+          if (roomInput) roomInput.value = roomParam;
+        }
+      } catch (e) {}
     });
   </script>
 </body>
