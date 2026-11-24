@@ -960,11 +960,6 @@
     <main id="table-area" class="flex-1 min-h-0 overflow-hidden p-2 sm:p-3 relative"
       ondragover="handleTableDragOver(event)" ondrop="handleDropNewSet(event)">
 
-      <!-- Floating Translucent Pool & Countdown HUD (Top-Right of Table, Non-Blocking) -->
-      <div id="floating-table-hud" class="absolute top-2 right-2.5 z-20 flex items-center gap-1.5 pointer-events-none select-none">
-        <div class="bg-emerald-950/65 backdrop-blur-md border border-emerald-400/25 px-2.5 py-1 rounded-xl flex items-center gap-1 shadow-lg" title="牌庫剩餘張數">
-          <span class="text-[11px] text-emerald-200/85 font-bold">牌庫</span>
-          <span class="text-xs">🀄</span>
       <!-- Floating Translucent Turn Status Pill (Top-Left of Table, Non-Blocking) -->
       <div id="floating-turn-pill" class="absolute top-2 left-2.5 z-20 flex items-center gap-1.5 pointer-events-none select-none">
         <span id="turn-indicator-badge" class="px-2.5 py-1 rounded-xl text-xs font-black bg-amber-400/95 text-emerald-950 shadow-lg backdrop-blur-md">
@@ -985,6 +980,22 @@
         <div id="timer-badge" class="bg-emerald-950/65 backdrop-blur-md border border-emerald-400/25 px-2.5 py-1 rounded-xl flex items-center gap-1 font-mono font-bold text-xs sm:text-sm text-emerald-100 shadow-lg">
           <span>⏱</span>
           <span id="timer-text">90s</span>
+        </div>
+      </div>
+
+      <!-- Auto-Fit Melds Container (Strictly Fits Inside Fixed Table Bounds) -->
+      <div id="table-melds-wrapper" class="pt-7" onclick="if (selectedTiles.length > 0 && isMyTurn()) playSelectedTilesToNewSet()">
+        <div id="table-melds-container" class="max-w-6xl mx-auto"></div>
+      </div>
+
+      <!-- Create New Meld Drop / Tap Zone -->
+      <div id="new-meld-zone" onclick="playSelectedTilesToNewSet()"
+        ondragover="event.preventDefault(); this.classList.add('highlight-drop')"
+        ondragleave="this.classList.remove('highlight-drop')"
+        ondrop="this.classList.remove('highlight-drop'); handleDropNewSet(event)"
+        class="w-full max-w-md mx-auto mt-1 py-1.5 sm:py-2 px-4 border-2 border-dashed border-emerald-400/45 hover:border-amber-400/90 bg-emerald-950/40 hover:bg-emerald-900/55 rounded-xl text-center cursor-pointer transition shrink-0">
+        <div class="text-emerald-100 text-[11px] sm:text-xs font-bold truncate">
+          ➕ 點選牌張後，點擊牌桌任意空白處或此區即可出牌成組
         </div>
       </div>
 
@@ -3531,8 +3542,9 @@
       if (gameState.tableMelds.length === 0) {
         container.style.gap = '8px';
         container.innerHTML = `
-          <div class="w-full text-center py-2 text-emerald-200/60 text-xs sm:text-sm">
-            牌桌目前空空如也，點選 3 張以上手牌（滿 30 分）即可破冰出牌！
+          <div onclick="if (selectedTiles.length > 0 && isMyTurn()) playSelectedTilesToNewSet()"
+            class="w-full max-w-md mx-auto text-center py-4 px-4 rounded-2xl border border-dashed border-emerald-400/30 bg-emerald-950/25 text-emerald-200/80 text-xs sm:text-sm cursor-pointer hover:border-amber-400/70 transition">
+            牌桌目前無牌組，在下方牌架點選 3 張以上手牌（滿 30 分）後，直接點擊牌桌即可出牌！
           </div>
         `;
         return;
