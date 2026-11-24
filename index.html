@@ -54,8 +54,8 @@
 
     html {
       height: 100%;
-      overflow-x: hidden;
-      overscroll-behavior-y: none;
+      overflow: hidden;
+      overscroll-behavior: none;
     }
 
     body {
@@ -64,20 +64,14 @@
       user-select: none;
       -webkit-user-select: none;
       -webkit-touch-callout: none;
-      overscroll-behavior-y: none;
-      overflow-x: hidden;
-      min-height: 100dvh;
-      margin: 0;
-      padding: 0;
-    }
-
-    body.active-game-mode {
+      overscroll-behavior: none;
       position: fixed;
       inset: 0;
       width: 100vw;
       height: 100dvh;
       overflow: hidden;
-      overscroll-behavior: none;
+      margin: 0;
+      padding: 0;
       touch-action: manipulation;
     }
 
@@ -277,20 +271,6 @@
     }
 
     /* Fullscreen & Safe-Area Notch / Punch-Hole Camera Adaptation */
-    #app-container {
-      padding-top: var(--safe-top);
-      padding-bottom: var(--safe-bottom);
-      padding-left: var(--safe-left);
-      padding-right: var(--safe-right);
-    }
-
-    body.active-game-mode #app-container {
-      height: 100dvh;
-      max-height: 100dvh;
-      overflow: hidden;
-      padding: 0;
-    }
-
     body.active-game-mode #top-bar {
       padding-top: calc(var(--effective-safe-top) + 4px);
       padding-left: calc(var(--effective-safe-left) + 8px);
@@ -334,11 +314,11 @@
 
     /* Animations */
     @keyframes popIn {
-      0% { transform: scale(0.82); opacity: 0; }
+      0% { transform: scale(0.86); opacity: 0; }
       100% { transform: scale(1); opacity: 1; }
     }
     .animate-pop {
-      animation: popIn 0.22s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards;
+      animation: popIn 0.2s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards;
     }
 
     @keyframes pulseBorder {
@@ -350,8 +330,8 @@
     }
 
     ::-webkit-scrollbar {
-      width: 5px;
-      height: 5px;
+      width: 4px;
+      height: 4px;
     }
     ::-webkit-scrollbar-track {
       background: rgba(0, 0, 0, 0.2);
@@ -362,165 +342,163 @@
       border-radius: 4px;
     }
 
-    /* Lobby Responsive Portrait & Compact Screen Adaptation */
+    /* Single-Screen Zero-Scroll Lobby Layout */
     #lobby-view {
       width: 100%;
-      padding-top: max(12px, env(safe-area-inset-top, 12px));
-      padding-bottom: max(16px, env(safe-area-inset-bottom, 16px));
-      padding-left: max(12px, env(safe-area-inset-left, 12px));
-      padding-right: max(12px, env(safe-area-inset-right, 12px));
+      height: 100dvh;
+      max-height: 100dvh;
+      overflow: hidden;
+      padding-top: max(6px, env(safe-area-inset-top, 6px));
+      padding-bottom: max(6px, env(safe-area-inset-bottom, 6px));
+      padding-left: max(10px, env(safe-area-inset-left, 10px));
+      padding-right: max(10px, env(safe-area-inset-right, 10px));
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
     }
 
     .lobby-card {
       width: 100%;
-      max-width: min(460px, 94vw);
+      max-width: min(460px, 95vw);
+      max-height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
     }
 
     .lobby-demo-tile {
-      width: 34px;
-      height: 46px;
-      border-radius: 6px;
-      border-bottom-width: 3px;
+      width: 26px;
+      height: 34px;
+      border-radius: 5px;
+      border-bottom-width: 2.5px;
     }
     .lobby-demo-tile .tile-digit {
-      font-size: 25px;
+      font-size: 19px;
     }
     .lobby-demo-tile.two-digits .tile-digit {
-      font-size: 21px;
+      font-size: 16px;
     }
     .lobby-demo-tile.joker-tile .tile-digit {
-      font-size: 24px;
+      font-size: 18px;
     }
 
-    @media (min-width: 640px) {
+    @media (min-width: 640px) and (min-height: 700px) {
       .lobby-card {
-        max-width: 510px;
+        max-width: 500px;
       }
       .lobby-demo-tile {
-        width: 40px;
-        height: 54px;
-        border-radius: 7px;
+        width: 34px;
+        height: 46px;
+        border-radius: 6px;
       }
       .lobby-demo-tile .tile-digit {
-        font-size: 31px;
-      }
-      .lobby-demo-tile.two-digits .tile-digit {
         font-size: 26px;
       }
       .lobby-demo-tile.joker-tile .tile-digit {
-        font-size: 29px;
-      }
-    }
-
-    @media (max-height: 700px) {
-      #lobby-view {
-        justify-content: flex-start;
-        padding-top: max(10px, env(safe-area-inset-top, 10px));
-        padding-bottom: max(12px, env(safe-area-inset-bottom, 12px));
-      }
-      .lobby-demo-tile {
-        width: 30px;
-        height: 40px;
-      }
-      .lobby-demo-tile .tile-digit {
-        font-size: 22px;
-      }
-      .lobby-demo-tile.two-digits .tile-digit {
-        font-size: 18px;
+        font-size: 25px;
       }
     }
   </style>
 </head>
-<body class="text-white min-h-screen flex flex-col justify-between overflow-x-hidden">
+<body class="text-white overflow-hidden">
 
   <!-- Toast Notification Container -->
-  <div id="toast-container" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-2 pointer-events-none w-11/12 max-w-md"></div>
+  <div id="toast-container" class="fixed top-3 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-1.5 pointer-events-none w-11/12 max-w-md"></div>
 
   <!-- =========================================================
-       VIEW 1: LOBBY / HOME SCREEN
+       VIEW 1: LOBBY / HOME SCREEN (SINGLE-VIEW FIT, NO SCROLL)
   ========================================================= -->
-  <div id="lobby-view" class="flex-1 flex flex-col items-center justify-center min-h-[100dvh] box-border">
-    <div class="lobby-card bg-emerald-950/85 backdrop-blur-md border border-emerald-700/50 rounded-3xl p-4 sm:p-7 shadow-2xl animate-pop">
-      <!-- Logo & Title -->
-      <div class="text-center mb-3.5 sm:mb-5">
-        <div class="inline-flex items-center justify-center gap-1.5 sm:gap-2 mb-2">
-          <div class="rummi-tile lobby-demo-tile tile-red"><span class="tile-digit">7</span></div>
-          <div class="rummi-tile lobby-demo-tile tile-blue"><span class="tile-digit">8</span></div>
-          <div class="rummi-tile lobby-demo-tile tile-orange"><span class="tile-digit">9</span></div>
-          <div class="rummi-tile lobby-demo-tile tile-black joker-tile"><span class="tile-digit">☺</span></div>
+  <div id="lobby-view">
+    <div class="lobby-card bg-emerald-950/90 backdrop-blur-md border border-emerald-700/50 rounded-2xl sm:rounded-3xl p-3 sm:p-5 shadow-2xl animate-pop">
+      <!-- Compact Header: Logo + Title Inline on Mobile -->
+      <div class="flex items-center justify-between gap-2 mb-2 sm:mb-3 pb-2 border-b border-emerald-800/60">
+        <div class="flex items-center gap-2 min-w-0">
+          <div class="inline-flex items-center gap-1 shrink-0">
+            <div class="rummi-tile lobby-demo-tile tile-red"><span class="tile-digit">7</span></div>
+            <div class="rummi-tile lobby-demo-tile tile-blue"><span class="tile-digit">8</span></div>
+            <div class="rummi-tile lobby-demo-tile tile-orange"><span class="tile-digit">9</span></div>
+            <div class="rummi-tile lobby-demo-tile tile-black joker-tile"><span class="tile-digit">☺</span></div>
+          </div>
+          <div class="min-w-0">
+            <h1 class="text-lg sm:text-2xl font-black tracking-tight text-amber-300 leading-tight truncate">線上拉密對戰</h1>
+            <p class="text-emerald-300/80 text-[10px] sm:text-xs truncate">Rummikub · 單機AI與好友連線</p>
+          </div>
         </div>
-        <h1 class="text-2xl sm:text-4xl font-black tracking-tight text-amber-300 drop-shadow leading-tight">線上拉密對戰</h1>
-        <p class="text-emerald-200/80 text-xs sm:text-sm mt-0.5">Rummikub Online · 支援單機 AI 與好友連線</p>
+        <button onclick="toggleRulesModal(true)" class="px-2 py-1.5 rounded-xl bg-emerald-900/90 hover:bg-emerald-800 border border-emerald-700/70 text-[11px] font-bold text-amber-200 shrink-0 cursor-pointer">
+          📖 規則
+        </button>
       </div>
 
-      <!-- Player Nickname & Persistent Device ID -->
-      <div class="mb-3.5 sm:mb-4 bg-emerald-900/55 border border-emerald-700/60 rounded-2xl p-2.5 sm:p-3">
-        <div class="flex items-center justify-between gap-2 mb-2">
-          <div class="flex items-center gap-1.5 min-w-0 flex-wrap">
-            <span class="text-[11px] sm:text-xs font-bold text-emerald-300 shrink-0">📱 手機專屬 ID：</span>
-            <code id="lobby-device-id" class="text-[11px] sm:text-xs font-mono font-bold bg-black/35 text-amber-300 px-2 py-0.5 rounded-lg border border-amber-400/30 select-all truncate">DEV-LOADING</code>
-            <span class="inline-flex items-center gap-1 text-[11px] sm:text-xs font-black bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-lg border border-amber-400/40 shrink-0" title="初始1000元，每場入場100元，最低保底100元">
-              🪙 <span id="lobby-chip-balance">1,000</span> 元
+      <!-- Player Nickname, Device ID & Chips Card (Compact) -->
+      <div class="mb-2 sm:mb-3 bg-emerald-900/55 border border-emerald-700/60 rounded-xl sm:rounded-2xl p-2 sm:p-2.5">
+        <div class="flex items-center justify-between gap-1.5 mb-1.5">
+          <div class="flex items-center gap-1 min-w-0 flex-wrap">
+            <span class="text-[10px] sm:text-xs font-bold text-emerald-300 shrink-0">📱 ID:</span>
+            <code id="lobby-device-id" class="text-[10px] sm:text-xs font-mono font-bold bg-black/35 text-amber-300 px-1.5 py-0.5 rounded border border-amber-400/30 select-all truncate">DEV-LOADING</code>
+            <span class="inline-flex items-center gap-0.5 text-[10px] sm:text-xs font-black bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded border border-amber-400/40 shrink-0">
+              🪙 <span id="lobby-chip-balance">1,000</span>元
             </span>
           </div>
           <div class="flex items-center gap-1 shrink-0">
-            <button type="button" onclick="copyDeviceId()" class="text-[11px] bg-emerald-800 hover:bg-emerald-700 active:scale-95 text-emerald-100 px-2 py-1 rounded-lg border border-emerald-600/60 transition cursor-pointer">
+            <button type="button" onclick="copyDeviceId()" class="text-[10px] bg-emerald-800 hover:bg-emerald-700 text-emerald-100 px-1.5 py-0.5 rounded border border-emerald-600/60 cursor-pointer">
               📋 複製
             </button>
-            <button type="button" onclick="toggleDeviceIdEditor()" class="text-[11px] bg-emerald-800/80 hover:bg-emerald-700 active:scale-95 text-amber-200 px-2 py-1 rounded-lg border border-emerald-600/60 transition cursor-pointer">
-              ✏️ 綁定舊ID
+            <button type="button" onclick="toggleDeviceIdEditor()" class="text-[10px] bg-emerald-800/80 hover:bg-emerald-700 text-amber-200 px-1.5 py-0.5 rounded border border-emerald-600/60 cursor-pointer">
+              ✏️ 綁定
             </button>
           </div>
         </div>
-        <div id="device-id-editor" class="hidden mb-2 p-2 bg-black/30 rounded-xl border border-emerald-700/60 flex items-center gap-1.5">
-          <input id="custom-device-id-input" type="text" maxlength="16" placeholder="輸入舊手機 ID (例如 DEV-XXXX-XXXX)"
-            class="flex-1 min-w-0 bg-emerald-950/90 border border-emerald-600 rounded-lg px-2.5 py-1.5 text-xs font-mono text-white placeholder-emerald-500 focus:outline-none focus:border-amber-400 uppercase" />
-          <button type="button" onclick="applyCustomDeviceId()" class="bg-amber-500 hover:bg-amber-400 text-emerald-950 font-black text-xs px-2.5 py-1.5 rounded-lg shrink-0 cursor-pointer">
+        <div id="device-id-editor" class="hidden mb-1.5 p-1.5 bg-black/30 rounded-lg border border-emerald-700/60 flex items-center gap-1.5">
+          <input id="custom-device-id-input" type="text" maxlength="16" placeholder="輸入舊手機 ID (如 DEV-XXXX-XXXX)"
+            class="flex-1 min-w-0 bg-emerald-950/90 border border-emerald-600 rounded px-2 py-1 text-xs font-mono text-white placeholder-emerald-500 focus:outline-none focus:border-amber-400 uppercase" />
+          <button type="button" onclick="applyCustomDeviceId()" class="bg-amber-500 hover:bg-amber-400 text-emerald-950 font-black text-xs px-2 py-1 rounded shrink-0 cursor-pointer">
             套用
           </button>
         </div>
         <div class="flex items-center gap-2">
-          <label for="player-name-input" class="text-xs sm:text-sm font-bold text-emerald-200 shrink-0">玩家暱稱</label>
+          <label for="player-name-input" class="text-xs font-bold text-emerald-200 shrink-0">玩家暱稱</label>
           <input id="player-name-input" type="text" maxlength="12" placeholder="輸入暱稱（自動記憶）"
-            class="flex-1 min-w-0 bg-emerald-950/80 border border-emerald-600 rounded-xl px-3 py-2 text-sm sm:text-base text-white placeholder-emerald-400/50 focus:outline-none focus:border-amber-400 transition" />
+            class="flex-1 min-w-0 bg-emerald-950/80 border border-emerald-600 rounded-lg px-2.5 py-1.5 text-xs sm:text-sm text-white placeholder-emerald-400/50 focus:outline-none focus:border-amber-400 transition" />
         </div>
-        <div class="mt-2 pt-1.5 border-t border-emerald-700/40 flex items-center justify-between text-[11px] text-emerald-200/85">
-          <span>🎫 入場費：<strong class="text-amber-300">100元</strong>（保底100元可無限玩）</span>
+        <div class="mt-1.5 pt-1 border-t border-emerald-700/40 flex items-center justify-between text-[10px] text-emerald-200/85">
+          <span>🎫 入場：<strong class="text-amber-300">100元</strong>（保底100元）</span>
           <span>🏆 獎金：<strong class="text-emerald-300">200 / 100 / 60 / 40</strong></span>
         </div>
       </div>
 
       <!-- Mode Tabs -->
-      <div class="grid grid-cols-2 gap-1.5 bg-emerald-900/60 p-1 rounded-2xl mb-3.5 sm:mb-4">
-        <button id="tab-solo" onclick="switchLobbyTab('solo')" class="py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm bg-amber-500 text-emerald-950 shadow transition cursor-pointer">
+      <div class="grid grid-cols-2 gap-1.5 bg-emerald-900/60 p-1 rounded-xl mb-2 sm:mb-3">
+        <button id="tab-solo" onclick="switchLobbyTab('solo')" class="py-1.5 sm:py-2 rounded-lg font-bold text-xs sm:text-sm bg-amber-500 text-emerald-950 shadow transition cursor-pointer">
           🤖 單機 AI 練習
         </button>
-        <button id="tab-online" onclick="switchLobbyTab('online')" class="py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm text-emerald-200 hover:text-white transition cursor-pointer">
+        <button id="tab-online" onclick="switchLobbyTab('online')" class="py-1.5 sm:py-2 rounded-lg font-bold text-xs sm:text-sm text-emerald-200 hover:text-white transition cursor-pointer">
           🌐 線上好友對戰
         </button>
       </div>
 
       <!-- Solo AI Panel -->
-      <div id="panel-solo" class="space-y-3 sm:space-y-4">
-        <div class="bg-emerald-900/45 border border-emerald-700/50 rounded-2xl p-3 sm:p-4 space-y-2.5 sm:space-y-3">
-          <div class="flex items-center justify-between gap-3">
-            <label class="text-xs sm:text-sm text-emerald-200 font-bold shrink-0">AI 對手人數</label>
-            <select id="ai-count-select" class="w-40 sm:w-44 bg-emerald-950 border border-emerald-600 rounded-xl px-2.5 py-1.5 sm:py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-amber-400">
+      <div id="panel-solo" class="space-y-2 sm:space-y-3">
+        <div class="bg-emerald-900/45 border border-emerald-700/50 rounded-xl sm:rounded-2xl p-2.5 sm:p-3 space-y-2">
+          <div class="flex items-center justify-between gap-2">
+            <label class="text-xs text-emerald-200 font-bold shrink-0">AI 對手人數</label>
+            <select id="ai-count-select" class="w-40 sm:w-44 bg-emerald-950 border border-emerald-600 rounded-lg px-2 py-1 text-xs text-white focus:outline-none focus:border-amber-400">
               <option value="1">1 位 AI (2人對決)</option>
               <option value="2">2 位 AI (3人混戰)</option>
               <option value="3" selected>3 位 AI (4人標準)</option>
             </select>
           </div>
-          <div class="flex items-center justify-between gap-3">
-            <label class="text-xs sm:text-sm text-emerald-200 font-bold shrink-0">AI 智慧難度</label>
-            <select id="ai-level-select" class="w-40 sm:w-44 bg-emerald-950 border border-emerald-600 rounded-xl px-2.5 py-1.5 sm:py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-amber-400">
+          <div class="flex items-center justify-between gap-2">
+            <label class="text-xs text-emerald-200 font-bold shrink-0">AI 智慧難度</label>
+            <select id="ai-level-select" class="w-40 sm:w-44 bg-emerald-950 border border-emerald-600 rounded-lg px-2 py-1 text-xs text-white focus:outline-none focus:border-amber-400">
               <option value="normal">標準 (休閒娛樂)</option>
               <option value="hard" selected>精通 (積極破冰與拆組)</option>
             </select>
           </div>
-          <div class="flex items-center justify-between gap-3">
-            <label class="text-xs sm:text-sm text-emerald-200 font-bold shrink-0">每回合思考時間</label>
-            <select id="turn-time-select" class="w-40 sm:w-44 bg-emerald-950 border border-emerald-600 rounded-xl px-2.5 py-1.5 sm:py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-amber-400">
+          <div class="flex items-center justify-between gap-2">
+            <label class="text-xs text-emerald-200 font-bold shrink-0">每回合思考時間</label>
+            <select id="turn-time-select" class="w-40 sm:w-44 bg-emerald-950 border border-emerald-600 rounded-lg px-2 py-1 text-xs text-white focus:outline-none focus:border-amber-400">
               <option value="60">60 秒</option>
               <option value="90" selected>90 秒 (標準)</option>
               <option value="120">120 秒</option>
@@ -529,76 +507,92 @@
           </div>
         </div>
 
-        <button onclick="startSoloGame()" class="w-full py-3 sm:py-3.5 rounded-2xl font-black text-base sm:text-lg bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-emerald-950 shadow-lg shadow-amber-500/30 active:scale-[0.98] transition cursor-pointer">
+        <button onclick="startSoloGame()" class="w-full py-2.5 sm:py-3 rounded-xl sm:rounded-2xl font-black text-sm sm:text-base bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-emerald-950 shadow-lg shadow-amber-500/30 active:scale-[0.98] transition cursor-pointer">
           🚀 立即開始單機對戰
         </button>
       </div>
 
       <!-- Online Multiplayer Panel -->
-      <div id="panel-online" class="hidden space-y-3 sm:space-y-4">
-        <!-- Create Room -->
-        <div class="bg-emerald-900/45 border border-emerald-700/50 rounded-2xl p-3 sm:p-4">
-          <div class="flex items-center justify-between mb-2">
-            <h3 class="font-bold text-amber-300 text-xs sm:text-sm">建立新房間（當房主）</h3>
-            <span class="text-[11px] text-emerald-300/80">最多 4 人同樂</span>
+      <div id="panel-online" class="hidden space-y-2 sm:space-y-2.5">
+        <!-- Create Room (Hidden once waiting room opens to keep single screen compact) -->
+        <div id="create-room-card" class="bg-emerald-900/45 border border-emerald-700/50 rounded-xl p-2.5">
+          <div class="flex items-center justify-between mb-1.5">
+            <h3 class="font-bold text-amber-300 text-xs">建立新房間（當房主）</h3>
+            <span class="text-[10px] text-emerald-300/80">最多 4 人同樂</span>
           </div>
-          <button id="btn-create-room" onclick="createOnlineRoom()" class="w-full py-2.5 sm:py-3 rounded-xl font-bold text-sm sm:text-base bg-emerald-600 hover:bg-emerald-500 text-white shadow transition active:scale-[0.98] cursor-pointer">
+          <button id="btn-create-room" onclick="createOnlineRoom()" class="w-full py-2 rounded-lg font-bold text-xs sm:text-sm bg-emerald-600 hover:bg-emerald-500 text-white shadow transition active:scale-[0.98] cursor-pointer">
             ➕ 建立房間並取得房號
           </button>
         </div>
 
-        <!-- Join Room -->
-        <div class="bg-emerald-900/45 border border-emerald-700/50 rounded-2xl p-3 sm:p-4">
-          <h3 class="font-bold text-amber-300 text-xs sm:text-sm mb-2">輸入房號加入好友房間</h3>
+        <!-- Join Room (Hidden once waiting room opens to keep single screen compact) -->
+        <div id="join-room-card" class="bg-emerald-900/45 border border-emerald-700/50 rounded-xl p-2.5">
+          <h3 class="font-bold text-amber-300 text-xs mb-1.5">輸入房號加入好友房間</h3>
           <div class="flex gap-2">
             <input id="room-code-input" type="text" maxlength="6" placeholder="輸入6碼房號"
-              class="flex-1 min-w-0 uppercase tracking-widest text-center font-mono font-bold bg-emerald-950 border border-emerald-600 rounded-xl px-3 py-2 sm:py-2.5 text-sm sm:text-base text-white placeholder-emerald-400/50 focus:outline-none focus:border-amber-400" />
-            <button id="btn-join-room" onclick="joinOnlineRoom()" class="px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl font-bold text-sm sm:text-base bg-amber-500 hover:bg-amber-400 text-emerald-950 shadow transition active:scale-[0.98] shrink-0 cursor-pointer">
+              class="flex-1 min-w-0 uppercase tracking-widest text-center font-mono font-bold bg-emerald-950 border border-emerald-600 rounded-lg px-2.5 py-1.5 text-sm text-white placeholder-emerald-400/50 focus:outline-none focus:border-amber-400" />
+            <button id="btn-join-room" onclick="joinOnlineRoom()" class="px-4 py-1.5 rounded-lg font-bold text-xs sm:text-sm bg-amber-500 hover:bg-amber-400 text-emerald-950 shadow transition active:scale-[0.98] shrink-0 cursor-pointer">
               加入
             </button>
           </div>
         </div>
 
         <!-- Waiting Room Box -->
-        <div id="waiting-room-box" class="hidden bg-black/35 border border-amber-400/40 rounded-2xl p-3 sm:p-4 space-y-2.5">
-          <div class="flex items-center justify-between gap-2">
+        <div id="waiting-room-box" class="hidden bg-black/40 border border-amber-400/50 rounded-xl p-2.5 space-y-2">
+          <div class="flex items-center justify-between gap-1.5">
             <div class="min-w-0">
-              <span class="text-[11px] text-emerald-300 block">房間代碼（點擊複製分享）</span>
+              <div class="flex items-center gap-1.5">
+                <span class="text-[10px] text-emerald-300">房間代碼</span>
+                <span id="host-signal-badge" class="text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/25 text-emerald-300 font-bold">● 連線待命中</span>
+              </div>
               <span id="display-room-code" onclick="copyRoomCode()" class="text-xl sm:text-2xl font-mono font-black tracking-widest text-amber-300 cursor-pointer hover:underline">------</span>
             </div>
-            <button onclick="copyInviteLink()" class="px-2.5 py-1.5 rounded-lg bg-emerald-800 hover:bg-emerald-700 text-xs font-bold text-emerald-100 border border-emerald-600 shrink-0 cursor-pointer">
-              📋 複製邀請連結
-            </button>
+            <div class="flex items-center gap-1 shrink-0">
+              <button onclick="shareInviteToFriends()" class="px-2 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-xs font-black text-emerald-950 shadow cursor-pointer" title="直接喚起手機分享選單傳給好友，不需離開頁面">
+                📤 分享好友
+              </button>
+              <button onclick="copyInviteLink()" class="px-2 py-1.5 rounded-lg bg-emerald-800 hover:bg-emerald-700 text-xs font-bold text-emerald-100 border border-emerald-600 cursor-pointer">
+                📋 複製
+              </button>
+            </div>
           </div>
 
-          <div class="border-t border-emerald-800/80 pt-2">
-            <div class="text-xs text-emerald-300 mb-1.5 flex justify-between">
+          <div class="bg-amber-950/50 border border-amber-500/30 rounded-lg px-2 py-1 text-[10px] text-amber-200/90 leading-snug">
+            💡 請點「<strong>📤 分享好友</strong>」直接傳送房號，並<strong>保持本畫面開啟</strong>等待好友加入（若曾切出 App，切回時會自動恢復房號連線）。
+          </div>
+
+          <div class="border-t border-emerald-800/80 pt-1.5">
+            <div class="text-[11px] text-emerald-300 mb-1 flex justify-between">
               <span>已加入玩家：</span>
               <span id="waiting-player-count">1 / 4</span>
             </div>
-            <ul id="waiting-players-list" class="space-y-1 text-xs sm:text-sm"></ul>
+            <ul id="waiting-players-list" class="space-y-1 text-xs max-h-[116px] overflow-y-auto"></ul>
           </div>
 
-          <div id="host-start-controls" class="hidden pt-1.5 flex flex-col gap-2">
-            <label class="flex items-center gap-2 text-xs text-emerald-200 cursor-pointer">
+          <div id="host-start-controls" class="hidden pt-1 flex flex-col gap-1.5">
+            <label class="flex items-center gap-1.5 text-[11px] text-emerald-200 cursor-pointer">
               <input id="fill-bots-checkbox" type="checkbox" checked class="rounded text-amber-500 focus:ring-0" />
               <span>不足 4 人時自動補滿 AI 機器人</span>
             </label>
-            <button onclick="hostStartOnlineGame()" class="w-full py-2.5 sm:py-3 rounded-xl font-black text-sm sm:text-base bg-gradient-to-r from-amber-400 to-amber-500 text-emerald-950 shadow-lg cursor-pointer">
-              🎮 全員開局！
-            </button>
+            <div class="flex gap-1.5">
+              <button onclick="cancelWaitingRoom()" class="px-3 py-2 rounded-lg font-bold text-xs bg-stone-800 hover:bg-stone-700 text-stone-300 border border-stone-600 cursor-pointer">
+                取消
+              </button>
+              <button onclick="hostStartOnlineGame()" class="flex-1 py-2 rounded-lg font-black text-xs sm:text-sm bg-gradient-to-r from-amber-400 to-amber-500 text-emerald-950 shadow-lg cursor-pointer">
+                🎮 全員開局！
+              </button>
+            </div>
           </div>
-          <div id="guest-waiting-msg" class="hidden text-center text-xs text-amber-200/90 py-1 animate-pulse">
-            ⏳ 等待房主按下開始遊戲...
+          <div id="guest-waiting-msg" class="hidden flex items-center justify-between text-xs text-amber-200/90 pt-1">
+            <span class="animate-pulse">⏳ 等待房主按下開始遊戲...</span>
+            <button onclick="cancelWaitingRoom()" class="px-2.5 py-1 rounded bg-stone-800 text-stone-300 text-[11px] cursor-pointer">退出</button>
           </div>
         </div>
       </div>
 
-      <!-- Rules Button -->
-      <div class="mt-4 sm:mt-5 pt-3 border-t border-emerald-800/70 flex justify-between items-center text-xs text-emerald-300">
-        <button onclick="toggleRulesModal(true)" class="hover:text-amber-300 underline flex items-center gap-1 py-1 cursor-pointer">
-          📖 拉密規則與操作教學
-        </button>
+      <!-- Compact Footer -->
+      <div class="mt-2 pt-1.5 border-t border-emerald-800/60 flex justify-between items-center text-[10px] text-emerald-300/80">
+        <span>支援 iOS / Android 手機全螢幕</span>
         <span>純前端 P2P 連線版</span>
       </div>
     </div>
@@ -1009,11 +1003,9 @@
       return res.valid ? res.orderedTiles : tiles;
     }
 
-    // Smart Meld Auto-Split: When adding tile(s) to an existing meld (e.g., 4-5-6-7-8 + 6 -> 4-5-6 & 6-7-8)
     function trySmartSplitCombinedMeld(tiles) {
       if (!tiles || tiles.length < 6) return null;
 
-      // Strategy A: Same-color sequence split (handles duplicate middle numbers like 4-5-6-7-8 + 6 -> 4-5-6 & 6-7-8)
       const normals = tiles.filter(t => !t.isJoker);
       const jokers = tiles.filter(t => t.isJoker);
       if (normals.length > 0 && normals.every(t => t.color === normals[0].color)) {
@@ -1067,7 +1059,6 @@
         }
       }
 
-      // Strategy B: General partition into 2 valid melds (e.g., Group + Run hybrid like R7-B7-K7-O7 + R8-R9 -> B7-K7-O7 & R7-R8-R9)
       if (tiles.length <= 12) {
         const n = tiles.length;
         const maxMask = (1 << n) - 1;
@@ -1091,14 +1082,12 @@
       return null;
     }
 
-    // Smart Meld Auto-Split on Single Tile Removal
     function trySmartSplitAfterRemoval(originalMeldTiles, removedTileId) {
       if (!originalMeldTiles || originalMeldTiles.length < 7) return null;
 
       const idx = originalMeldTiles.findIndex(t => t.id === removedTileId);
       if (idx === -1) return null;
 
-      // Priority 1: Split directly at the removed tile's position
       if (idx >= 3 && (originalMeldTiles.length - 1 - idx) >= 3) {
         const leftPart = originalMeldTiles.slice(0, idx);
         const rightPart = originalMeldTiles.slice(idx + 1);
@@ -1109,7 +1098,6 @@
         }
       }
 
-      // Priority 2: General 2-meld partition of the remaining tiles
       const remainingTiles = originalMeldTiles.filter(t => t.id !== removedTileId);
       return trySmartSplitCombinedMeld(remainingTiles);
     }
@@ -1119,7 +1107,7 @@
     }
 
     // =========================================================
-    // 3. PERSISTENT DEVICE ID & CHIPS SYSTEM (1000 INIT / 100 FEE / 200-100-60-40 PRIZES / MIN 100 FLOOR)
+    // 3. PERSISTENT DEVICE ID & CHIPS SYSTEM
     // =========================================================
     const DEVICE_PROFILE_STORAGE_KEY = 'rummikub_device_profile_v1';
     const INITIAL_CHIPS = 1000;
@@ -1339,8 +1327,8 @@
     let gameState = {
       status: 'lobby', // 'lobby' | 'playing' | 'ended'
       deck: [],
-      tableMelds: [], // Array of { id, tiles: [...] }
-      players: [],    // Array of { id, deviceId, name, isBot, rack: [...], hasBrokenIce: bool, chips: number, chipsBeforeMatch?: number, chipsAfterEntry?: number }
+      tableMelds: [],
+      players: [],
       currentTurnIndex: 0,
       timeLeft: 90,
       winnerId: null,
@@ -1404,20 +1392,6 @@
       }
     }
 
-    function getOrderedRackTiles() {
-      const me = getMyPlayer();
-      if (!me) return [];
-      syncRackSlotsWithHand(me.rack);
-      const handMap = new Map(me.rack.map(t => [t.id, t]));
-      const ordered = [];
-      for (const tid of rackSlots) {
-        if (tid && handMap.has(tid)) {
-          ordered.push(handMap.get(tid));
-        }
-      }
-      return ordered;
-    }
-
     function handleRackSlotClick(slotIndex) {
       if (selectedItems.length !== 1) return;
       const item = selectedItems[0];
@@ -1454,11 +1428,11 @@
     function switchLobbyTab(tab) {
       const isSolo = tab === 'solo';
       document.getElementById('tab-solo').className = isSolo
-        ? 'py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm bg-amber-500 text-emerald-950 shadow transition cursor-pointer'
-        : 'py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm text-emerald-200 hover:text-white transition cursor-pointer';
+        ? 'py-1.5 sm:py-2 rounded-lg font-bold text-xs sm:text-sm bg-amber-500 text-emerald-950 shadow transition cursor-pointer'
+        : 'py-1.5 sm:py-2 rounded-lg font-bold text-xs sm:text-sm text-emerald-200 hover:text-white transition cursor-pointer';
       document.getElementById('tab-online').className = !isSolo
-        ? 'py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm bg-amber-500 text-emerald-950 shadow transition cursor-pointer'
-        : 'py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm text-emerald-200 hover:text-white transition cursor-pointer';
+        ? 'py-1.5 sm:py-2 rounded-lg font-bold text-xs sm:text-sm bg-amber-500 text-emerald-950 shadow transition cursor-pointer'
+        : 'py-1.5 sm:py-2 rounded-lg font-bold text-xs sm:text-sm text-emerald-200 hover:text-white transition cursor-pointer';
 
       document.getElementById('panel-solo').classList.toggle('hidden', !isSolo);
       document.getElementById('panel-online').classList.toggle('hidden', isSolo);
@@ -1529,7 +1503,7 @@
     }
 
     // =========================================================
-    // 6. SERVERLESS P2P MULTIPLAYER (PeerJS + Local Fallback)
+    // 6. SERVERLESS P2P MULTIPLAYER (WITH AUTO-RECONNECT & KEEP-ALIVE)
     // =========================================================
     let peer = null;
     let hostConn = null;
@@ -1537,6 +1511,20 @@
     let currentRoomCode = '';
     let localChannel = null;
     let isLocalFallbackMode = false;
+    let hostKeepAliveTimer = null;
+    let isRebindingHostPeer = false;
+
+    const PEER_ICE_CONFIG = {
+      debug: 0,
+      pingInterval: 5000,
+      config: {
+        iceServers: [
+          { urls: 'stun:stun.l.google.com:19302' },
+          { urls: 'stun:stun1.l.google.com:19302' },
+          { urls: 'stun:stun2.l.google.com:19302' }
+        ]
+      }
+    };
 
     function isWebSocketRestrictedEnv() {
       try {
@@ -1557,7 +1545,42 @@
       return code;
     }
 
+    function setHostSignalBadge(text, state = 'ok') {
+      const badge = document.getElementById('host-signal-badge');
+      if (!badge) return;
+      badge.textContent = text;
+      if (state === 'ok') {
+        badge.className = 'text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/25 text-emerald-300 font-bold';
+      } else if (state === 'warn') {
+        badge.className = 'text-[10px] px-1.5 py-0.5 rounded bg-amber-500/25 text-amber-300 font-bold animate-pulse';
+      } else {
+        badge.className = 'text-[10px] px-1.5 py-0.5 rounded bg-red-500/25 text-red-300 font-bold';
+      }
+    }
+
+    function setWaitingRoomVisible(visible) {
+      const waitingBox = document.getElementById('waiting-room-box');
+      const createCard = document.getElementById('create-room-card');
+      const joinCard = document.getElementById('join-room-card');
+      if (waitingBox) waitingBox.classList.toggle('hidden', !visible);
+      if (createCard) createCard.classList.toggle('hidden', visible);
+      if (joinCard) joinCard.classList.toggle('hidden', visible);
+    }
+
+    function cancelWaitingRoom() {
+      SoundFX.click();
+      cleanupNetwork();
+      gameMode = 'solo';
+      gameState.players = [];
+      setWaitingRoomVisible(false);
+    }
+
     function cleanupNetwork() {
+      if (hostKeepAliveTimer) {
+        clearInterval(hostKeepAliveTimer);
+        hostKeepAliveTimer = null;
+      }
+      isRebindingHostPeer = false;
       if (localChannel) {
         try { localChannel.close(); } catch (e) {}
         localChannel = null;
@@ -1572,6 +1595,158 @@
       if (peer) {
         try { peer.destroy(); } catch (e) {}
         peer = null;
+      }
+    }
+
+    function startHostKeepAliveLoop() {
+      if (hostKeepAliveTimer) clearInterval(hostKeepAliveTimer);
+      hostKeepAliveTimer = setInterval(() => {
+        if (gameMode !== 'online_host' || isLocalFallbackMode || !currentRoomCode) return;
+        if (!peer || peer.destroyed) {
+          ensureHostPeerAlive(true);
+        } else if (peer.disconnected && !isRebindingHostPeer) {
+          setHostSignalBadge('● 恢復連線中...', 'warn');
+          try {
+            peer.reconnect();
+          } catch (e) {
+            ensureHostPeerAlive(true);
+          }
+        }
+      }, 4000);
+    }
+
+    function bindHostPeerListeners(p, hostPeerId, nickname, isRecovery = false) {
+      p.on('open', (id) => {
+        isRebindingHostPeer = false;
+        gameMode = 'online_host';
+        myPlayerId = id;
+        setHostSignalBadge('● 連線待命中', 'ok');
+
+        if (!isRecovery || gameState.players.length === 0) {
+          gameState.players = [{
+            id: myPlayerId,
+            deviceId: deviceProfile.deviceId,
+            name: nickname + ' (房主)',
+            isBot: false,
+            rack: [],
+            hasBrokenIce: false,
+            chips: normalizeChips(deviceProfile.chips)
+          }];
+          document.getElementById('display-room-code').textContent = currentRoomCode;
+          setWaitingRoomVisible(true);
+          document.getElementById('host-start-controls').classList.remove('hidden');
+          document.getElementById('guest-waiting-msg').classList.add('hidden');
+          updateWaitingRoomUI();
+          showToast(`房間 ${currentRoomCode} 已建立！請點「分享好友」邀請`, 'success');
+        } else {
+          if (gameState.players[0]) {
+            gameState.players[0].id = myPlayerId;
+          }
+          updateWaitingRoomUI();
+          showToast(`房間 ${currentRoomCode} 連線已自動恢復！`, 'success');
+        }
+      });
+
+      p.on('disconnected', () => {
+        if (gameMode !== 'online_host') return;
+        setHostSignalBadge('● 訊號重連中...', 'warn');
+        setTimeout(() => {
+          if (peer && !peer.destroyed && peer.disconnected) {
+            try { peer.reconnect(); } catch (e) { ensureHostPeerAlive(true); }
+          }
+        }, 500);
+      });
+
+      p.on('connection', (conn) => {
+        const hasBotTakeoverSeat = gameState.status === 'playing' &&
+          gameState.players.some(pl => pl.isBot && pl.deviceId && !String(pl.deviceId).startsWith('BOT-'));
+
+        if ((gameState.players.length >= 4 || gameState.status !== 'lobby') && !hasBotTakeoverSeat) {
+          conn.on('open', () => {
+            conn.send({ type: 'ERROR', message: '房間已滿或遊戲已開始' });
+            setTimeout(() => conn.close(), 300);
+          });
+          return;
+        }
+
+        guestConnections.push(conn);
+        conn.on('data', (data) => handleHostReceiveData(conn, data));
+        conn.on('close', () => {
+          guestConnections = guestConnections.filter(c => c !== conn);
+          if (gameState.status === 'lobby') {
+            gameState.players = gameState.players.filter(pl => pl.id !== conn.peer);
+            updateWaitingRoomUI();
+            broadcastRoomLobby();
+          } else if (gameState.status === 'playing') {
+            const pl = gameState.players.find(item => item.id === conn.peer);
+            if (pl) {
+              pl.isBot = true;
+              if (!pl.name.includes('(AI接管)')) {
+                pl.name += ' (AI接管)';
+              }
+              showToast(`${pl.name} 已斷線，由 AI 暫時代管（重連可恢復）`, 'info');
+              broadcastGameState();
+              renderAll();
+              if (getCurrentPlayer()?.id === pl.id) triggerAITurn();
+            }
+          }
+        });
+      });
+
+      p.on('error', (err) => {
+        isRebindingHostPeer = false;
+        const msg = String(err && (err.message || err.type) || '');
+        if (msg.includes('SecurityError') || msg.includes('not allowed')) {
+          if (peer) {
+            try { peer.destroy(); } catch (e) {}
+            peer = null;
+          }
+          setupLocalFallbackRoomAsHost(nickname);
+        } else if (err && err.type === 'unavailable-id') {
+          // Old signaling session from backgrounded tab hasn't expired yet; retry cleanly after 1.2s
+          setHostSignalBadge('● 同步房號中...', 'warn');
+          setTimeout(() => {
+            if (gameMode === 'online_host' && currentRoomCode) {
+              ensureHostPeerAlive(true);
+            }
+          }, 1200);
+        } else {
+          setHostSignalBadge('● 嘗試重連中', 'warn');
+        }
+      });
+    }
+
+    function ensureHostPeerAlive(forceRebuild = false) {
+      if (gameMode !== 'online_host' || isLocalFallbackMode || !currentRoomCode) return;
+      if (isRebindingHostPeer) return;
+
+      const hostPeerId = `rummi_${currentRoomCode}`;
+      const nickname = getPlayerNickname();
+
+      if (peer && !peer.destroyed && !peer.disconnected && !forceRebuild) {
+        return;
+      }
+
+      if (peer && !peer.destroyed && peer.disconnected && !forceRebuild) {
+        setHostSignalBadge('● 恢復連線中...', 'warn');
+        try {
+          peer.reconnect();
+          return;
+        } catch (e) {}
+      }
+
+      isRebindingHostPeer = true;
+      setHostSignalBadge('● 重建房號連線...', 'warn');
+      if (peer) {
+        try { peer.destroy(); } catch (e) {}
+        peer = null;
+      }
+
+      try {
+        peer = new Peer(hostPeerId, PEER_ICE_CONFIG);
+        bindHostPeerListeners(peer, hostPeerId, nickname, true);
+      } catch (e) {
+        isRebindingHostPeer = false;
       }
     }
 
@@ -1640,11 +1815,12 @@
       });
 
       document.getElementById('display-room-code').textContent = currentRoomCode;
-      document.getElementById('waiting-room-box').classList.remove('hidden');
+      setHostSignalBadge('● 本機預覽通道', 'ok');
+      setWaitingRoomVisible(true);
       document.getElementById('host-start-controls').classList.remove('hidden');
       document.getElementById('guest-waiting-msg').classList.add('hidden');
       updateWaitingRoomUI();
-      showToast(`已建立預覽/本機房間：${currentRoomCode}（支援同瀏覽器多分頁連線或直接加 AI 開局）`, 'success');
+      showToast(`已建立預覽房間：${currentRoomCode}`, 'success');
     }
 
     function setupLocalFallbackRoomAsGuest(code, nickname) {
@@ -1700,90 +1876,14 @@
 
       showToast('正在建立雲端房間...', 'info');
       try {
-        peer = new Peer(hostPeerId, {
-          debug: 0,
-          config: {
-            iceServers: [
-              { urls: 'stun:stun.l.google.com:19302' },
-              { urls: 'stun:stun1.l.google.com:19302' },
-              { urls: 'stun:stun2.l.google.com:19302' }
-            ]
-          }
-        });
+        peer = new Peer(hostPeerId, PEER_ICE_CONFIG);
       } catch (e) {
         setupLocalFallbackRoomAsHost(nickname);
         return;
       }
 
-      peer.on('open', (id) => {
-        gameMode = 'online_host';
-        myPlayerId = id;
-        gameState.players = [{
-          id: myPlayerId,
-          deviceId: deviceProfile.deviceId,
-          name: nickname + ' (房主)',
-          isBot: false,
-          rack: [],
-          hasBrokenIce: false,
-          chips: normalizeChips(deviceProfile.chips)
-        }];
-
-        document.getElementById('display-room-code').textContent = currentRoomCode;
-        document.getElementById('waiting-room-box').classList.remove('hidden');
-        document.getElementById('host-start-controls').classList.remove('hidden');
-        document.getElementById('guest-waiting-msg').classList.add('hidden');
-        updateWaitingRoomUI();
-        showToast(`房間 ${currentRoomCode} 已建立！快分享房號給朋友`, 'success');
-      });
-
-      peer.on('connection', (conn) => {
-        const hasBotTakeoverSeat = gameState.status === 'playing' &&
-          gameState.players.some(p => p.isBot && p.deviceId && !String(p.deviceId).startsWith('BOT-'));
-
-        if ((gameState.players.length >= 4 || gameState.status !== 'lobby') && !hasBotTakeoverSeat) {
-          conn.on('open', () => {
-            conn.send({ type: 'ERROR', message: '房間已滿或遊戲已開始' });
-            setTimeout(() => conn.close(), 300);
-          });
-          return;
-        }
-
-        guestConnections.push(conn);
-        conn.on('data', (data) => handleHostReceiveData(conn, data));
-        conn.on('close', () => {
-          guestConnections = guestConnections.filter(c => c !== conn);
-          if (gameState.status === 'lobby') {
-            gameState.players = gameState.players.filter(p => p.id !== conn.peer);
-            updateWaitingRoomUI();
-            broadcastRoomLobby();
-          } else if (gameState.status === 'playing') {
-            const p = gameState.players.find(pl => pl.id === conn.peer);
-            if (p) {
-              p.isBot = true;
-              if (!p.name.includes('(AI接管)')) {
-                p.name += ' (AI接管)';
-              }
-              showToast(`${p.name} 已斷線，由 AI 暫時代管（重連可恢復）`, 'info');
-              broadcastGameState();
-              renderAll();
-              if (getCurrentPlayer()?.id === p.id) triggerAITurn();
-            }
-          }
-        });
-      });
-
-      peer.on('error', (err) => {
-        const msg = String(err && (err.message || err.type) || '');
-        if (msg.includes('SecurityError') || msg.includes('not allowed')) {
-          if (peer) {
-            try { peer.destroy(); } catch (e) {}
-            peer = null;
-          }
-          setupLocalFallbackRoomAsHost(nickname);
-        } else {
-          showToast(`連線提示: ${err.type || '網路異常，請重試'}`, 'error');
-        }
-      });
+      bindHostPeerListeners(peer, hostPeerId, nickname, false);
+      startHostKeepAliveLoop();
     }
 
     function joinOnlineRoom() {
@@ -1820,21 +1920,12 @@
       const connectTimeout = setTimeout(() => {
         if (!hostConn || !hostConn.open) {
           resetJoinBtn();
-          showToast(`連線逾時，請確認房主頁面保持開啟且房號 ${code} 正確`, 'error');
+          showToast(`連線逾時，請請房主切回遊戲畫面保持開啟後再按加入`, 'error');
         }
       }, 10000);
 
       try {
-        peer = new Peer(undefined, {
-          debug: 0,
-          config: {
-            iceServers: [
-              { urls: 'stun:stun.l.google.com:19302' },
-              { urls: 'stun:stun1.l.google.com:19302' },
-              { urls: 'stun:stun2.l.google.com:19302' }
-            ]
-          }
-        });
+        peer = new Peer(undefined, PEER_ICE_CONFIG);
 
         peer.on('open', (myId) => {
           myPlayerId = myId;
@@ -1898,7 +1989,7 @@
           } else {
             resetJoinBtn();
             const reason = err && err.type === 'peer-unavailable'
-              ? `找不到房間 ${code}，請確認房主已建立房間`
+              ? `找不到房間 ${code}（請房主保持在房間畫面，勿切出背景）`
               : `連線失敗（${(err && err.type) || '請重試'}）`;
             showToast(reason, 'error');
           }
@@ -2018,7 +2109,8 @@
         } else if (data.type === 'LOBBY_UPDATE') {
           gameState.players = Array.isArray(data.players) ? data.players : [];
           document.getElementById('display-room-code').textContent = currentRoomCode;
-          document.getElementById('waiting-room-box').classList.remove('hidden');
+          setHostSignalBadge('● 已連上房主', 'ok');
+          setWaitingRoomVisible(true);
           document.getElementById('host-start-controls').classList.add('hidden');
           document.getElementById('guest-waiting-msg').classList.remove('hidden');
           updateWaitingRoomUI();
@@ -2089,13 +2181,13 @@
       document.getElementById('waiting-player-count').textContent = `${gameState.players.length} / 4`;
       const list = document.getElementById('waiting-players-list');
       list.innerHTML = gameState.players.map((p, idx) => `
-        <li class="flex items-center justify-between bg-emerald-950/70 px-3 py-1.5 rounded-lg border border-emerald-800">
+        <li class="flex items-center justify-between bg-emerald-950/70 px-2.5 py-1 rounded-lg border border-emerald-800">
           <div class="flex items-center gap-1.5 min-w-0">
             <span class="truncate">👤 ${escapeHtml(p.name)}</span>
-            ${p.deviceId ? `<span class="text-[10px] font-mono text-emerald-400/80 bg-black/30 px-1.5 py-0.5 rounded">${escapeHtml(p.deviceId)}</span>` : ''}
-            <span class="text-[10px] font-bold text-amber-300 bg-amber-500/15 px-1.5 py-0.5 rounded">🪙${normalizeChips(p.chips).toLocaleString()}</span>
+            ${p.deviceId ? `<span class="text-[10px] font-mono text-emerald-400/80 bg-black/30 px-1 py-0.2 rounded">${escapeHtml(p.deviceId)}</span>` : ''}
+            <span class="text-[10px] font-bold text-amber-300 bg-amber-500/15 px-1 py-0.2 rounded">🪙${normalizeChips(p.chips).toLocaleString()}</span>
           </div>
-          <span class="text-xs text-amber-300 shrink-0">${idx === 0 ? '房主' : '已就緒'}</span>
+          <span class="text-[11px] text-amber-300 shrink-0">${idx === 0 ? '房主' : '已就緒'}</span>
         </li>
       `).join('');
     }
@@ -2162,7 +2254,25 @@
 
     function copyInviteLink() {
       const url = `${window.location.origin}${window.location.pathname}?room=${currentRoomCode}`;
-      copyTextToClipboard(url, '已複製邀請連結！傳給好友即可加入');
+      copyTextToClipboard(url, `已複製邀請連結（房號 ${currentRoomCode}）！`);
+    }
+
+    async function shareInviteToFriends() {
+      SoundFX.click();
+      const url = `${window.location.origin}${window.location.pathname}?room=${currentRoomCode}`;
+      const shareText = `來玩線上拉密對戰！房號：【${currentRoomCode}】\n點擊連結加入：${url}`;
+      if (navigator.share) {
+        try {
+          await navigator.share({
+            title: '線上拉密對戰 Rummikub',
+            text: shareText,
+            url
+          });
+          setTimeout(() => ensureHostPeerAlive(false), 300);
+          return;
+        } catch (e) {}
+      }
+      copyTextToClipboard(shareText, `已複製房號 ${currentRoomCode} 與連結，請貼給好友！`);
     }
 
     function copyTextToClipboard(text, successMsg) {
@@ -2180,6 +2290,18 @@
       }
       document.body.removeChild(ta);
     }
+
+    // Automatically restore host signaling connection when returning from background/LINE
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && gameMode === 'online_host' && currentRoomCode) {
+        setTimeout(() => ensureHostPeerAlive(false), 200);
+      }
+    });
+    window.addEventListener('pageshow', () => {
+      if (gameMode === 'online_host' && currentRoomCode) {
+        setTimeout(() => ensureHostPeerAlive(false), 200);
+      }
+    });
 
     // =========================================================
     // 7. TURN FLOW & TIMERS
@@ -2599,7 +2721,6 @@
         let bestCandidate = null;
         let bestScore = -1;
 
-        // 1. Check same-color runs (prefer longer runs & higher points)
         for (const color of COLORS) {
           const sameColorTiles = pool
             .filter(t => !t.isJoker && t.color === color)
@@ -2642,7 +2763,6 @@
           }
         }
 
-        // 2. Check same-number distinct-color groups (3 or 4 tiles)
         for (let num = 1; num <= 13; num++) {
           const sameNum = pool.filter(t => !t.isJoker && t.number === num);
           const byColor = [];
@@ -2665,7 +2785,6 @@
           }
         }
 
-        // 3. If no pure-tile meld found, allow 1 joker to bridge a 2-tile group or near-run
         if (!bestCandidate) {
           const jokers = pool.filter(t => t.isJoker);
           if (jokers.length > 0) {
@@ -3100,7 +3219,7 @@
       document.getElementById('game-view').classList.add('hidden');
       document.body.classList.remove('active-game-mode');
       document.getElementById('lobby-view').classList.remove('hidden');
-      document.getElementById('waiting-room-box').classList.add('hidden');
+      setWaitingRoomVisible(false);
       renderLobbyChipBalance();
     }
 
@@ -3630,14 +3749,12 @@
       if (!e.touches || e.touches.length !== 1) return;
       const currentY = e.touches[0].clientY;
       const isPullingDown = currentY > touchStartY + 6;
-      const isInsideScrollableModal = e.target.closest('#rules-modal .overflow-y-auto, #players-bar');
+      const isInsideScrollableModal = e.target.closest('#rules-modal .overflow-y-auto, #players-bar, #waiting-players-list');
 
-      if (document.body.classList.contains('active-game-mode')) {
-        if (!isInsideScrollableModal) {
+      if (!isInsideScrollableModal) {
+        if (document.body.classList.contains('active-game-mode') || isPullingDown) {
           e.preventDefault();
         }
-      } else if (isPullingDown && (window.scrollY || document.documentElement.scrollTop || 0) <= 0 && !isInsideScrollableModal) {
-        e.preventDefault();
       }
     }, { passive: false });
 
