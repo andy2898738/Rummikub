@@ -543,13 +543,16 @@
             <div class="min-w-0">
               <div class="flex items-center gap-1.5">
                 <span class="text-[10px] text-emerald-300">房間代碼</span>
-                <span id="host-signal-badge" class="text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/25 text-emerald-300 font-bold">● 連線待命中</span>
+                <span id="host-signal-badge" class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/25 text-emerald-300 font-bold">● 連線待命中</span>
               </div>
               <span id="display-room-code" onclick="copyRoomCode()" class="text-xl sm:text-2xl font-mono font-black tracking-widest text-amber-300 cursor-pointer hover:underline">------</span>
             </div>
-            <div class="flex items-center gap-1 shrink-0">
+            <div class="flex items-center gap-1 shrink-0 flex-wrap justify-end">
+              <button id="btn-host-reconnect" onclick="manualHostReconnect()" class="hidden px-2 py-1.5 rounded-lg bg-sky-500 hover:bg-sky-400 text-xs font-black text-sky-950 shadow cursor-pointer" title="跳出頁面後點此重新連上房間，讓好友可以順利加入">
+                🔄 重新連線
+              </button>
               <button onclick="shareInviteToFriends()" class="px-2 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-xs font-black text-emerald-950 shadow cursor-pointer" title="直接喚起手機分享選單傳給好友，不需離開頁面">
-                📤 分享好友
+                📤 分享
               </button>
               <button onclick="copyInviteLink()" class="px-2 py-1.5 rounded-lg bg-emerald-800 hover:bg-emerald-700 text-xs font-bold text-emerald-100 border border-emerald-600 cursor-pointer">
                 📋 複製
@@ -558,7 +561,7 @@
           </div>
 
           <div class="bg-amber-950/50 border border-amber-500/30 rounded-lg px-2 py-1 text-[10px] text-amber-200/90 leading-snug">
-            💡 請點「<strong>📤 分享好友</strong>」直接傳送房號，並<strong>保持本畫面開啟</strong>等待好友加入（若曾切出 App，切回時會自動恢復房號連線）。
+            💡 若曾跳出瀏覽器傳房號給好友，切回後請按右上角「<strong>🔄 重新連線</strong>」恢復房間待命狀態，好友即可立即加入。
           </div>
 
           <div class="border-t border-emerald-800/80 pt-1.5">
@@ -610,6 +613,9 @@
 
       <!-- Controls -->
       <div class="flex items-center justify-end gap-1.5 shrink-0">
+        <button id="btn-ingame-host-reconnect" onclick="manualHostReconnect()" class="hidden px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg bg-sky-500 hover:bg-sky-400 text-xs font-black text-sky-950 shadow cursor-pointer" title="房主重新連上房間信令">
+          🔄 重連房間
+        </button>
         <button id="btn-fullscreen" onclick="toggleFullScreen()" class="px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg bg-emerald-800 hover:bg-emerald-700 border border-emerald-600/80 text-xs font-bold text-amber-200 cursor-pointer flex items-center gap-1" title="切換全螢幕並自動避開前鏡頭">
           <span id="fullscreen-icon">⛶</span><span id="fullscreen-label">全螢幕</span>
         </button>
@@ -1568,9 +1574,27 @@
       const waitingBox = document.getElementById('waiting-room-box');
       const createCard = document.getElementById('create-room-card');
       const joinCard = document.getElementById('join-room-card');
+      const hostReconnectBtn = document.getElementById('btn-host-reconnect');
       if (waitingBox) waitingBox.classList.toggle('hidden', !visible);
       if (createCard) createCard.classList.toggle('hidden', visible);
       if (joinCard) joinCard.classList.toggle('hidden', visible);
+      if (hostReconnectBtn) {
+        hostReconnectBtn.classList.toggle('hidden', !(visible && gameMode === 'online_host'));
+      }
+    }
+
+    function manualHostReconnect() {
+      SoundFX.click();
+      if (gameMode !== 'online_host' || !currentRoomCode) {
+        showToast('目前不在房主房間模式', 'info');
+        return;
+      }
+      if (isLocalFallbackMode) {
+        showToast(`本機預覽房間 ${currentRoomCode} 連線正常！`, 'success');
+        return;
+      }
+      showToast(`正在重新連上房間 ${currentRoomCode}...`, 'info');
+      ensureHostPeerAlive(true, true);
     }
 
     function cancelWaitingRoom() {
@@ -1609,13 +1633,13 @@
       hostKeepAliveTimer = setInterval(() => {
         if (gameMode !== 'online_host' || isLocalFallbackMode || !currentRoomCode) return;
         if (!peer || peer.destroyed) {
-          ensureHostPeerAlive(true);
+          ensureHostPeerAlive(true, false);
         } else if (peer.disconnected && !isRebindingHostPeer) {
           setHostSignalBadge('● 恢復連線中...', 'warn');
           try {
             peer.reconnect();
           } catch (e) {
-            ensureHostPeerAlive(true);
+            ensureHostPeerAlive(true, false);
           }
         }
       }, 4000);
@@ -1627,6 +1651,8 @@
         gameMode = 'online_host';
         myPlayerId = id;
         setHostSignalBadge('● 連線待命中', 'ok');
+        const hostReconnectBtn = document.getElementById('btn-host-reconnect');
+        if (hostReconnectBtn) hostReconnectBtn.classList.remove('hidden');
 
         if (!isRecovery || gameState.players.length === 0) {
           gameState.players = [{
@@ -1643,38 +1669,32 @@
           document.getElementById('host-start-controls').classList.remove('hidden');
           document.getElementById('guest-waiting-msg').classList.add('hidden');
           updateWaitingRoomUI();
-          showToast(`房間 ${currentRoomCode} 已建立！請點「分享好友」邀請`, 'success');
+          showToast(`房間 ${currentRoomCode} 已建立！請點「分享」邀請好友`, 'success');
         } else {
           if (gameState.players[0]) {
             gameState.players[0].id = myPlayerId;
           }
           updateWaitingRoomUI();
-          showToast(`房間 ${currentRoomCode} 連線已自動恢復！`, 'success');
+          if (gameState.status === 'lobby') {
+            broadcastRoomLobby();
+          } else if (gameState.status === 'playing') {
+            broadcastGameState();
+          }
+          showToast(`✅ 房間 ${currentRoomCode} 已重新連線！好友現在可加入`, 'success');
         }
       });
 
       p.on('disconnected', () => {
         if (gameMode !== 'online_host') return;
-        setHostSignalBadge('● 訊號重連中...', 'warn');
+        setHostSignalBadge('● 已斷線，請點重新連線', 'warn');
         setTimeout(() => {
-          if (peer && !peer.destroyed && peer.disconnected) {
-            try { peer.reconnect(); } catch (e) { ensureHostPeerAlive(true); }
+          if (peer && !peer.destroyed && peer.disconnected && !isRebindingHostPeer) {
+            try { peer.reconnect(); } catch (e) {}
           }
         }, 500);
       });
 
       p.on('connection', (conn) => {
-        const hasBotTakeoverSeat = gameState.status === 'playing' &&
-          gameState.players.some(pl => pl.isBot && pl.deviceId && !String(pl.deviceId).startsWith('BOT-'));
-
-        if ((gameState.players.length >= 4 || gameState.status !== 'lobby') && !hasBotTakeoverSeat) {
-          conn.on('open', () => {
-            conn.send({ type: 'ERROR', message: '房間已滿或遊戲已開始' });
-            setTimeout(() => conn.close(), 300);
-          });
-          return;
-        }
-
         guestConnections.push(conn);
         conn.on('data', (data) => handleHostReceiveData(conn, data));
         conn.on('close', () => {
@@ -1712,23 +1732,25 @@
           setHostSignalBadge('● 同步房號中...', 'warn');
           setTimeout(() => {
             if (gameMode === 'online_host' && currentRoomCode) {
-              ensureHostPeerAlive(true);
+              ensureHostPeerAlive(true, false);
             }
           }, 1200);
         } else {
-          setHostSignalBadge('● 嘗試重連中', 'warn');
+          setHostSignalBadge('● 斷線，請點重新連線', 'warn');
         }
       });
     }
 
-    function ensureHostPeerAlive(forceRebuild = false) {
+    function ensureHostPeerAlive(forceRebuild = false, isManual = false) {
       if (gameMode !== 'online_host' || isLocalFallbackMode || !currentRoomCode) return;
-      if (isRebindingHostPeer) return;
+      if (isRebindingHostPeer && !isManual) return;
 
       const hostPeerId = `rummi_${currentRoomCode}`;
       const nickname = getPlayerNickname();
 
       if (peer && !peer.destroyed && !peer.disconnected && !forceRebuild) {
+        setHostSignalBadge('● 連線待命中', 'ok');
+        if (isManual) showToast(`房間 ${currentRoomCode} 目前保持連線中，好友可直接加入！`, 'success');
         return;
       }
 
@@ -1741,18 +1763,22 @@
       }
 
       isRebindingHostPeer = true;
-      setHostSignalBadge('● 重建房號連線...', 'warn');
+      setHostSignalBadge('● 重新連線房間中...', 'warn');
       if (peer) {
         try { peer.destroy(); } catch (e) {}
         peer = null;
       }
 
-      try {
-        peer = new Peer(hostPeerId, PEER_ICE_CONFIG);
-        bindHostPeerListeners(peer, hostPeerId, nickname, true);
-      } catch (e) {
-        isRebindingHostPeer = false;
-      }
+      setTimeout(() => {
+        try {
+          peer = new Peer(hostPeerId, PEER_ICE_CONFIG);
+          bindHostPeerListeners(peer, hostPeerId, nickname, true);
+        } catch (e) {
+          isRebindingHostPeer = false;
+          setHostSignalBadge('● 重連失敗，請再試一次', 'error');
+          showToast('重新連線失敗，請再按一次「重新連線」', 'error');
+        }
+      }, 250);
     }
 
     function createLocalTransportWrapper(targetPeerId, isHostSide, onMessageFn) {
@@ -1925,7 +1951,7 @@
       const connectTimeout = setTimeout(() => {
         if (!hostConn || !hostConn.open) {
           resetJoinBtn();
-          showToast(`連線逾時，請請房主切回遊戲畫面保持開啟後再按加入`, 'error');
+          showToast(`連線逾時，請請房主按「重新連線」後再按加入`, 'error');
         }
       }, 10000);
 
@@ -1994,7 +2020,7 @@
           } else {
             resetJoinBtn();
             const reason = err && err.type === 'peer-unavailable'
-              ? `找不到房間 ${code}（請房主保持在房間畫面，勿切出背景）`
+              ? `找不到房間 ${code}（請房主點「重新連線」後再加入）`
               : `連線失敗（${(err && err.type) || '請重試'}）`;
             showToast(reason, 'error');
           }
@@ -2278,7 +2304,7 @@
             text: shareText,
             url
           });
-          setTimeout(() => ensureHostPeerAlive(false), 300);
+          setTimeout(() => ensureHostPeerAlive(false, false), 300);
           return;
         } catch (e) {}
       }
@@ -2303,12 +2329,12 @@
 
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden && gameMode === 'online_host' && currentRoomCode) {
-        setTimeout(() => ensureHostPeerAlive(false), 200);
+        setTimeout(() => ensureHostPeerAlive(false, false), 200);
       }
     });
     window.addEventListener('pageshow', () => {
       if (gameMode === 'online_host' && currentRoomCode) {
-        setTimeout(() => ensureHostPeerAlive(false), 200);
+        setTimeout(() => ensureHostPeerAlive(false, false), 200);
       }
     });
 
@@ -2320,6 +2346,10 @@
       const lobbyEl = document.getElementById('lobby-view');
       const overEl = document.getElementById('gameover-modal');
       const gameEl = document.getElementById('game-view');
+      const inGameHostReconnect = document.getElementById('btn-ingame-host-reconnect');
+      if (inGameHostReconnect) {
+        inGameHostReconnect.classList.toggle('hidden', gameMode !== 'online_host');
+      }
       if (lobbyEl) {
         lobbyEl.classList.add('hidden');
         lobbyEl.style.display = 'none';
