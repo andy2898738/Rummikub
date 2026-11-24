@@ -369,19 +369,19 @@
     }
 
     .lobby-demo-tile {
-      width: 26px;
-      height: 34px;
+      width: 24px;
+      height: 32px;
       border-radius: 5px;
       border-bottom-width: 2.5px;
     }
     .lobby-demo-tile .tile-digit {
-      font-size: 19px;
+      font-size: 18px;
     }
     .lobby-demo-tile.two-digits .tile-digit {
-      font-size: 16px;
+      font-size: 15px;
     }
     .lobby-demo-tile.joker-tile .tile-digit {
-      font-size: 18px;
+      font-size: 17px;
     }
 
     @media (min-width: 640px) and (min-height: 700px) {
@@ -389,15 +389,15 @@
         max-width: 500px;
       }
       .lobby-demo-tile {
-        width: 34px;
-        height: 46px;
+        width: 32px;
+        height: 44px;
         border-radius: 6px;
       }
       .lobby-demo-tile .tile-digit {
-        font-size: 26px;
+        font-size: 24px;
       }
       .lobby-demo-tile.joker-tile .tile-digit {
-        font-size: 25px;
+        font-size: 23px;
       }
     }
   </style>
@@ -412,23 +412,23 @@
   ========================================================= -->
   <div id="lobby-view">
     <div class="lobby-card bg-emerald-950/90 backdrop-blur-md border border-emerald-700/50 rounded-2xl sm:rounded-3xl p-3 sm:p-5 shadow-2xl animate-pop">
-      <!-- Compact Header: Logo + Title Inline on Mobile -->
-      <div class="flex items-center justify-between gap-2 mb-2 sm:mb-3 pb-2 border-b border-emerald-800/60">
-        <div class="flex items-center gap-2 min-w-0">
-          <div class="inline-flex items-center gap-1 shrink-0">
-            <div class="rummi-tile lobby-demo-tile tile-red"><span class="tile-digit">7</span></div>
-            <div class="rummi-tile lobby-demo-tile tile-blue"><span class="tile-digit">8</span></div>
-            <div class="rummi-tile lobby-demo-tile tile-orange"><span class="tile-digit">9</span></div>
-            <div class="rummi-tile lobby-demo-tile tile-black joker-tile"><span class="tile-digit">☺</span></div>
-          </div>
-          <div class="min-w-0">
-            <h1 class="text-lg sm:text-2xl font-black tracking-tight text-amber-300 leading-tight truncate">線上拉密對戰</h1>
-            <p class="text-emerald-300/80 text-[10px] sm:text-xs truncate">Rummikub · 單機AI與好友連線</p>
-          </div>
-        </div>
-        <button onclick="toggleRulesModal(true)" class="px-2 py-1.5 rounded-xl bg-emerald-900/90 hover:bg-emerald-800 border border-emerald-700/70 text-[11px] font-bold text-amber-200 shrink-0 cursor-pointer">
+      <!-- Two-Line Centered Title & Subtitle Header with Full Unclipped Text -->
+      <div class="relative flex flex-col items-center text-center mb-2 sm:mb-3 pb-2 border-b border-emerald-800/60">
+        <button onclick="toggleRulesModal(true)" class="absolute top-0 right-0 px-2 py-1 rounded-xl bg-emerald-900/90 hover:bg-emerald-800 border border-emerald-700/70 text-[11px] font-bold text-amber-200 cursor-pointer">
           📖 規則
         </button>
+        <div class="inline-flex items-center gap-1 mb-1">
+          <div class="rummi-tile lobby-demo-tile tile-red"><span class="tile-digit">7</span></div>
+          <div class="rummi-tile lobby-demo-tile tile-blue"><span class="tile-digit">8</span></div>
+          <div class="rummi-tile lobby-demo-tile tile-orange"><span class="tile-digit">9</span></div>
+          <div class="rummi-tile lobby-demo-tile tile-black joker-tile"><span class="tile-digit">☺</span></div>
+        </div>
+        <h1 class="text-xl sm:text-2xl font-black tracking-tight text-amber-300 leading-snug whitespace-nowrap">
+          線上拉密對戰
+        </h1>
+        <p class="text-emerald-300/90 text-xs sm:text-sm font-medium leading-snug mt-0.5">
+          Rummikub · 單機AI與好友連線
+        </p>
       </div>
 
       <!-- Player Nickname, Device ID & Chips Card (Compact) -->
@@ -436,7 +436,7 @@
         <div class="flex items-center justify-between gap-1.5 mb-1.5">
           <div class="flex items-center gap-1 min-w-0 flex-wrap">
             <span class="text-[10px] sm:text-xs font-bold text-emerald-300 shrink-0">📱 ID:</span>
-            <code id="lobby-device-id" class="text-[10px] sm:text-xs font-mono font-bold bg-black/35 text-amber-300 px-1.5 py-0.5 rounded border border-amber-400/30 select-all truncate">DEV-LOADING</code>
+            <code id="lobby-device-id" class="text-[10px] sm:text-xs font-mono font-bold bg-black/35 text-amber-300 px-1.5 py-0.5 rounded border border-amber-400/30 select-all">DEV-LOADING</code>
             <span class="inline-flex items-center gap-0.5 text-[10px] sm:text-xs font-black bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded border border-amber-400/40 shrink-0">
               🪙 <span id="lobby-chip-balance">1,000</span>元
             </span>
@@ -514,7 +514,7 @@
 
       <!-- Online Multiplayer Panel -->
       <div id="panel-online" class="hidden space-y-2 sm:space-y-2.5">
-        <!-- Create Room (Hidden once waiting room opens to keep single screen compact) -->
+        <!-- Create Room -->
         <div id="create-room-card" class="bg-emerald-900/45 border border-emerald-700/50 rounded-xl p-2.5">
           <div class="flex items-center justify-between mb-1.5">
             <h3 class="font-bold text-amber-300 text-xs">建立新房間（當房主）</h3>
@@ -525,7 +525,7 @@
           </button>
         </div>
 
-        <!-- Join Room (Hidden once waiting room opens to keep single screen compact) -->
+        <!-- Join Room -->
         <div id="join-room-card" class="bg-emerald-900/45 border border-emerald-700/50 rounded-xl p-2.5">
           <h3 class="font-bold text-amber-300 text-xs mb-1.5">輸入房號加入好友房間</h3>
           <div class="flex gap-2">
@@ -1446,60 +1446,66 @@
     }
 
     function startSoloGame() {
-      SoundFX.click();
-      gameMode = 'solo';
-      myPlayerId = 'p_human';
-      const myName = getPlayerNickname();
-      const aiCount = parseInt(document.getElementById('ai-count-select').value, 10);
-      aiDifficulty = document.getElementById('ai-level-select').value;
-      turnDuration = parseInt(document.getElementById('turn-time-select').value, 10);
+      try {
+        SoundFX.click();
+        gameMode = 'solo';
+        myPlayerId = 'p_human';
+        const myName = getPlayerNickname();
+        const aiCount = parseInt(document.getElementById('ai-count-select').value, 10) || 3;
+        aiDifficulty = document.getElementById('ai-level-select').value || 'hard';
+        turnDuration = parseInt(document.getElementById('turn-time-select').value, 10);
+        if (Number.isNaN(turnDuration)) turnDuration = 90;
 
-      const deck = createFullDeck();
-      const botNames = ['🤖 小智 AI', '🤖 艾莉絲 AI', '🤖 馬可仕 AI'];
-      const players = [
-        {
-          id: myPlayerId,
-          deviceId: deviceProfile.deviceId,
-          name: myName,
-          isBot: false,
-          rack: deck.splice(0, 14),
-          hasBrokenIce: false,
-          chips: normalizeChips(deviceProfile.chips)
+        const deck = createFullDeck();
+        const botNames = ['🤖 小智 AI', '🤖 艾莉絲 AI', '🤖 馬可仕 AI'];
+        const players = [
+          {
+            id: myPlayerId,
+            deviceId: deviceProfile ? deviceProfile.deviceId : generateDeviceId(),
+            name: myName,
+            isBot: false,
+            rack: deck.splice(0, 14),
+            hasBrokenIce: false,
+            chips: normalizeChips(deviceProfile ? deviceProfile.chips : INITIAL_CHIPS)
+          }
+        ];
+
+        for (let i = 0; i < aiCount; i++) {
+          players.push({
+            id: `bot_${i + 1}`,
+            deviceId: `BOT-${i + 1}`,
+            name: botNames[i] || `🤖 電腦 ${i + 1}`,
+            isBot: true,
+            rack: deck.splice(0, 14),
+            hasBrokenIce: false,
+            chips: INITIAL_CHIPS
+          });
         }
-      ];
 
-      for (let i = 0; i < aiCount; i++) {
-        players.push({
-          id: `bot_${i + 1}`,
-          deviceId: `BOT-${i + 1}`,
-          name: botNames[i],
-          isBot: true,
-          rack: deck.splice(0, 14),
-          hasBrokenIce: false,
-          chips: INITIAL_CHIPS
-        });
+        applyEntryFeeToPlayers(players);
+
+        gameState = {
+          status: 'playing',
+          deck,
+          tableMelds: [],
+          players,
+          currentTurnIndex: 0,
+          timeLeft: turnDuration,
+          winnerId: null,
+          settlementResults: null
+        };
+
+        rackSlots = new Array(RACK_CAPACITY).fill(null);
+        rackReadyHighlightIds.clear();
+        rackGroupDividerBeforeIndices.clear();
+        syncRackSlotsWithHand(players[0].rack);
+
+        enterGameScreen();
+        beginTurn();
+      } catch (err) {
+        console.error('startSoloGame error:', err);
+        showToast('啟動對局發生錯誤：' + (err && err.message ? err.message : '請重試'), 'error');
       }
-
-      applyEntryFeeToPlayers(players);
-
-      gameState = {
-        status: 'playing',
-        deck,
-        tableMelds: [],
-        players,
-        currentTurnIndex: 0,
-        timeLeft: turnDuration,
-        winnerId: null,
-        settlementResults: null
-      };
-
-      rackSlots = new Array(RACK_CAPACITY).fill(null);
-      rackReadyHighlightIds.clear();
-      rackGroupDividerBeforeIndices.clear();
-      syncRackSlotsWithHand(players[0].rack);
-
-      enterGameScreen();
-      beginTurn();
     }
 
     // =========================================================
@@ -1703,7 +1709,6 @@
           }
           setupLocalFallbackRoomAsHost(nickname);
         } else if (err && err.type === 'unavailable-id') {
-          // Old signaling session from backgrounded tab hasn't expired yet; retry cleanly after 1.2s
           setHostSignalBadge('● 同步房號中...', 'warn');
           setTimeout(() => {
             if (gameMode === 'online_host' && currentRoomCode) {
@@ -2193,59 +2198,64 @@
     }
 
     function hostStartOnlineGame() {
-      SoundFX.click();
-      const fillBots = document.getElementById('fill-bots-checkbox').checked;
-      const deck = createFullDeck();
-      const botNames = ['🤖 機器人 Alpha', '🤖 機器人 Beta', '🤖 機器人 Gamma'];
+      try {
+        SoundFX.click();
+        const fillBots = document.getElementById('fill-bots-checkbox').checked;
+        const deck = createFullDeck();
+        const botNames = ['🤖 機器人 Alpha', '🤖 機器人 Beta', '🤖 機器人 Gamma'];
 
-      if (fillBots) {
-        let bIdx = 0;
-        while (gameState.players.length < 4) {
-          gameState.players.push({
-            id: `bot_${Date.now()}_${bIdx}`,
-            deviceId: `BOT-${bIdx + 1}`,
-            name: botNames[bIdx++],
-            isBot: true,
-            rack: [],
-            hasBrokenIce: false,
-            chips: INITIAL_CHIPS
-          });
+        if (fillBots) {
+          let bIdx = 0;
+          while (gameState.players.length < 4) {
+            gameState.players.push({
+              id: `bot_${Date.now()}_${bIdx}`,
+              deviceId: `BOT-${bIdx + 1}`,
+              name: botNames[bIdx++],
+              isBot: true,
+              rack: [],
+              hasBrokenIce: false,
+              chips: INITIAL_CHIPS
+            });
+          }
         }
+
+        if (gameState.players.length < 2) {
+          showToast('至少需要 2 位玩家（或勾選自動補滿 AI）才能開始！', 'error');
+          return;
+        }
+
+        gameState.players.forEach(p => {
+          p.rack = deck.splice(0, 14);
+          p.hasBrokenIce = false;
+        });
+
+        applyEntryFeeToPlayers(gameState.players);
+
+        turnDuration = 90;
+        aiDifficulty = 'hard';
+        gameState.status = 'playing';
+        gameState.deck = deck;
+        gameState.tableMelds = [];
+        gameState.currentTurnIndex = 0;
+        gameState.timeLeft = turnDuration;
+        gameState.winnerId = null;
+        gameState.settlementResults = null;
+
+        rackSlots = new Array(RACK_CAPACITY).fill(null);
+        rackReadyHighlightIds.clear();
+        rackGroupDividerBeforeIndices.clear();
+        syncRackSlotsWithHand(gameState.players[0].rack);
+
+        guestConnections.forEach(c => {
+          if (c.open) c.send({ type: 'GAME_START', state: gameState });
+        });
+
+        enterGameScreen();
+        beginTurn();
+      } catch (err) {
+        console.error('hostStartOnlineGame error:', err);
+        showToast('開局失敗：' + (err && err.message ? err.message : '請重試'), 'error');
       }
-
-      if (gameState.players.length < 2) {
-        showToast('至少需要 2 位玩家（或勾選自動補滿 AI）才能開始！', 'error');
-        return;
-      }
-
-      gameState.players.forEach(p => {
-        p.rack = deck.splice(0, 14);
-        p.hasBrokenIce = false;
-      });
-
-      applyEntryFeeToPlayers(gameState.players);
-
-      turnDuration = 90;
-      aiDifficulty = 'hard';
-      gameState.status = 'playing';
-      gameState.deck = deck;
-      gameState.tableMelds = [];
-      gameState.currentTurnIndex = 0;
-      gameState.timeLeft = turnDuration;
-      gameState.winnerId = null;
-      gameState.settlementResults = null;
-
-      rackSlots = new Array(RACK_CAPACITY).fill(null);
-      rackReadyHighlightIds.clear();
-      rackGroupDividerBeforeIndices.clear();
-      syncRackSlotsWithHand(gameState.players[0].rack);
-
-      guestConnections.forEach(c => {
-        if (c.open) c.send({ type: 'GAME_START', state: gameState });
-      });
-
-      enterGameScreen();
-      beginTurn();
     }
 
     function copyRoomCode() {
@@ -2291,7 +2301,6 @@
       document.body.removeChild(ta);
     }
 
-    // Automatically restore host signaling connection when returning from background/LINE
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden && gameMode === 'online_host' && currentRoomCode) {
         setTimeout(() => ensureHostPeerAlive(false), 200);
@@ -2308,9 +2317,18 @@
     // =========================================================
     function enterGameScreen() {
       document.body.classList.add('active-game-mode');
-      document.getElementById('lobby-view').classList.add('hidden');
-      document.getElementById('gameover-modal').classList.add('hidden');
-      document.getElementById('game-view').classList.remove('hidden');
+      const lobbyEl = document.getElementById('lobby-view');
+      const overEl = document.getElementById('gameover-modal');
+      const gameEl = document.getElementById('game-view');
+      if (lobbyEl) {
+        lobbyEl.classList.add('hidden');
+        lobbyEl.style.display = 'none';
+      }
+      if (overEl) overEl.classList.add('hidden');
+      if (gameEl) {
+        gameEl.classList.remove('hidden');
+        gameEl.style.display = 'flex';
+      }
       renderAll();
     }
 
@@ -3216,9 +3234,17 @@
       gameState.status = 'lobby';
       document.getElementById('toast-container').innerHTML = '';
       document.getElementById('gameover-modal').classList.add('hidden');
-      document.getElementById('game-view').classList.add('hidden');
+      const gameEl = document.getElementById('game-view');
+      const lobbyEl = document.getElementById('lobby-view');
+      if (gameEl) {
+        gameEl.classList.add('hidden');
+        gameEl.style.display = '';
+      }
       document.body.classList.remove('active-game-mode');
-      document.getElementById('lobby-view').classList.remove('hidden');
+      if (lobbyEl) {
+        lobbyEl.classList.remove('hidden');
+        lobbyEl.style.display = '';
+      }
       setWaitingRoomVisible(false);
       renderLobbyChipBalance();
     }
