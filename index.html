@@ -1,178 +1,1889 @@
-<!-- ... existing code ... -->
-    // 偵測是否為明確封鎖外部 WebSocket 的預覽沙盒（僅限無網域的 srcdoc / about:srcdoc）
-    function isWebSocketRestrictedEnv() {
-      try {
-        if (window.location.protocol === 'about:' || window.location.protocol === 'blob:' || window.location.protocol === 'data:') {
-          return true;
-        }
-      } catch (e) {
-        return true;
-      }
-      return false;
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="線上拉密對戰" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <title>線上拉密對戰 Rummikub Online</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- PeerJS for Serverless WebRTC P2P Multiplayer -->
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Noto+Sans+TC:wght@500;700;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --felt-green: #0d4a36;
+      --felt-dark: #072c20;
+      --wood-light: #8d5524;
+      --wood-dark: #4e2a0c;
+      --tile-bg: #fdfbf7;
+      --tile-border: #e5dec9;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-left: env(safe-area-inset-left, 0px);
+      --safe-right: env(safe-area-inset-right, 0px);
+      --effective-safe-top: var(--safe-top);
+      --effective-safe-bottom: var(--safe-bottom);
+      --effective-safe-left: var(--safe-left);
+      --effective-safe-right: var(--safe-right);
     }
 
-    // PeerJS 跨裝置連線設定（加入 STUN 伺服器提升手機 4G/5G 與跨 Wi-Fi 穿透成功率）
-    const PEER_CONFIG = {
-      debug: 1,
-      config: {
-        iceServers: [
-          { urls: 'stun:stun.l.google.com:19302' },
-          { urls: 'stun:stun1.l.google.com:19302' },
-          { urls: 'stun:stun2.l.google.com:19302' }
-        ]
+    body.is-fullscreen-mode,
+    body.ios-pseudo-fullscreen {
+      --effective-safe-top: max(var(--safe-top), 24px);
+      --effective-safe-bottom: max(var(--safe-bottom), 14px);
+      --effective-safe-left: max(var(--safe-left), 14px);
+      --effective-safe-right: max(var(--safe-right), 14px);
+    }
+
+    @media screen and (orientation: landscape) {
+      body.is-fullscreen-mode,
+      body.ios-pseudo-fullscreen {
+        --effective-safe-top: max(var(--safe-top), 8px);
+        --effective-safe-bottom: max(var(--safe-bottom), 8px);
+        --effective-safe-left: max(var(--safe-left), 42px);
+        --effective-safe-right: max(var(--safe-right), 42px);
       }
+    }
+
+    html {
+      height: 100%;
+      overflow-x: hidden;
+      overscroll-behavior-y: none;
+    }
+
+    body {
+      font-family: 'Noto Sans TC', sans-serif;
+      background: radial-gradient(circle at center, var(--felt-green) 0%, var(--felt-dark) 100%);
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+      overscroll-behavior-y: none;
+      overflow-x: hidden;
+      min-height: 100dvh;
+      margin: 0;
+      padding: 0;
+    }
+
+    body.active-game-mode {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100dvh;
+      overflow: hidden;
+      overscroll-behavior: none;
+      touch-action: manipulation;
+    }
+
+    .font-tile {
+      font-family: 'Fredoka', 'Noto Sans TC', sans-serif;
+    }
+
+    /* Realistic Rummikub Tile Styling - Full Bleed Bold Digits & Large Joker */
+    .rummi-tile {
+      position: relative;
+      background: linear-gradient(155deg, #ffffff 0%, #f9f6ee 68%, #ebe3d0 100%);
+      border: 1.5px solid #e0d6be;
+      border-bottom-width: 3.5px;
+      border-bottom-color: #c5b696;
+      border-radius: 7px;
+      box-shadow: 0 3px 6px rgba(0, 0, 0, 0.36), inset 0 1px 0 rgba(255, 255, 255, 0.95);
+      transition: transform 0.14s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.14s ease, border-color 0.14s ease;
+      cursor: pointer;
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      touch-action: manipulation;
+      overflow: hidden;
+      padding: 0;
+    }
+
+    .rummi-tile:hover {
+      transform: translateY(-2px);
+    }
+
+    .rummi-tile.selected {
+      transform: translateY(-8px) scale(1.06);
+      border-color: #f59e0b;
+      border-bottom-color: #b45309;
+      box-shadow: 0 10px 18px rgba(245, 158, 11, 0.55), 0 0 0 2.5px #fbbf24;
+      z-index: 25;
+    }
+
+    .rummi-tile.from-table {
+      background: linear-gradient(155deg, #f2f9ff 0%, #e4f1fe 68%, #cde3fa 100%);
+      border-color: #93c5fd;
+      border-bottom-color: #60a5fa;
+    }
+
+    .rummi-tile.in-ready-meld {
+      background: linear-gradient(155deg, #ffffff 0%, #f0fdf4 68%, #dcfce7 100%);
+      border-color: #6ee7b7;
+      border-bottom-color: #34d399;
+    }
+
+    .rummi-tile .tile-digit {
+      font-family: 'Fredoka', sans-serif;
+      font-weight: 700;
+      font-size: 27px;
+      line-height: 0.92;
+      letter-spacing: -0.05em;
+      transform: scaleY(1.06);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+      text-shadow: 0 1px 0 rgba(255, 255, 255, 0.85);
+    }
+
+    .rummi-tile.two-digits .tile-digit {
+      font-size: 23px;
+      letter-spacing: -0.07em;
+    }
+
+    .rummi-tile.joker-tile .tile-digit {
+      font-size: 27px;
+      line-height: 1;
+      transform: none;
+    }
+
+    /* Table Tile Sizes */
+    .rummi-tile.table-tile {
+      width: 34px;
+      height: 46px;
+      border-radius: 6px;
+      border-bottom-width: 3px;
+    }
+    .rummi-tile.table-tile .tile-digit {
+      font-size: 27px;
+    }
+    .rummi-tile.table-tile.two-digits .tile-digit {
+      font-size: 23px;
+    }
+    .rummi-tile.table-tile.joker-tile .tile-digit {
+      font-size: 26px;
+    }
+
+    /* Rack Tile Sizes */
+    .rummi-tile.rack-tile {
+      width: 35px;
+      height: 48px;
+      border-radius: 6px;
+      border-bottom-width: 3px;
+    }
+    .rummi-tile.rack-tile .tile-digit {
+      font-size: 28px;
+    }
+    .rummi-tile.rack-tile.two-digits .tile-digit {
+      font-size: 24px;
+    }
+    .rummi-tile.rack-tile.joker-tile .tile-digit {
+      font-size: 27px;
+    }
+
+    @media (min-width: 640px) {
+      .rummi-tile.table-tile {
+        width: 40px;
+        height: 54px;
+        border-radius: 7px;
+      }
+      .rummi-tile.table-tile .tile-digit {
+        font-size: 33px;
+      }
+      .rummi-tile.table-tile.two-digits .tile-digit {
+        font-size: 28px;
+      }
+      .rummi-tile.table-tile.joker-tile .tile-digit {
+        font-size: 31px;
+      }
+
+      .rummi-tile.rack-tile {
+        width: 43px;
+        height: 58px;
+        border-radius: 7px;
+      }
+      .rummi-tile.rack-tile .tile-digit {
+        font-size: 35px;
+      }
+      .rummi-tile.rack-tile.two-digits .tile-digit {
+        font-size: 30px;
+      }
+      .rummi-tile.rack-tile.joker-tile .tile-digit {
+        font-size: 33px;
+      }
+    }
+
+    /* Tile Colors */
+    .tile-red { color: #dc2626; }
+    .tile-blue { color: #1d4ed8; }
+    .tile-black { color: #111827; }
+    .tile-orange { color: #d97706; }
+
+    /* Wooden Tile Rack */
+    .wooden-rack {
+      background: linear-gradient(180deg, #9c602a 0%, #7c4719 52%, #59300d 100%);
+      border-top: 3px solid #b87a3d;
+      box-shadow: 0 -6px 18px rgba(0, 0, 0, 0.55), inset 0 2px 4px rgba(255, 255, 255, 0.16);
+    }
+
+    .rack-tier-ledge {
+      position: relative;
+      background: rgba(34, 16, 4, 0.42);
+      border: 1px solid rgba(255, 210, 155, 0.16);
+      border-bottom: 3px solid #3f2007;
+      border-radius: 9px;
+      box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.48), 0 1px 0 rgba(255, 215, 165, 0.18);
+    }
+
+    .rack-slot-empty {
+      border: 1px dashed rgba(255, 230, 190, 0.22);
+      background: rgba(25, 11, 2, 0.28);
+      border-radius: 6px;
+      transition: background-color 0.15s ease, border-color 0.15s ease;
+    }
+    .rack-slot-empty:hover {
+      background: rgba(251, 191, 36, 0.14);
+      border-color: rgba(251, 191, 36, 0.5);
+    }
+
+    .meld-group {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1.5px solid rgba(255, 255, 255, 0.16);
+      border-radius: 10px;
+      padding: 4px 5px;
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      transition: all 0.2s ease;
+    }
+
+    .meld-group.valid {
+      border-color: rgba(52, 211, 153, 0.55);
+      background: rgba(16, 185, 129, 0.12);
+    }
+
+    .meld-group.invalid {
+      border-color: rgba(248, 113, 113, 0.85);
+      background: rgba(239, 68, 68, 0.22);
+      box-shadow: 0 0 12px rgba(239, 68, 68, 0.35);
+    }
+
+    /* Fullscreen & Safe-Area Notch / Punch-Hole Camera Adaptation */
+    #app-container {
+      padding-top: var(--safe-top);
+      padding-bottom: var(--safe-bottom);
+      padding-left: var(--safe-left);
+      padding-right: var(--safe-right);
+    }
+
+    body.active-game-mode #app-container {
+      height: 100dvh;
+      max-height: 100dvh;
+      overflow: hidden;
+      padding: 0;
+    }
+
+    body.active-game-mode #top-bar {
+      padding-top: calc(var(--effective-safe-top) + 4px);
+      padding-left: calc(var(--effective-safe-left) + 8px);
+      padding-right: calc(var(--effective-safe-right) + 8px);
+      padding-bottom: 4px;
+    }
+
+    body.active-game-mode #table-area {
+      flex: 1 1 0%;
+      min-height: 0;
+      height: 100%;
+      max-height: 100%;
+      overflow: hidden !important;
+      padding-left: calc(var(--effective-safe-left) + 8px);
+      padding-right: calc(var(--effective-safe-right) + 8px);
+    }
+
+    body.active-game-mode #rack-section {
+      padding-left: calc(var(--effective-safe-left) + 6px);
+      padding-right: calc(var(--effective-safe-right) + 6px);
+      padding-bottom: calc(var(--effective-safe-bottom) + 4px);
+    }
+
+    @media screen and (orientation: landscape) and (max-height: 540px) {
+      body.active-game-mode #top-bar {
+        padding-top: calc(var(--effective-safe-top) + 2px);
+        padding-bottom: 2px;
+      }
+      body.active-game-mode #rack-section {
+        padding-top: 4px;
+        padding-bottom: calc(var(--effective-safe-bottom) + 2px);
+      }
+      body.active-game-mode #rack-rows-wrapper {
+        gap: 3px;
+      }
+      body.active-game-mode .rack-tier-ledge {
+        padding-top: 2px;
+        padding-bottom: 2px;
+      }
+    }
+
+    /* Animations */
+    @keyframes popIn {
+      0% { transform: scale(0.82); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .animate-pop {
+      animation: popIn 0.22s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards;
+    }
+
+    @keyframes pulseBorder {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.6); }
+      50% { box-shadow: 0 0 0 6px rgba(251, 191, 36, 0); }
+    }
+    .active-turn-ring {
+      animation: pulseBorder 1.8s infinite;
+    }
+
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.25);
+      border-radius: 4px;
+    }
+
+    /* Lobby Responsive Portrait & Compact Screen Adaptation */
+    #lobby-view {
+      width: 100%;
+      padding-top: max(12px, env(safe-area-inset-top, 12px));
+      padding-bottom: max(16px, env(safe-area-inset-bottom, 16px));
+      padding-left: max(12px, env(safe-area-inset-left, 12px));
+      padding-right: max(12px, env(safe-area-inset-right, 12px));
+    }
+
+    .lobby-card {
+      width: 100%;
+      max-width: min(460px, 94vw);
+    }
+
+    .lobby-demo-tile {
+      width: 34px;
+      height: 46px;
+      border-radius: 6px;
+      border-bottom-width: 3px;
+    }
+    .lobby-demo-tile .tile-digit {
+      font-size: 25px;
+    }
+    .lobby-demo-tile.two-digits .tile-digit {
+      font-size: 21px;
+    }
+    .lobby-demo-tile.joker-tile .tile-digit {
+      font-size: 24px;
+    }
+
+    @media (min-width: 640px) {
+      .lobby-card {
+        max-width: 510px;
+      }
+      .lobby-demo-tile {
+        width: 40px;
+        height: 54px;
+        border-radius: 7px;
+      }
+      .lobby-demo-tile .tile-digit {
+        font-size: 31px;
+      }
+      .lobby-demo-tile.two-digits .tile-digit {
+        font-size: 26px;
+      }
+      .lobby-demo-tile.joker-tile .tile-digit {
+        font-size: 29px;
+      }
+    }
+
+    @media (max-height: 700px) {
+      #lobby-view {
+        justify-content: flex-start;
+        padding-top: max(10px, env(safe-area-inset-top, 10px));
+        padding-bottom: max(12px, env(safe-area-inset-bottom, 12px));
+      }
+      .lobby-demo-tile {
+        width: 30px;
+        height: 40px;
+      }
+      .lobby-demo-tile .tile-digit {
+        font-size: 22px;
+      }
+      .lobby-demo-tile.two-digits .tile-digit {
+        font-size: 18px;
+      }
+    }
+  </style>
+</head>
+<body class="text-white min-h-screen flex flex-col justify-between overflow-x-hidden">
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-2 pointer-events-none w-11/12 max-w-md"></div>
+
+  <!-- =========================================================
+       VIEW 1: LOBBY / HOME SCREEN
+  ========================================================= -->
+  <div id="lobby-view" class="flex-1 flex flex-col items-center justify-center min-h-[100dvh] box-border">
+    <div class="lobby-card bg-emerald-950/85 backdrop-blur-md border border-emerald-700/50 rounded-3xl p-4 sm:p-7 shadow-2xl animate-pop">
+      <!-- Logo & Title -->
+      <div class="text-center mb-3.5 sm:mb-5">
+        <div class="inline-flex items-center justify-center gap-1.5 sm:gap-2 mb-2">
+          <div class="rummi-tile lobby-demo-tile tile-red"><span class="tile-digit">7</span></div>
+          <div class="rummi-tile lobby-demo-tile tile-blue"><span class="tile-digit">8</span></div>
+          <div class="rummi-tile lobby-demo-tile tile-orange"><span class="tile-digit">9</span></div>
+          <div class="rummi-tile lobby-demo-tile tile-black joker-tile"><span class="tile-digit">☺</span></div>
+        </div>
+        <h1 class="text-2xl sm:text-4xl font-black tracking-tight text-amber-300 drop-shadow leading-tight">線上拉密對戰</h1>
+        <p class="text-emerald-200/80 text-xs sm:text-sm mt-0.5">Rummikub Online · 支援單機 AI 與好友連線</p>
+      </div>
+
+      <!-- Player Nickname & Persistent Device ID -->
+      <div class="mb-3.5 sm:mb-4 bg-emerald-900/55 border border-emerald-700/60 rounded-2xl p-2.5 sm:p-3">
+        <div class="flex items-center justify-between gap-2 mb-2">
+          <div class="flex items-center gap-1.5 min-w-0 flex-wrap">
+            <span class="text-[11px] sm:text-xs font-bold text-emerald-300 shrink-0">📱 手機專屬 ID：</span>
+            <code id="lobby-device-id" class="text-[11px] sm:text-xs font-mono font-bold bg-black/35 text-amber-300 px-2 py-0.5 rounded-lg border border-amber-400/30 select-all truncate">DEV-LOADING</code>
+            <span class="inline-flex items-center gap-1 text-[11px] sm:text-xs font-black bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-lg border border-amber-400/40 shrink-0" title="初始1000元，每場入場100元，最低保底100元">
+              🪙 <span id="lobby-chip-balance">1,000</span> 元
+            </span>
+          </div>
+          <div class="flex items-center gap-1 shrink-0">
+            <button type="button" onclick="copyDeviceId()" class="text-[11px] bg-emerald-800 hover:bg-emerald-700 active:scale-95 text-emerald-100 px-2 py-1 rounded-lg border border-emerald-600/60 transition cursor-pointer">
+              📋 複製
+            </button>
+            <button type="button" onclick="toggleDeviceIdEditor()" class="text-[11px] bg-emerald-800/80 hover:bg-emerald-700 active:scale-95 text-amber-200 px-2 py-1 rounded-lg border border-emerald-600/60 transition cursor-pointer">
+              ✏️ 綁定舊ID
+            </button>
+          </div>
+        </div>
+        <div id="device-id-editor" class="hidden mb-2 p-2 bg-black/30 rounded-xl border border-emerald-700/60 flex items-center gap-1.5">
+          <input id="custom-device-id-input" type="text" maxlength="16" placeholder="輸入舊手機 ID (例如 DEV-XXXX-XXXX)"
+            class="flex-1 min-w-0 bg-emerald-950/90 border border-emerald-600 rounded-lg px-2.5 py-1.5 text-xs font-mono text-white placeholder-emerald-500 focus:outline-none focus:border-amber-400 uppercase" />
+          <button type="button" onclick="applyCustomDeviceId()" class="bg-amber-500 hover:bg-amber-400 text-emerald-950 font-black text-xs px-2.5 py-1.5 rounded-lg shrink-0 cursor-pointer">
+            套用
+          </button>
+        </div>
+        <div class="flex items-center gap-2">
+          <label for="player-name-input" class="text-xs sm:text-sm font-bold text-emerald-200 shrink-0">玩家暱稱</label>
+          <input id="player-name-input" type="text" maxlength="12" placeholder="輸入暱稱（自動記憶）"
+            class="flex-1 min-w-0 bg-emerald-950/80 border border-emerald-600 rounded-xl px-3 py-2 text-sm sm:text-base text-white placeholder-emerald-400/50 focus:outline-none focus:border-amber-400 transition" />
+        </div>
+        <div class="mt-2 pt-1.5 border-t border-emerald-700/40 flex items-center justify-between text-[11px] text-emerald-200/85">
+          <span>🎫 入場費：<strong class="text-amber-300">100元</strong>（保底100元可無限玩）</span>
+          <span>🏆 獎金：<strong class="text-emerald-300">200 / 100 / 60 / 40</strong></span>
+        </div>
+      </div>
+
+      <!-- Mode Tabs -->
+      <div class="grid grid-cols-2 gap-1.5 bg-emerald-900/60 p-1 rounded-2xl mb-3.5 sm:mb-4">
+        <button id="tab-solo" onclick="switchLobbyTab('solo')" class="py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm bg-amber-500 text-emerald-950 shadow transition cursor-pointer">
+          🤖 單機 AI 練習
+        </button>
+        <button id="tab-online" onclick="switchLobbyTab('online')" class="py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm text-emerald-200 hover:text-white transition cursor-pointer">
+          🌐 線上好友對戰
+        </button>
+      </div>
+
+      <!-- Solo AI Panel -->
+      <div id="panel-solo" class="space-y-3 sm:space-y-4">
+        <div class="bg-emerald-900/45 border border-emerald-700/50 rounded-2xl p-3 sm:p-4 space-y-2.5 sm:space-y-3">
+          <div class="flex items-center justify-between gap-3">
+            <label class="text-xs sm:text-sm text-emerald-200 font-bold shrink-0">AI 對手人數</label>
+            <select id="ai-count-select" class="w-40 sm:w-44 bg-emerald-950 border border-emerald-600 rounded-xl px-2.5 py-1.5 sm:py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-amber-400">
+              <option value="1">1 位 AI (2人對決)</option>
+              <option value="2">2 位 AI (3人混戰)</option>
+              <option value="3" selected>3 位 AI (4人標準)</option>
+            </select>
+          </div>
+          <div class="flex items-center justify-between gap-3">
+            <label class="text-xs sm:text-sm text-emerald-200 font-bold shrink-0">AI 智慧難度</label>
+            <select id="ai-level-select" class="w-40 sm:w-44 bg-emerald-950 border border-emerald-600 rounded-xl px-2.5 py-1.5 sm:py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-amber-400">
+              <option value="normal">標準 (休閒娛樂)</option>
+              <option value="hard" selected>精通 (積極破冰與拆組)</option>
+            </select>
+          </div>
+          <div class="flex items-center justify-between gap-3">
+            <label class="text-xs sm:text-sm text-emerald-200 font-bold shrink-0">每回合思考時間</label>
+            <select id="turn-time-select" class="w-40 sm:w-44 bg-emerald-950 border border-emerald-600 rounded-xl px-2.5 py-1.5 sm:py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-amber-400">
+              <option value="60">60 秒</option>
+              <option value="90" selected>90 秒 (標準)</option>
+              <option value="120">120 秒</option>
+              <option value="0">不限時</option>
+            </select>
+          </div>
+        </div>
+
+        <button onclick="startSoloGame()" class="w-full py-3 sm:py-3.5 rounded-2xl font-black text-base sm:text-lg bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-emerald-950 shadow-lg shadow-amber-500/30 active:scale-[0.98] transition cursor-pointer">
+          🚀 立即開始單機對戰
+        </button>
+      </div>
+
+      <!-- Online Multiplayer Panel -->
+      <div id="panel-online" class="hidden space-y-3 sm:space-y-4">
+        <!-- Create Room -->
+        <div class="bg-emerald-900/45 border border-emerald-700/50 rounded-2xl p-3 sm:p-4">
+          <div class="flex items-center justify-between mb-2">
+            <h3 class="font-bold text-amber-300 text-xs sm:text-sm">建立新房間（當房主）</h3>
+            <span class="text-[11px] text-emerald-300/80">最多 4 人同樂</span>
+          </div>
+          <button id="btn-create-room" onclick="createOnlineRoom()" class="w-full py-2.5 sm:py-3 rounded-xl font-bold text-sm sm:text-base bg-emerald-600 hover:bg-emerald-500 text-white shadow transition active:scale-[0.98] cursor-pointer">
+            ➕ 建立房間並取得房號
+          </button>
+        </div>
+
+        <!-- Join Room -->
+        <div class="bg-emerald-900/45 border border-emerald-700/50 rounded-2xl p-3 sm:p-4">
+          <h3 class="font-bold text-amber-300 text-xs sm:text-sm mb-2">輸入房號加入好友房間</h3>
+          <div class="flex gap-2">
+            <input id="room-code-input" type="text" maxlength="6" placeholder="輸入6碼房號"
+              class="flex-1 min-w-0 uppercase tracking-widest text-center font-mono font-bold bg-emerald-950 border border-emerald-600 rounded-xl px-3 py-2 sm:py-2.5 text-sm sm:text-base text-white placeholder-emerald-400/50 focus:outline-none focus:border-amber-400" />
+            <button id="btn-join-room" onclick="joinOnlineRoom()" class="px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl font-bold text-sm sm:text-base bg-amber-500 hover:bg-amber-400 text-emerald-950 shadow transition active:scale-[0.98] shrink-0 cursor-pointer">
+              加入
+            </button>
+          </div>
+        </div>
+
+        <!-- Waiting Room Box -->
+        <div id="waiting-room-box" class="hidden bg-black/35 border border-amber-400/40 rounded-2xl p-3 sm:p-4 space-y-2.5">
+          <div class="flex items-center justify-between gap-2">
+            <div class="min-w-0">
+              <span class="text-[11px] text-emerald-300 block">房間代碼（點擊複製分享）</span>
+              <span id="display-room-code" onclick="copyRoomCode()" class="text-xl sm:text-2xl font-mono font-black tracking-widest text-amber-300 cursor-pointer hover:underline">------</span>
+            </div>
+            <button onclick="copyInviteLink()" class="px-2.5 py-1.5 rounded-lg bg-emerald-800 hover:bg-emerald-700 text-xs font-bold text-emerald-100 border border-emerald-600 shrink-0 cursor-pointer">
+              📋 複製邀請連結
+            </button>
+          </div>
+
+          <div class="border-t border-emerald-800/80 pt-2">
+            <div class="text-xs text-emerald-300 mb-1.5 flex justify-between">
+              <span>已加入玩家：</span>
+              <span id="waiting-player-count">1 / 4</span>
+            </div>
+            <ul id="waiting-players-list" class="space-y-1 text-xs sm:text-sm"></ul>
+          </div>
+
+          <div id="host-start-controls" class="hidden pt-1.5 flex flex-col gap-2">
+            <label class="flex items-center gap-2 text-xs text-emerald-200 cursor-pointer">
+              <input id="fill-bots-checkbox" type="checkbox" checked class="rounded text-amber-500 focus:ring-0" />
+              <span>不足 4 人時自動補滿 AI 機器人</span>
+            </label>
+            <button onclick="hostStartOnlineGame()" class="w-full py-2.5 sm:py-3 rounded-xl font-black text-sm sm:text-base bg-gradient-to-r from-amber-400 to-amber-500 text-emerald-950 shadow-lg cursor-pointer">
+              🎮 全員開局！
+            </button>
+          </div>
+          <div id="guest-waiting-msg" class="hidden text-center text-xs text-amber-200/90 py-1 animate-pulse">
+            ⏳ 等待房主按下開始遊戲...
+          </div>
+        </div>
+      </div>
+
+      <!-- Rules Button -->
+      <div class="mt-4 sm:mt-5 pt-3 border-t border-emerald-800/70 flex justify-between items-center text-xs text-emerald-300">
+        <button onclick="toggleRulesModal(true)" class="hover:text-amber-300 underline flex items-center gap-1 py-1 cursor-pointer">
+          📖 拉密規則與操作教學
+        </button>
+        <span>純前端 P2P 連線版</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       VIEW 2: ACTIVE GAME TABLE
+  ========================================================= -->
+  <div id="game-view" class="hidden flex-1 flex flex-col h-full overflow-hidden">
+
+    <!-- Top Bar: Players Status & Controls -->
+    <header id="top-bar" class="bg-emerald-950/95 border-b border-emerald-800/80 px-2 py-1.5 sm:px-4 sm:py-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-1.5 z-20 shrink-0 shadow-md">
+      <!-- Players Status Strip -->
+      <div id="players-bar" class="grid grid-cols-2 sm:flex sm:flex-nowrap items-center gap-1.5 sm:gap-2 w-full sm:w-auto sm:flex-1 sm:overflow-x-auto"></div>
+
+      <!-- Controls -->
+      <div class="flex items-center justify-end gap-1.5 shrink-0">
+        <button id="btn-fullscreen" onclick="toggleFullScreen()" class="px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg bg-emerald-800 hover:bg-emerald-700 border border-emerald-600/80 text-xs font-bold text-amber-200 cursor-pointer flex items-center gap-1" title="切換全螢幕並自動避開前鏡頭">
+          <span id="fullscreen-icon">⛶</span><span id="fullscreen-label">全螢幕</span>
+        </button>
+        <button id="btn-sound" onclick="toggleSound()" class="p-1.5 rounded-lg bg-emerald-900 hover:bg-emerald-800 border border-emerald-700 text-xs cursor-pointer" title="音效開關">🔊</button>
+        <button onclick="toggleRulesModal(true)" class="p-1.5 rounded-lg bg-emerald-900 hover:bg-emerald-800 border border-emerald-700 text-xs cursor-pointer" title="規則說明">📖</button>
+        <button onclick="confirmLeaveGame()" class="px-2 py-1.5 rounded-lg bg-red-950/80 hover:bg-red-900 border border-red-800 text-xs text-red-200 cursor-pointer">離開</button>
+      </div>
+    </header>
+
+    <!-- Center Board: Melds on the Table -->
+    <main id="table-area" onclick="handleTableBackgroundClick(event)"
+      class="flex-1 min-h-0 overflow-hidden p-2 sm:p-4 flex flex-col justify-between relative select-none">
+
+      <!-- Floating Top-Left Active Turn Indicator -->
+      <div id="floating-turn-hud" class="absolute top-2 left-2 z-10 pointer-events-none select-none flex items-center gap-1.5">
+        <div id="floating-turn-pill" class="bg-emerald-950/75 backdrop-blur-md border border-emerald-500/40 rounded-full px-2.5 py-1 flex items-center gap-1.5 shadow-lg text-[11px] sm:text-xs font-black text-emerald-100">
+          <span id="floating-turn-text">出牌方：--</span>
+        </div>
+        <div id="floating-ice-pill" class="hidden bg-amber-950/80 backdrop-blur-md border border-amber-400/50 rounded-full px-2 py-1 text-[10px] sm:text-[11px] font-bold text-amber-300 shadow-lg">
+          破冰 <span id="floating-ice-score">0</span>/30分
+        </div>
+      </div>
+
+      <!-- Floating Top-Right Deck & Timer HUD -->
+      <div id="floating-table-hud" class="absolute top-2 right-2 z-10 pointer-events-none select-none flex items-center gap-1.5">
+        <div class="bg-emerald-950/70 backdrop-blur-md border border-emerald-500/35 rounded-full px-2.5 py-1 flex items-center gap-1 shadow-lg">
+          <span class="text-[11px] sm:text-xs">🎴</span>
+          <span class="text-[10px] sm:text-[11px] text-emerald-200/90 font-medium">牌庫</span>
+          <span id="deck-count-badge" class="font-mono font-black text-amber-300 text-xs sm:text-sm">0</span>
+        </div>
+        <div id="timer-box" class="bg-emerald-950/70 backdrop-blur-md border border-emerald-500/35 rounded-full px-2.5 py-1 flex items-center gap-1 shadow-lg">
+          <span class="text-[11px] sm:text-xs">⏱</span>
+          <span class="text-[10px] sm:text-[11px] text-emerald-200/90 font-medium">剩餘</span>
+          <span id="turn-timer-text" class="font-mono font-black text-xs sm:text-sm text-white">90s</span>
+        </div>
+      </div>
+
+      <!-- Melds Grid Container -->
+      <div id="table-melds-container" onclick="handleTableBackgroundClick(event)"
+        class="w-full h-full flex-1 min-h-0 overflow-hidden flex flex-wrap content-center justify-center items-center pt-7 pb-1">
+      </div>
+    </main>
+
+    <!-- Bottom Area: Action Controls & Wooden Player Rack -->
+    <section id="rack-section" class="wooden-rack px-2 pt-1.5 pb-2 sm:px-4 sm:pt-2.5 sm:pb-3 z-20 shrink-0">
+      <!-- Selected Tiles Floating Action Toolbar -->
+      <div id="selection-toolbar" class="hidden max-w-4xl mx-auto mb-1 bg-amber-950/90 border border-amber-400/70 rounded-lg px-2 py-1 flex items-center justify-between gap-1.5 shadow">
+        <div class="flex items-center gap-1 text-[11px] leading-none min-w-0 truncate">
+          <span id="selected-count-badge" class="bg-amber-400 text-emerald-950 font-black px-1.5 py-0.5 rounded-full text-[10px] shrink-0">0</span>
+          <span id="selection-validation-text" class="font-bold text-amber-200 truncate">請選至少3張</span>
+        </div>
+        <div class="flex items-center gap-1 shrink-0">
+          <button onclick="playSelectedAsNewMeld()" class="px-2 py-1 rounded bg-emerald-500 hover:bg-emerald-400 text-emerald-950 font-black text-[11px] leading-none shadow cursor-pointer">
+            🃏 出牌
+          </button>
+          <button onclick="returnSelectedTableTilesToBoard()" id="btn-return-table-tiles" class="hidden px-1.5 py-1 rounded bg-sky-500 hover:bg-sky-400 text-sky-950 font-bold text-[11px] leading-none cursor-pointer">
+            ↩ 放回
+          </button>
+          <button onclick="clearSelection()" class="px-1.5 py-1 rounded bg-stone-700 hover:bg-stone-600 text-stone-200 text-[11px] leading-none cursor-pointer">
+            ✕
+          </button>
+        </div>
+      </div>
+
+      <!-- Main Turn Action Buttons -->
+      <div class="max-w-4xl mx-auto flex flex-wrap items-center justify-between gap-1.5 mb-2">
+        <!-- Left: Smart Sorting & Auto-Select Tools -->
+        <div class="flex items-center gap-1 sm:gap-1.5 flex-wrap">
+          <button onclick="sortPlayerRack('group')" class="px-2 py-1.5 rounded-lg bg-amber-950/80 hover:bg-amber-900 border border-amber-700/70 text-[11px] sm:text-xs font-bold text-amber-100 cursor-pointer" title="依同數字不同色智慧分類，可出牌組自動集中標示">
+            🔢 777理牌
+          </button>
+          <button onclick="sortPlayerRack('run')" class="px-2 py-1.5 rounded-lg bg-amber-950/80 hover:bg-amber-900 border border-amber-700/70 text-[11px] sm:text-xs font-bold text-amber-100 cursor-pointer" title="依同色連續順子智慧分類，可出牌組自動集中標示">
+            🌈 789理牌
+          </button>
+          <button onclick="autoSelectBestPlayableMeld()" class="px-2 py-1.5 rounded-lg bg-emerald-800/90 hover:bg-emerald-700 border border-emerald-500/70 text-[11px] sm:text-xs font-bold text-emerald-100 cursor-pointer" title="自動幫你選取手牌中最佳可出牌組">
+            ✨ 智慧選牌
+          </button>
+          <span id="rack-count-label" class="text-[11px] text-amber-200/80 ml-0.5 hidden sm:inline">手牌: 14 張</span>
+        </div>
+
+        <!-- Right: Turn Commit / Draw / Reset -->
+        <div class="flex items-center gap-1.5 sm:gap-2">
+          <button id="btn-reset-turn" onclick="resetCurrentTurn()" disabled
+            class="px-2.5 py-1.5 rounded-lg bg-stone-800/90 hover:bg-stone-700 disabled:opacity-40 disabled:pointer-events-none border border-stone-600 text-xs font-bold text-stone-200 cursor-pointer">
+            ↺ 重置本回合
+          </button>
+          <button id="btn-draw-tile" onclick="drawTileAndEndTurn()" disabled
+            class="px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 disabled:opacity-40 disabled:pointer-events-none text-xs sm:text-sm font-black text-white shadow cursor-pointer">
+            🎴 抽牌結束回合
+          </button>
+          <button id="btn-end-turn" onclick="confirmEndTurn()" disabled
+            class="px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-emerald-400 to-emerald-500 hover:from-emerald-300 hover:to-emerald-400 disabled:opacity-40 disabled:pointer-events-none text-xs sm:text-sm font-black text-emerald-950 shadow-lg cursor-pointer">
+            ✅ 確認出牌
+          </button>
+        </div>
+      </div>
+
+      <!-- Player's Two-Tier Wooden Tile Rack (10 Slots Top + 10 Slots Bottom) -->
+      <div class="max-w-4xl mx-auto">
+        <div id="rack-rows-wrapper" class="flex flex-col gap-1.5">
+          <!-- Tier 1 (Slots 0 - 9) -->
+          <div id="player-rack-row-1" class="rack-tier-ledge flex items-center justify-center gap-1 sm:gap-1.5 px-1.5 py-1 min-h-[54px] sm:min-h-[64px]"></div>
+          <!-- Tier 2 (Slots 10 - 19) -->
+          <div id="player-rack-row-2" class="rack-tier-ledge flex items-center justify-center gap-1 sm:gap-1.5 px-1.5 py-1 min-h-[54px] sm:min-h-[64px]"></div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- =========================================================
+       MODAL 1: RULES & TUTORIAL
+  ========================================================= -->
+  <div id="rules-modal" class="hidden fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-emerald-950 border border-emerald-700 rounded-3xl max-w-lg w-full max-h-[85vh] flex flex-col shadow-2xl animate-pop">
+      <div class="p-4 sm:p-5 border-b border-emerald-800 flex items-center justify-between">
+        <h2 class="text-lg sm:text-xl font-black text-amber-300">📖 拉密 (Rummikub) 規則與操作</h2>
+        <button onclick="toggleRulesModal(false)" class="w-8 h-8 rounded-full bg-emerald-900 hover:bg-emerald-800 text-emerald-200 font-bold cursor-pointer">✕</button>
+      </div>
+      <div class="p-4 sm:p-5 overflow-y-auto space-y-4 text-xs sm:text-sm text-emerald-100 leading-relaxed">
+        <div>
+          <h3 class="font-bold text-amber-300 text-base mb-1">1. 遊戲目標</h3>
+          <p>共 106 張牌（紅、藍、黑、橘四色 1~13 各兩副，加上 2 張百搭鬼牌 ☺）。每位玩家起始抽 14 張牌，<strong>最快將手牌全部出完的人獲勝！</strong></p>
+        </div>
+        <div>
+          <h3 class="font-bold text-amber-300 text-base mb-1">2. 兩種合法牌組（至少 3 張）</h3>
+          <ul class="list-disc pl-5 space-y-1">
+            <li><strong>群組 (Group)</strong>：3 或 4 張「<strong>數字相同、顏色完全不同</strong>」的牌（例如：<span class="text-red-400 font-bold">紅7</span> <span class="text-sky-400 font-bold">藍7</span> <span class="text-amber-400 font-bold">橘7</span>）。</li>
+            <li><strong>順子 (Run)</strong>：3 張以上「<strong>顏色相同、數字連續</strong>」的牌（例如：<span class="text-sky-400 font-bold">藍4 藍5 藍6 藍7</span>；1 不可接在 13 後面）。</li>
+            <li><strong>百搭鬼牌 (☺)</strong>：可代替任意顏色與數字。</li>
+          </ul>
+        </div>
+        <div>
+          <h3 class="font-bold text-amber-300 text-base mb-1">3. 破冰規則 (Initial Meld ≥ 30分)</h3>
+          <p>每位玩家第一次出牌時，<strong>必須僅使用自己手牌</strong>排出總點數 <strong>至少 30 分</strong> 的牌組（可一組或多組相加，鬼牌依所代替的牌面數字計分），且破冰前不能動用牌桌上的牌。破冰成功後，之後的回合就能自由拆解與重組桌面牌組！</p>
+        </div>
+        <div>
+          <h3 class="font-bold text-amber-300 text-base mb-1">4. 手機與電腦操作方式</h3>
+          <ul class="list-disc pl-5 space-y-1">
+            <li><strong>組牌出新牌組</strong>：點擊手牌選取多張牌（牌會浮起發光），再點擊操作列的「<strong>🃏 出牌</strong>」或直接點擊牌桌空白處即可放上牌桌。</li>
+            <li><strong>智慧理牌與視覺區隔</strong>：點擊「<strong>777理牌</strong>」或「<strong>789理牌</strong>」時，手牌中已成組的 3 張以上合法牌組會自動排到前方並以<strong>淡綠牌底＋金色分隔線</strong>標示；按「<strong>✨ 智慧選牌</strong>」還可一鍵選取最佳可出牌組！</li>
+            <li><strong>智慧牌組自動拆分</strong>：在既有的牌組兩側點擊「<strong>＋</strong>」加入新牌，或從長牌組移出一張牌時，若能拆成兩組 3 張以上的合法牌組，系統會自動智能拆分！</li>
+            <li><strong>抽牌 / 確認出牌</strong>：本回合若無法出牌，點擊「<strong>🎴 抽牌結束回合</strong>」抽 1 張牌；若有出牌且桌上所有牌組皆為綠框合法狀態，點擊「<strong>✅ 確認出牌</strong>」。</li>
+          </ul>
+        </div>
+      </div>
+      <div class="p-4 border-t border-emerald-800 text-right">
+        <button onclick="toggleRulesModal(false)" class="px-5 py-2 rounded-xl bg-amber-500 text-emerald-950 font-bold cursor-pointer">我知道了</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       MODAL 2: GAME OVER / VICTORY SCOREBOARD
+  ========================================================= -->
+  <div id="gameover-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+    <div class="bg-gradient-to-b from-emerald-900 to-emerald-950 border-2 border-amber-400/70 rounded-3xl max-w-md w-full p-6 text-center shadow-2xl animate-pop">
+      <div class="text-5xl mb-2">🏆</div>
+      <h2 id="winner-title" class="text-2xl sm:text-3xl font-black text-amber-300 mb-1">玩家獲勝！</h2>
+      <p id="winner-subtitle" class="text-emerald-200 text-xs sm:text-sm mb-3">所有手牌已清空，恭喜成為拉密大師！</p>
+
+      <!-- Chip Rules Summary Banner -->
+      <div class="bg-amber-500/15 border border-amber-400/40 rounded-xl px-3 py-1.5 mb-3 text-[11px] text-amber-200 flex items-center justify-between">
+        <span>🎫 入場費：100元</span>
+        <span>🏆 名次獎金：200 / 100 / 60 / 40</span>
+      </div>
+
+      <div class="bg-black/35 border border-emerald-700/60 rounded-2xl p-3 mb-5 text-left">
+        <div class="text-xs font-bold text-emerald-300 mb-2 border-b border-emerald-800 pb-1 flex justify-between">
+          <span>名次與剩餘點數</span>
+          <span>獎金 / 目前籌碼</span>
+        </div>
+        <ul id="scoreboard-list" class="space-y-2 text-xs sm:text-sm"></ul>
+      </div>
+
+      <div class="flex gap-2">
+        <button onclick="returnToLobby()" class="flex-1 py-3 rounded-xl bg-emerald-800 hover:bg-emerald-700 text-white font-bold text-sm cursor-pointer">
+          返回大廳
+        </button>
+        <button id="btn-play-again" onclick="playAgain()" class="flex-1 py-3 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 text-emerald-950 font-black text-sm shadow-lg cursor-pointer">
+          🔄 再玩一局
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       JAVASCRIPT: RUMMIKUB ENGINE, AI, & P2P MULTIPLAYER
+  ========================================================= -->
+  <script>
+    // =========================================================
+    // 1. SOUND EFFECTS (Web Audio API - No external files)
+    // =========================================================
+    const SoundFX = (() => {
+      let ctx = null;
+      let enabled = true;
+
+      function getCtx() {
+        if (!ctx) {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          if (AudioCtx) ctx = new AudioCtx();
+        }
+        if (ctx && ctx.state === 'suspended') ctx.resume();
+        return ctx;
+      }
+
+      function playTone(freq, duration = 0.08, type = 'triangle', volume = 0.15, delay = 0) {
+        if (!enabled) return;
+        try {
+          const c = getCtx();
+          if (!c) return;
+          const osc = c.createOscillator();
+          const gain = c.createGain();
+          osc.type = type;
+          osc.frequency.setValueAtTime(freq, c.currentTime + delay);
+          gain.gain.setValueAtTime(volume, c.currentTime + delay);
+          gain.gain.exponentialRampToValueAtTime(0.001, c.currentTime + delay + duration);
+          osc.connect(gain);
+          gain.connect(c.destination);
+          osc.start(c.currentTime + delay);
+          osc.stop(c.currentTime + delay + duration);
+        } catch (e) {}
+      }
+
+      return {
+        toggle() {
+          enabled = !enabled;
+          return enabled;
+        },
+        isEnabled: () => enabled,
+        click() { playTone(520, 0.045, 'sine', 0.12); },
+        place() {
+          playTone(300, 0.06, 'triangle', 0.22);
+          playTone(460, 0.07, 'sine', 0.16, 0.03);
+        },
+        draw() { playTone(260, 0.09, 'sine', 0.14); },
+        error() {
+          playTone(180, 0.12, 'sawtooth', 0.14);
+          playTone(145, 0.16, 'sawtooth', 0.14, 0.1);
+        },
+        turn() {
+          playTone(587.33, 0.09, 'sine', 0.12);
+          playTone(880, 0.14, 'sine', 0.12, 0.08);
+        },
+        win() {
+          [523.25, 659.25, 783.99, 1046.5].forEach((f, idx) => {
+            playTone(f, 0.22, 'triangle', 0.18, idx * 0.11);
+          });
+        }
+      };
+    })();
+
+    // =========================================================
+    // 2. TILE & MELD RULE ENGINE
+    // =========================================================
+    const COLORS = ['red', 'blue', 'black', 'orange'];
+    const COLOR_ORDER = { red: 0, blue: 1, black: 2, orange: 3 };
+    const COLOR_NAMES = { red: '紅', blue: '藍', black: '黑', orange: '橘' };
+
+    function createFullDeck() {
+      const deck = [];
+      let uid = 1;
+      for (let set = 0; set < 2; set++) {
+        for (const color of COLORS) {
+          for (let num = 1; num <= 13; num++) {
+            deck.push({
+              id: `t_${uid++}`,
+              color,
+              number: num,
+              isJoker: false
+            });
+          }
+        }
+      }
+      deck.push({ id: `t_${uid++}`, color: 'red', number: 0, isJoker: true });
+      deck.push({ id: `t_${uid++}`, color: 'black', number: 0, isJoker: true });
+      return shuffleArray(deck);
+    }
+
+    function shuffleArray(arr) {
+      const a = [...arr];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    function validateMeld(tiles) {
+      if (!tiles || tiles.length < 3) {
+        return { valid: false, type: null, points: 0, orderedTiles: tiles || [], reason: '牌組至少需要 3 張牌' };
+      }
+
+      const jokers = tiles.filter(t => t.isJoker);
+      const normals = tiles.filter(t => !t.isJoker);
+
+      if (normals.length === 0) {
+        return { valid: false, type: null, points: 0, orderedTiles: tiles, reason: '不能全為鬼牌' };
+      }
+
+      // Check 1: GROUP (Same number, distinct colors, max 4 tiles)
+      if (tiles.length <= 4) {
+        const targetNum = normals[0].number;
+        const allSameNum = normals.every(t => t.number === targetNum);
+        const colorsSet = new Set(normals.map(t => t.color));
+        if (allSameNum && colorsSet.size === normals.length) {
+          const ordered = [...normals].sort((a, b) => COLOR_ORDER[a.color] - COLOR_ORDER[b.color]);
+          const usedColors = new Set(ordered.map(t => t.color));
+          const missingColors = COLORS.filter(c => !usedColors.has(c));
+          const jokerCopies = jokers.map((jk, i) => ({
+            ...jk,
+            assignedNumber: targetNum,
+            assignedColor: missingColors[i] || 'black'
+          }));
+          const combined = [...ordered, ...jokerCopies];
+          return {
+            valid: true,
+            type: 'group',
+            points: targetNum * tiles.length,
+            orderedTiles: combined,
+            reason: `合法群組 (${targetNum}點 × ${tiles.length}張 = ${targetNum * tiles.length}分)`
+          };
+        }
+      }
+
+      // Check 2: RUN (Same color, consecutive numbers 1..13)
+      const targetColor = normals[0].color;
+      const allSameColor = normals.every(t => t.color === targetColor);
+      if (allSameColor) {
+        const sortedNormals = [...normals].sort((a, b) => a.number - b.number);
+        let hasDuplicate = false;
+        for (let i = 1; i < sortedNormals.length; i++) {
+          if (sortedNormals[i].number === sortedNormals[i - 1].number) {
+            hasDuplicate = true;
+            break;
+          }
+        }
+        if (!hasDuplicate) {
+          let internalGaps = 0;
+          for (let i = 1; i < sortedNormals.length; i++) {
+            internalGaps += (sortedNormals[i].number - sortedNormals[i - 1].number - 1);
+          }
+
+          if (internalGaps <= jokers.length) {
+            let remainingJokers = jokers.length - internalGaps;
+            let startNum = sortedNormals[0].number;
+            let endNum = sortedNormals[sortedNormals.length - 1].number;
+
+            while (remainingJokers > 0 && endNum < 13) {
+              endNum++;
+              remainingJokers--;
+            }
+            while (remainingJokers > 0 && startNum > 1) {
+              startNum--;
+              remainingJokers--;
+            }
+
+            if (remainingJokers === 0 && startNum >= 1 && endNum <= 13 && (endNum - startNum + 1) === tiles.length) {
+              const ordered = [];
+              let jIdx = 0;
+              let nIdx = 0;
+              let points = 0;
+              for (let num = startNum; num <= endNum; num++) {
+                points += num;
+                if (nIdx < sortedNormals.length && sortedNormals[nIdx].number === num) {
+                  ordered.push(sortedNormals[nIdx++]);
+                } else {
+                  ordered.push({
+                    ...jokers[jIdx++],
+                    assignedNumber: num,
+                    assignedColor: targetColor
+                  });
+                }
+              }
+              return {
+                valid: true,
+                type: 'run',
+                points,
+                orderedTiles: ordered,
+                reason: `合法順子 (${COLOR_NAMES[targetColor]}${startNum}~${endNum} = ${points}分)`
+              };
+            }
+          }
+        }
+      }
+
+      return { valid: false, type: null, points: 0, orderedTiles: tiles, reason: '不符合群組(同數異色)或順子(同色連號)' };
+    }
+
+    function autoOrderMeldIfPossible(tiles) {
+      const res = validateMeld(tiles);
+      return res.valid ? res.orderedTiles : tiles;
+    }
+
+    // Smart Meld Auto-Split: When adding tile(s) to an existing meld (e.g., 4-5-6-7-8 + 6 -> 4-5-6 & 6-7-8)
+    function trySmartSplitCombinedMeld(tiles) {
+      if (!tiles || tiles.length < 6) return null;
+
+      // Strategy A: Same-color sequence split (handles duplicate middle numbers like 4-5-6-7-8 + 6 -> 4-5-6 & 6-7-8)
+      const normals = tiles.filter(t => !t.isJoker);
+      const jokers = tiles.filter(t => t.isJoker);
+      if (normals.length > 0 && normals.every(t => t.color === normals[0].color)) {
+        const sortedNormals = [...normals].sort((a, b) => a.number - b.number);
+        const minNum = sortedNormals[0].number;
+        const maxNum = sortedNormals[sortedNormals.length - 1].number;
+
+        for (let splitVal = minNum + 2; splitVal <= maxNum - 1; splitVal++) {
+          const leftNormals = [];
+          const rightNormals = [];
+          const boundaryNormals = [];
+
+          for (const t of sortedNormals) {
+            if (t.number < splitVal) leftNormals.push(t);
+            else if (t.number > splitVal) rightNormals.push(t);
+            else boundaryNormals.push(t);
+          }
+
+          if (boundaryNormals.length === 2) {
+            const leftCandidate = [...leftNormals, boundaryNormals[0]];
+            const rightCandidate = [boundaryNormals[1], ...rightNormals];
+
+            for (let lj = 0; lj <= jokers.length; lj++) {
+              const rj = jokers.length - lj;
+              const lTiles = [...leftCandidate, ...jokers.slice(0, lj)];
+              const rTiles = [...rightCandidate, ...jokers.slice(lj, lj + rj)];
+              const vLeft = validateMeld(lTiles);
+              const vRight = validateMeld(rTiles);
+              if (vLeft.valid && vRight.valid) {
+                return [vLeft.orderedTiles, vRight.orderedTiles];
+              }
+            }
+          }
+
+          if (boundaryNormals.length <= 1) {
+            const leftCandidate = [...leftNormals, ...boundaryNormals];
+            const rightCandidate = [...rightNormals];
+            if (leftCandidate.length + jokers.length >= 3 && rightCandidate.length + jokers.length >= 3) {
+              for (let lj = 0; lj <= jokers.length; lj++) {
+                const rj = jokers.length - lj;
+                const lTiles = [...leftCandidate, ...jokers.slice(0, lj)];
+                const rTiles = [...rightCandidate, ...jokers.slice(lj, lj + rj)];
+                const vLeft = validateMeld(lTiles);
+                const vRight = validateMeld(rTiles);
+                if (vLeft.valid && vRight.valid) {
+                  return [vLeft.orderedTiles, vRight.orderedTiles];
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // Strategy B: General partition into 2 valid melds (e.g., Group + Run hybrid like R7-B7-K7-O7 + R8-R9 -> B7-K7-O7 & R7-R8-R9)
+      if (tiles.length <= 12) {
+        const n = tiles.length;
+        const maxMask = (1 << n) - 1;
+        for (let mask = 1; mask < maxMask; mask++) {
+          const left = [];
+          const right = [];
+          for (let i = 0; i < n; i++) {
+            if (mask & (1 << i)) left.push(tiles[i]);
+            else right.push(tiles[i]);
+          }
+          if (left.length < 3 || right.length < 3) continue;
+          const vLeft = validateMeld(left);
+          if (!vLeft.valid) continue;
+          const vRight = validateMeld(right);
+          if (vRight.valid) {
+            return [vLeft.orderedTiles, vRight.orderedTiles];
+          }
+        }
+      }
+
+      return null;
+    }
+
+    // Smart Meld Auto-Split on Single Tile Removal
+    function trySmartSplitAfterRemoval(originalMeldTiles, removedTileId) {
+      if (!originalMeldTiles || originalMeldTiles.length < 7) return null;
+
+      const idx = originalMeldTiles.findIndex(t => t.id === removedTileId);
+      if (idx === -1) return null;
+
+      // Priority 1: Split directly at the removed tile's position
+      if (idx >= 3 && (originalMeldTiles.length - 1 - idx) >= 3) {
+        const leftPart = originalMeldTiles.slice(0, idx);
+        const rightPart = originalMeldTiles.slice(idx + 1);
+        const vLeft = validateMeld(leftPart);
+        const vRight = validateMeld(rightPart);
+        if (vLeft.valid && vRight.valid) {
+          return [vLeft.orderedTiles, vRight.orderedTiles];
+        }
+      }
+
+      // Priority 2: General 2-meld partition of the remaining tiles
+      const remainingTiles = originalMeldTiles.filter(t => t.id !== removedTileId);
+      return trySmartSplitCombinedMeld(remainingTiles);
+    }
+
+    function calculateHandPenalty(rack) {
+      return rack.reduce((sum, tile) => sum + (tile.isJoker ? 30 : tile.number), 0);
+    }
+
+    // =========================================================
+    // 3. PERSISTENT DEVICE ID & CHIPS SYSTEM (1000 INIT / 100 FEE / 200-100-60-40 PRIZES / MIN 100 FLOOR)
+    // =========================================================
+    const DEVICE_PROFILE_STORAGE_KEY = 'rummikub_device_profile_v1';
+    const INITIAL_CHIPS = 1000;
+    const ENTRY_FEE_CHIPS = 100;
+    const MIN_FLOOR_CHIPS = 100;
+    const RANK_PRIZE_CHIPS = [200, 100, 60, 40];
+
+    function generateDeviceId() {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      let part1 = '';
+      let part2 = '';
+      try {
+        const arr = new Uint8Array(8);
+        crypto.getRandomValues(arr);
+        for (let i = 0; i < 4; i++) part1 += chars[arr[i] % chars.length];
+        for (let i = 4; i < 8; i++) part2 += chars[arr[i] % chars.length];
+      } catch (e) {
+        for (let i = 0; i < 4; i++) part1 += chars[Math.floor(Math.random() * chars.length)];
+        for (let i = 0; i < 4; i++) part2 += chars[Math.floor(Math.random() * chars.length)];
+      }
+      return `DEV-${part1}-${part2}`;
+    }
+
+    function normalizeChips(val) {
+      const n = Number(val);
+      if (!Number.isFinite(n)) return INITIAL_CHIPS;
+      return Math.max(MIN_FLOOR_CHIPS, Math.round(n));
+    }
+
+    let deviceProfile = null;
+
+    function loadDeviceProfile() {
+      try {
+        const raw = localStorage.getItem(DEVICE_PROFILE_STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && typeof parsed.deviceId === 'string' && parsed.deviceId.trim()) {
+            const hasChipsField = parsed.chips !== undefined && parsed.chips !== null && Number.isFinite(Number(parsed.chips));
+            const normalizedChips = hasChipsField ? normalizeChips(parsed.chips) : INITIAL_CHIPS;
+            const profile = {
+              deviceId: parsed.deviceId.trim().toUpperCase(),
+              nickname: typeof parsed.nickname === 'string' ? parsed.nickname : '',
+              aiCount: parsed.aiCount || '3',
+              aiLevel: parsed.aiLevel || 'hard',
+              turnTime: parsed.turnTime !== undefined ? String(parsed.turnTime) : '90',
+              chips: normalizedChips
+            };
+            if (!hasChipsField || Number(parsed.chips) < MIN_FLOOR_CHIPS) {
+              saveDeviceProfile(profile);
+            }
+            return profile;
+          }
+        }
+      } catch (e) {}
+      const freshProfile = {
+        deviceId: generateDeviceId(),
+        nickname: '',
+        aiCount: '3',
+        aiLevel: 'hard',
+        turnTime: '90',
+        chips: INITIAL_CHIPS
+      };
+      saveDeviceProfile(freshProfile);
+      return freshProfile;
+    }
+
+    function saveDeviceProfile(patch = {}) {
+      deviceProfile = { ...(deviceProfile || {}), ...patch };
+      deviceProfile.chips = normalizeChips(deviceProfile.chips);
+      try {
+        localStorage.setItem(DEVICE_PROFILE_STORAGE_KEY, JSON.stringify(deviceProfile));
+      } catch (e) {}
+      renderLobbyChipBalance();
+    }
+
+    function renderLobbyChipBalance() {
+      const el = document.getElementById('lobby-chip-balance');
+      if (el && deviceProfile) {
+        el.textContent = normalizeChips(deviceProfile.chips).toLocaleString();
+      }
+    }
+
+    function applyEntryFeeToPlayers(players) {
+      if (!Array.isArray(players)) return;
+      players.forEach(p => {
+        const startChips = normalizeChips(p.chips !== undefined ? p.chips : INITIAL_CHIPS);
+        const afterEntry = Math.max(0, startChips - ENTRY_FEE_CHIPS);
+        p.chipsBeforeMatch = startChips;
+        p.chipsAfterEntry = afterEntry;
+        p.chips = afterEntry;
+      });
+      if (deviceProfile) {
+        const me = players.find(p => p.id === myPlayerId || (p.deviceId && p.deviceId === deviceProfile.deviceId));
+        if (me) {
+          const syncedAfterEntry = Math.max(0, normalizeChips(deviceProfile.chips) - ENTRY_FEE_CHIPS);
+          me.chipsBeforeMatch = normalizeChips(deviceProfile.chips);
+          me.chipsAfterEntry = syncedAfterEntry;
+          me.chips = syncedAfterEntry;
+        }
+      }
+    }
+
+    function settleMatchChips(rankedPlayers) {
+      const results = [];
+      rankedPlayers.forEach((p, idx) => {
+        const prize = RANK_PRIZE_CHIPS[idx] !== undefined ? RANK_PRIZE_CHIPS[idx] : 40;
+        const isLocalUser = p.id === myPlayerId || (deviceProfile && p.deviceId === deviceProfile.deviceId);
+        const beforeMatch = isLocalUser && deviceProfile
+          ? normalizeChips(deviceProfile.chips)
+          : normalizeChips(p.chipsBeforeMatch !== undefined ? p.chipsBeforeMatch : INITIAL_CHIPS);
+        const afterEntry = p.chipsAfterEntry !== undefined
+          ? Math.max(0, Number(p.chipsAfterEntry))
+          : Math.max(0, beforeMatch - ENTRY_FEE_CHIPS);
+
+        const rawFinal = afterEntry + prize;
+        const floorTriggered = rawFinal < MIN_FLOOR_CHIPS;
+        const finalChips = Math.max(MIN_FLOOR_CHIPS, rawFinal);
+        const netDelta = finalChips - beforeMatch;
+
+        p.chips = finalChips;
+        if (isLocalUser && deviceProfile) {
+          saveDeviceProfile({ chips: finalChips });
+        }
+
+        results.push({
+          playerId: p.id,
+          name: p.name,
+          isBot: p.isBot,
+          rank: idx + 1,
+          remainingCount: p.rack.length,
+          penalty: calculateHandPenalty(p.rack),
+          beforeMatch,
+          prize,
+          netDelta,
+          floorTriggered,
+          finalChips
+        });
+      });
+      return results;
+    }
+
+    deviceProfile = loadDeviceProfile();
+
+    function initDeviceProfileUI() {
+      const idEl = document.getElementById('lobby-device-id');
+      if (idEl) idEl.textContent = deviceProfile.deviceId;
+      renderLobbyChipBalance();
+
+      const nameInput = document.getElementById('player-name-input');
+      if (nameInput) {
+        if (deviceProfile.nickname) nameInput.value = deviceProfile.nickname;
+        nameInput.addEventListener('input', () => {
+          saveDeviceProfile({ nickname: nameInput.value.trim() });
+        });
+      }
+
+      const aiCountSel = document.getElementById('ai-count-select');
+      const aiLevelSel = document.getElementById('ai-level-select');
+      const turnTimeSel = document.getElementById('turn-time-select');
+
+      if (aiCountSel && deviceProfile.aiCount) {
+        aiCountSel.value = deviceProfile.aiCount;
+        aiCountSel.addEventListener('change', () => saveDeviceProfile({ aiCount: aiCountSel.value }));
+      }
+      if (aiLevelSel && deviceProfile.aiLevel) {
+        aiLevelSel.value = deviceProfile.aiLevel;
+        aiLevelSel.addEventListener('change', () => saveDeviceProfile({ aiLevel: aiLevelSel.value }));
+      }
+      if (turnTimeSel && deviceProfile.turnTime !== undefined) {
+        turnTimeSel.value = deviceProfile.turnTime;
+        turnTimeSel.addEventListener('change', () => saveDeviceProfile({ turnTime: turnTimeSel.value }));
+      }
+    }
+
+    function copyDeviceId() {
+      copyTextToClipboard(deviceProfile.deviceId, `已複製手機專屬 ID：${deviceProfile.deviceId}`);
+    }
+
+    function toggleDeviceIdEditor() {
+      const editor = document.getElementById('device-id-editor');
+      const input = document.getElementById('custom-device-id-input');
+      if (!editor) return;
+      editor.classList.toggle('hidden');
+      if (!editor.classList.contains('hidden') && input) {
+        input.value = deviceProfile.deviceId;
+        input.focus();
+        input.select();
+      }
+    }
+
+    function applyCustomDeviceId() {
+      const input = document.getElementById('custom-device-id-input');
+      if (!input) return;
+      const cleaned = input.value.trim().toUpperCase().replace(/[^A-Z0-9-]/g, '');
+      if (cleaned.length < 4) {
+        showToast('請輸入至少 4 碼有效的手機 ID', 'error');
+        return;
+      }
+      saveDeviceProfile({ deviceId: cleaned });
+      const idEl = document.getElementById('lobby-device-id');
+      if (idEl) idEl.textContent = cleaned;
+      document.getElementById('device-id-editor').classList.add('hidden');
+      showToast(`已綁定專屬 ID：${cleaned}`, 'success');
+    }
+
+    // =========================================================
+    // 4. GAME STATE & TURN SNAPSHOT MANAGEMENT
+    // =========================================================
+    const RACK_CAPACITY = 20;
+    const RACK_ROW_SLOTS = 10;
+
+    let gameMode = 'solo'; // 'solo' | 'online_host' | 'online_guest'
+    let myPlayerId = 'p_local';
+    let aiDifficulty = 'hard';
+    let turnDuration = 90;
+
+    let gameState = {
+      status: 'lobby', // 'lobby' | 'playing' | 'ended'
+      deck: [],
+      tableMelds: [], // Array of { id, tiles: [...] }
+      players: [],    // Array of { id, deviceId, name, isBot, rack: [...], hasBrokenIce: bool, chips: number, chipsBeforeMatch?: number, chipsAfterEntry?: number }
+      currentTurnIndex: 0,
+      timeLeft: 90,
+      winnerId: null,
+      settlementResults: null
     };
 
-    // 啟動本機分頁模擬房間通道（僅當預覽環境安全策略封鎖 WebSocket 時自動接手）
-    function setupLocalFallbackRoomAsHost(code, nickname) {
-// ... existing code ... -->
-      // 若處於封鎖外部 WebSocket 的 Canvas 預覽沙盒，直接使用本機通道避免 SecurityError
-      if (isWebSocketRestrictedEnv() || typeof Peer === 'undefined') {
-        setupLocalFallbackRoomAsHost(code, nickname);
+    let turnSnapshot = null;
+    let selectedItems = [];
+    let rackSlots = new Array(RACK_CAPACITY).fill(null);
+    let rackReadyHighlightIds = new Set();
+    let rackGroupDividerBeforeIndices = new Set();
+    let timerInterval = null;
+    let aiTimeout = null;
+    let isProcessingTurn = false;
+
+    function cloneData(obj) {
+      return JSON.parse(JSON.stringify(obj));
+    }
+
+    function getMyPlayer() {
+      return gameState.players.find(p => p.id === myPlayerId);
+    }
+
+    function getCurrentPlayer() {
+      return gameState.players[gameState.currentTurnIndex];
+    }
+
+    function isMyTurn() {
+      const curr = getCurrentPlayer();
+      return gameState.status === 'playing' && curr && curr.id === myPlayerId;
+    }
+
+    function syncRackSlotsWithHand(handTiles) {
+      const handMap = new Map(handTiles.map(t => [t.id, t]));
+      const placedIds = new Set();
+
+      for (let i = 0; i < rackSlots.length; i++) {
+        const tid = rackSlots[i];
+        if (tid && handMap.has(tid) && !placedIds.has(tid)) {
+          placedIds.add(tid);
+        } else {
+          rackSlots[i] = null;
+        }
+      }
+
+      const unplaced = handTiles.filter(t => !placedIds.has(t.id));
+      for (const tile of unplaced) {
+        const emptyIdx = rackSlots.findIndex(slot => slot === null);
+        if (emptyIdx !== -1) {
+          rackSlots[emptyIdx] = tile.id;
+        } else {
+          rackSlots.push(tile.id);
+        }
+      }
+
+      while (rackSlots.length > RACK_CAPACITY && rackSlots[rackSlots.length - 1] === null) {
+        rackSlots.pop();
+      }
+      while (rackSlots.length < RACK_CAPACITY) {
+        rackSlots.push(null);
+      }
+    }
+
+    function getOrderedRackTiles() {
+      const me = getMyPlayer();
+      if (!me) return [];
+      syncRackSlotsWithHand(me.rack);
+      const handMap = new Map(me.rack.map(t => [t.id, t]));
+      const ordered = [];
+      for (const tid of rackSlots) {
+        if (tid && handMap.has(tid)) {
+          ordered.push(handMap.get(tid));
+        }
+      }
+      return ordered;
+    }
+
+    function handleRackSlotClick(slotIndex) {
+      if (selectedItems.length !== 1) return;
+      const item = selectedItems[0];
+      if (item.source !== 'rack') return;
+
+      const fromSlotIndex = rackSlots.findIndex(id => id === item.tile.id);
+      if (fromSlotIndex === -1 || fromSlotIndex === slotIndex) {
+        clearSelection();
         return;
       }
 
+      const targetTileId = rackSlots[slotIndex];
+      rackSlots[slotIndex] = item.tile.id;
+      rackSlots[fromSlotIndex] = targetTileId;
+
+      clearSelection();
+      SoundFX.place();
+      renderRack();
+    }
+
+    function saveTurnSnapshot() {
+      turnSnapshot = {
+        tableMelds: cloneData(gameState.tableMelds),
+        players: cloneData(gameState.players),
+        rackSlots: [...rackSlots]
+      };
+      selectedItems = [];
+      updateTurnButtons();
+    }
+
+    // =========================================================
+    // 5. LOBBY & SOLO GAME INITIALIZATION
+    // =========================================================
+    function switchLobbyTab(tab) {
+      const isSolo = tab === 'solo';
+      document.getElementById('tab-solo').className = isSolo
+        ? 'py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm bg-amber-500 text-emerald-950 shadow transition cursor-pointer'
+        : 'py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm text-emerald-200 hover:text-white transition cursor-pointer';
+      document.getElementById('tab-online').className = !isSolo
+        ? 'py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm bg-amber-500 text-emerald-950 shadow transition cursor-pointer'
+        : 'py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm text-emerald-200 hover:text-white transition cursor-pointer';
+
+      document.getElementById('panel-solo').classList.toggle('hidden', !isSolo);
+      document.getElementById('panel-online').classList.toggle('hidden', isSolo);
+    }
+
+    function getPlayerNickname() {
+      const raw = document.getElementById('player-name-input').value.trim();
+      const name = raw || `玩家_${deviceProfile.deviceId.slice(-4)}`;
+      saveDeviceProfile({ nickname: name });
+      return name;
+    }
+
+    function startSoloGame() {
+      SoundFX.click();
+      gameMode = 'solo';
+      myPlayerId = 'p_human';
+      const myName = getPlayerNickname();
+      const aiCount = parseInt(document.getElementById('ai-count-select').value, 10);
+      aiDifficulty = document.getElementById('ai-level-select').value;
+      turnDuration = parseInt(document.getElementById('turn-time-select').value, 10);
+
+      const deck = createFullDeck();
+      const botNames = ['🤖 小智 AI', '🤖 艾莉絲 AI', '🤖 馬可仕 AI'];
+      const players = [
+        {
+          id: myPlayerId,
+          deviceId: deviceProfile.deviceId,
+          name: myName,
+          isBot: false,
+          rack: deck.splice(0, 14),
+          hasBrokenIce: false,
+          chips: normalizeChips(deviceProfile.chips)
+        }
+      ];
+
+      for (let i = 0; i < aiCount; i++) {
+        players.push({
+          id: `bot_${i + 1}`,
+          deviceId: `BOT-${i + 1}`,
+          name: botNames[i],
+          isBot: true,
+          rack: deck.splice(0, 14),
+          hasBrokenIce: false,
+          chips: INITIAL_CHIPS
+        });
+      }
+
+      applyEntryFeeToPlayers(players);
+
+      gameState = {
+        status: 'playing',
+        deck,
+        tableMelds: [],
+        players,
+        currentTurnIndex: 0,
+        timeLeft: turnDuration,
+        winnerId: null,
+        settlementResults: null
+      };
+
+      rackSlots = new Array(RACK_CAPACITY).fill(null);
+      rackReadyHighlightIds.clear();
+      rackGroupDividerBeforeIndices.clear();
+      syncRackSlotsWithHand(players[0].rack);
+
+      enterGameScreen();
+      beginTurn();
+    }
+
+    // =========================================================
+    // 6. SERVERLESS P2P MULTIPLAYER (PeerJS + Local Fallback)
+    // =========================================================
+    let peer = null;
+    let hostConn = null;
+    let guestConnections = [];
+    let currentRoomCode = '';
+    let localChannel = null;
+    let isLocalFallbackMode = false;
+
+    function isWebSocketRestrictedEnv() {
       try {
-        peer = new Peer(peerId, PEER_CONFIG);
-        peer.on('open', () => {
-          isHost = true;
-          currentRoomCode = code;
-          deviceProfile.lastRoomCode = code;
-          saveDeviceProfile();
+        if (typeof Peer === 'undefined') return true;
+        if (window.location.protocol === 'about:' || window.location.protocol === 'blob:' || window.location.protocol === 'data:') {
+          return true;
+        }
+        return false;
+      } catch (e) {
+        return true;
+      }
+    }
 
-          btn.disabled = false;
-          btn.textContent = '🏠 建立房間取得 6 碼房號';
+    function generateRoomCode() {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      let code = '';
+      for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+      return code;
+    }
 
-          waitingPlayers = [{
-            peerId,
+    function cleanupNetwork() {
+      if (localChannel) {
+        try { localChannel.close(); } catch (e) {}
+        localChannel = null;
+      }
+      isLocalFallbackMode = false;
+      if (hostConn) {
+        try { hostConn.close(); } catch (e) {}
+        hostConn = null;
+      }
+      guestConnections.forEach(c => { try { c.close(); } catch (e) {} });
+      guestConnections = [];
+      if (peer) {
+        try { peer.destroy(); } catch (e) {}
+        peer = null;
+      }
+    }
+
+    function createLocalTransportWrapper(targetPeerId, isHostSide, onMessageFn) {
+      const channelName = `rummikub_local_room_${currentRoomCode}`;
+      if (!localChannel && typeof BroadcastChannel !== 'undefined') {
+        localChannel = new BroadcastChannel(channelName);
+        localChannel.onmessage = (ev) => {
+          const msg = ev.data;
+          if (!msg || msg.roomCode !== currentRoomCode) return;
+          if (isHostSide && msg.to === 'HOST') {
+            const virtualConn = {
+              peer: msg.fromId,
+              open: true,
+              send: (payload) => {
+                localChannel && localChannel.postMessage({
+                  roomCode: currentRoomCode,
+                  fromId: 'HOST',
+                  to: msg.fromId,
+                  payload
+                });
+              }
+            };
+            onMessageFn(virtualConn, msg.payload);
+          } else if (!isHostSide && msg.to === myPlayerId) {
+            onMessageFn(msg.payload);
+          }
+        };
+      }
+      return {
+        peer: targetPeerId,
+        open: true,
+        send: (payload) => {
+          if (localChannel) {
+            localChannel.postMessage({
+              roomCode: currentRoomCode,
+              fromId: isHostSide ? 'HOST' : myPlayerId,
+              to: isHostSide ? targetPeerId : 'HOST',
+              payload
+            });
+          }
+        }
+      };
+    }
+
+    function setupLocalFallbackRoomAsHost(nickname) {
+      isLocalFallbackMode = true;
+      gameMode = 'online_host';
+      myPlayerId = `rummi_${currentRoomCode}`;
+
+      gameState.players = [{
+        id: myPlayerId,
+        deviceId: deviceProfile.deviceId,
+        name: nickname + ' (房主)',
+        isBot: false,
+        rack: [],
+        hasBrokenIce: false,
+        chips: normalizeChips(deviceProfile.chips)
+      }];
+
+      createLocalTransportWrapper('HOST', true, (vConn, data) => {
+        if (!guestConnections.find(c => c.peer === vConn.peer)) {
+          guestConnections.push(vConn);
+        }
+        handleHostReceiveData(vConn, data);
+      });
+
+      document.getElementById('display-room-code').textContent = currentRoomCode;
+      document.getElementById('waiting-room-box').classList.remove('hidden');
+      document.getElementById('host-start-controls').classList.remove('hidden');
+      document.getElementById('guest-waiting-msg').classList.add('hidden');
+      updateWaitingRoomUI();
+      showToast(`已建立預覽/本機房間：${currentRoomCode}（支援同瀏覽器多分頁連線或直接加 AI 開局）`, 'success');
+    }
+
+    function setupLocalFallbackRoomAsGuest(code, nickname) {
+      isLocalFallbackMode = true;
+      gameMode = 'online_guest';
+      currentRoomCode = code;
+      myPlayerId = `guest_${deviceProfile.deviceId}_${Math.random().toString(36).slice(2, 6)}`;
+
+      const joinBtn = document.getElementById('btn-join-room');
+      const resetJoinBtn = () => {
+        if (joinBtn) {
+          joinBtn.disabled = false;
+          joinBtn.textContent = '加入';
+        }
+      };
+
+      hostConn = createLocalTransportWrapper('HOST', false, (data) => {
+        resetJoinBtn();
+        handleGuestReceiveData(data);
+      });
+
+      setTimeout(() => {
+        if (hostConn) {
+          hostConn.send({
+            type: 'JOIN_REQ',
+            playerId: myPlayerId,
             deviceId: deviceProfile.deviceId,
             name: nickname,
-            chips: enforceChipsFloor(deviceProfile.chips),
-            isHost: true
-          }];
-
-          document.getElementById('display-room-code').textContent = code;
-          document.getElementById('waiting-room-box').classList.remove('hidden');
-          document.getElementById('host-start-controls').classList.remove('hidden');
-          document.getElementById('guest-waiting-hint').classList.add('hidden');
-          renderWaitingRoom();
-          showToast(`房間已建立：${code}（可分享房號給好友加入）`, 'success');
-        });
-
-        peer.on('connection', (conn) => {
-          conn.on('open', () => {
-            guestConns[conn.peer] = conn;
+            chips: normalizeChips(deviceProfile.chips)
           });
-          conn.on('data', (data) => {
-            guestConns[conn.peer] = conn;
-            handleHostReceiveData(conn, data);
-          });
-          conn.on('close', () => handleHostPlayerDisconnect(conn.peer));
-          conn.on('error', () => handleHostPlayerDisconnect(conn.peer));
-        });
+        }
+      }, 150);
 
-        peer.on('disconnected', () => {
-          if (peer && !peer.destroyed) {
-            try { peer.reconnect(); } catch (e) {}
-          }
-        });
+      setTimeout(() => {
+        if (document.getElementById('waiting-room-box').classList.contains('hidden')) {
+          resetJoinBtn();
+          showToast(`本機預覽找不到房間 ${code}（請先在另一分頁建立同房號房間）`, 'error');
+        }
+      }, 2500);
+    }
 
-        peer.on('error', (err) => {
-          const msg = String(err && (err.message || err.type) || '');
-          // 僅在預覽環境封鎖 WebSocket 時才轉本機模擬；一般網路錯誤直接提示重試
-          if (msg.includes('SecurityError') || msg.includes('not allowed')) {
-            if (peer) {
-              try { peer.destroy(); } catch (e) {}
-              peer = null;
-            }
-            setupLocalFallbackRoomAsHost(code, nickname);
-          } else {
-            btn.disabled = false;
-            btn.textContent = '🏠 建立房間取得 6 碼房號';
-            showToast(`建立房間連線異常（${err.type || '網路逾時'}），請再試一次`, 'error');
+    function createOnlineRoom() {
+      SoundFX.click();
+      cleanupNetwork();
+      const nickname = getPlayerNickname();
+      currentRoomCode = generateRoomCode();
+      const hostPeerId = `rummi_${currentRoomCode}`;
+
+      if (isWebSocketRestrictedEnv()) {
+        setupLocalFallbackRoomAsHost(nickname);
+        return;
+      }
+
+      showToast('正在建立雲端房間...', 'info');
+      try {
+        peer = new Peer(hostPeerId, {
+          debug: 0,
+          config: {
+            iceServers: [
+              { urls: 'stun:stun.l.google.com:19302' },
+              { urls: 'stun:stun1.l.google.com:19302' },
+              { urls: 'stun:stun2.l.google.com:19302' }
+            ]
           }
         });
       } catch (e) {
-        setupLocalFallbackRoomAsHost(code, nickname);
+        setupLocalFallbackRoomAsHost(nickname);
+        return;
       }
+
+      peer.on('open', (id) => {
+        gameMode = 'online_host';
+        myPlayerId = id;
+        gameState.players = [{
+          id: myPlayerId,
+          deviceId: deviceProfile.deviceId,
+          name: nickname + ' (房主)',
+          isBot: false,
+          rack: [],
+          hasBrokenIce: false,
+          chips: normalizeChips(deviceProfile.chips)
+        }];
+
+        document.getElementById('display-room-code').textContent = currentRoomCode;
+        document.getElementById('waiting-room-box').classList.remove('hidden');
+        document.getElementById('host-start-controls').classList.remove('hidden');
+        document.getElementById('guest-waiting-msg').classList.add('hidden');
+        updateWaitingRoomUI();
+        showToast(`房間 ${currentRoomCode} 已建立！快分享房號給朋友`, 'success');
+      });
+
+      peer.on('connection', (conn) => {
+        const hasBotTakeoverSeat = gameState.status === 'playing' &&
+          gameState.players.some(p => p.isBot && p.deviceId && !String(p.deviceId).startsWith('BOT-'));
+
+        if ((gameState.players.length >= 4 || gameState.status !== 'lobby') && !hasBotTakeoverSeat) {
+          conn.on('open', () => {
+            conn.send({ type: 'ERROR', message: '房間已滿或遊戲已開始' });
+            setTimeout(() => conn.close(), 300);
+          });
+          return;
+        }
+
+        guestConnections.push(conn);
+        conn.on('data', (data) => handleHostReceiveData(conn, data));
+        conn.on('close', () => {
+          guestConnections = guestConnections.filter(c => c !== conn);
+          if (gameState.status === 'lobby') {
+            gameState.players = gameState.players.filter(p => p.id !== conn.peer);
+            updateWaitingRoomUI();
+            broadcastRoomLobby();
+          } else if (gameState.status === 'playing') {
+            const p = gameState.players.find(pl => pl.id === conn.peer);
+            if (p) {
+              p.isBot = true;
+              if (!p.name.includes('(AI接管)')) {
+                p.name += ' (AI接管)';
+              }
+              showToast(`${p.name} 已斷線，由 AI 暫時代管（重連可恢復）`, 'info');
+              broadcastGameState();
+              renderAll();
+              if (getCurrentPlayer()?.id === p.id) triggerAITurn();
+            }
+          }
+        });
+      });
+
+      peer.on('error', (err) => {
+        const msg = String(err && (err.message || err.type) || '');
+        if (msg.includes('SecurityError') || msg.includes('not allowed')) {
+          if (peer) {
+            try { peer.destroy(); } catch (e) {}
+            peer = null;
+          }
+          setupLocalFallbackRoomAsHost(nickname);
+        } else {
+          showToast(`連線提示: ${err.type || '網路異常，請重試'}`, 'error');
+        }
+      });
     }
 
     function joinOnlineRoom() {
       SoundFX.click();
-      const nickname = getPlayerNickname();
-      const code = document.getElementById('join-room-code').value.trim().toUpperCase();
-      if (code.length !== 6) {
-        showToast('請輸入 6 碼房間代碼', 'error');
+      const code = document.getElementById('room-code-input').value.trim().toUpperCase();
+      if (code.length < 4) {
+        showToast('請輸入正確的 6 碼房間代碼', 'error');
         return;
       }
 
-      destroyPeerSession();
-      const btn = document.getElementById('join-room-btn');
-      btn.disabled = true;
-      btn.textContent = '連線中...';
+      cleanupNetwork();
+      const nickname = getPlayerNickname();
+      const targetHostId = `rummi_${code}`;
 
-      if (isWebSocketRestrictedEnv() || typeof Peer === 'undefined') {
+      if (isWebSocketRestrictedEnv()) {
         setupLocalFallbackRoomAsGuest(code, nickname);
         return;
       }
 
-      let joinAckReceived = false;
+      const joinBtn = document.getElementById('btn-join-room');
+      const resetJoinBtn = () => {
+        if (joinBtn) {
+          joinBtn.disabled = false;
+          joinBtn.textContent = '加入';
+        }
+      };
+
+      if (joinBtn) {
+        joinBtn.disabled = true;
+        joinBtn.textContent = '連線中...';
+      }
+      showToast(`正在連線至房間 ${code}...`, 'info');
+
       const connectTimeout = setTimeout(() => {
-        if (!joinAckReceived) {
-          btn.disabled = false;
-          btn.textContent = '加入';
-          showToast('連線房主逾時，請確認房號是否正確或請房主保持畫面開啟', 'error');
+        if (!hostConn || !hostConn.open) {
+          resetJoinBtn();
+          showToast(`連線逾時，請確認房主頁面保持開啟且房號 ${code} 正確`, 'error');
         }
       }, 10000);
 
       try {
-        peer = new Peer(PEER_CONFIG);
-        peer.on('open', () => {
-          const targetId = `RUMMI_ROOM_${code}`;
-          hostConn = peer.connect(targetId, { reliable: true, serialization: 'json' });
+        peer = new Peer(undefined, {
+          debug: 0,
+          config: {
+            iceServers: [
+              { urls: 'stun:stun.l.google.com:19302' },
+              { urls: 'stun:stun1.l.google.com:19302' },
+              { urls: 'stun:stun2.l.google.com:19302' }
+            ]
+          }
+        });
 
-          const sendJoinPayload = () => {
-            if (!hostConn || !hostConn.open) return;
-            hostConn.send({
-              type: 'JOIN_REQ',
-              deviceId: deviceProfile.deviceId,
-              name: nickname,
-              chips: enforceChipsFloor(deviceProfile.chips)
+        peer.on('open', (myId) => {
+          myPlayerId = myId;
+          gameMode = 'online_guest';
+          currentRoomCode = code;
+
+          setTimeout(() => {
+            if (!peer) return;
+            hostConn = peer.connect(targetHostId, { reliable: true });
+
+            const sendJoinHandshake = () => {
+              if (!hostConn || !hostConn.open) return;
+              clearTimeout(connectTimeout);
+              hostConn.send({
+                type: 'JOIN_REQ',
+                playerId: myId,
+                deviceId: deviceProfile.deviceId,
+                name: nickname,
+                chips: normalizeChips(deviceProfile.chips)
+              });
+            };
+
+            hostConn.on('open', () => {
+              sendJoinHandshake();
+              setTimeout(() => {
+                if (document.getElementById('waiting-room-box').classList.contains('hidden')) {
+                  sendJoinHandshake();
+                }
+              }, 600);
             });
-          };
 
-          hostConn.on('open', () => {
-            currentRoomCode = code;
-            deviceProfile.lastRoomCode = code;
-            saveDeviceProfile();
-            sendJoinPayload();
-            // 若房主端剛建立通道，1.2 秒後若尚未收到回應再補發一次 JOIN_REQ
-            setTimeout(() => {
-              if (!joinAckReceived) sendJoinPayload();
-            }, 1200);
-          });
+            hostConn.on('data', (data) => {
+              clearTimeout(connectTimeout);
+              resetJoinBtn();
+              handleGuestReceiveData(data);
+            });
 
-          hostConn.on('data', (data) => {
-            joinAckReceived = true;
-            clearTimeout(connectTimeout);
-            btn.disabled = false;
-            btn.textContent = '加入';
-            handleGuestReceiveData(data);
-          });
+            hostConn.on('close', () => {
+              clearTimeout(connectTimeout);
+              resetJoinBtn();
+              showToast('與房主的連線已中斷', 'error');
+            });
 
-          hostConn.on('close', () => {
-            clearTimeout(connectTimeout);
-            btn.disabled = false;
-            btn.textContent = '加入';
-            showToast('與房主連線中斷，可輸入同房號重連', 'error');
-          });
-
-          hostConn.on('error', () => {
-            clearTimeout(connectTimeout);
-            btn.disabled = false;
-            btn.textContent = '加入';
-            showToast('無法連線至該房號，請確認房號是否正確', 'error');
-          });
+            hostConn.on('error', () => {
+              clearTimeout(connectTimeout);
+              resetJoinBtn();
+              showToast('加入房間連線發生錯誤，請再試一次', 'error');
+            });
+          }, 250);
         });
 
         peer.on('error', (err) => {
@@ -185,8 +1896,7 @@
             }
             setupLocalFallbackRoomAsGuest(code, nickname);
           } else {
-            btn.disabled = false;
-            btn.textContent = '加入';
+            resetJoinBtn();
             const reason = err && err.type === 'peer-unavailable'
               ? `找不到房間 ${code}，請確認房主已建立房間`
               : `連線失敗（${(err && err.type) || '請重試'}）`;
@@ -200,4 +1910,1748 @@
     }
 
     function handleHostReceiveData(conn, data) {
-// ... existing code ... -->
+      if (!data || !data.type) return;
+      try {
+        if (data.type === 'JOIN_REQ') {
+          const incomingDeviceId = data.deviceId || null;
+          const cleanIncomingName = String(data.name || '玩家').replace(/\s*\(AI接管\)$/, '');
+          const incomingChips = normalizeChips(data.chips !== undefined ? data.chips : INITIAL_CHIPS);
+
+          if (gameState.status === 'playing') {
+            let existingPlayer = incomingDeviceId
+              ? gameState.players.find(p => p.deviceId === incomingDeviceId)
+              : null;
+
+            if (!existingPlayer) {
+              existingPlayer = gameState.players.find(
+                p => p.isBot && p.name.replace(/\s*\(AI接管\)$/, '') === cleanIncomingName
+              );
+            }
+
+            if (existingPlayer) {
+              const oldId = existingPlayer.id;
+              existingPlayer.id = conn.peer;
+              existingPlayer.isBot = false;
+              existingPlayer.name = cleanIncomingName;
+              if (incomingDeviceId) existingPlayer.deviceId = incomingDeviceId;
+              existingPlayer.chips = Math.max(0, incomingChips - ENTRY_FEE_CHIPS);
+              existingPlayer.chipsBeforeMatch = incomingChips;
+              existingPlayer.chipsAfterEntry = existingPlayer.chips;
+              if (gameState.winnerId === oldId) gameState.winnerId = conn.peer;
+              conn.send({ type: 'RECONNECTED', playerId: conn.peer, state: gameState });
+              broadcastGameState();
+              renderAll();
+              showToast(`📱 ${cleanIncomingName} 已重新連線並解除 AI 代管！`, 'success');
+            } else {
+              conn.send({ type: 'ERROR', message: '房間已滿或對局已開始' });
+              setTimeout(() => { try { conn.close(); } catch (e) {} }, 300);
+            }
+            return;
+          }
+
+          if (gameState.status === 'lobby') {
+            if (gameState.players.length >= 4) {
+              conn.send({ type: 'ERROR', message: '房間已滿（最多 4 人）' });
+              setTimeout(() => { try { conn.close(); } catch (e) {} }, 300);
+              return;
+            }
+            const existingLobbyPlayer = incomingDeviceId
+              ? gameState.players.find(p => p.deviceId === incomingDeviceId)
+              : null;
+            if (existingLobbyPlayer) {
+              existingLobbyPlayer.id = conn.peer;
+              existingLobbyPlayer.name = cleanIncomingName;
+              existingLobbyPlayer.chips = incomingChips;
+            } else {
+              gameState.players.push({
+                id: conn.peer,
+                deviceId: incomingDeviceId || `GUEST-${conn.peer.slice(-6)}`,
+                name: cleanIncomingName,
+                isBot: false,
+                rack: [],
+                hasBrokenIce: false,
+                chips: incomingChips
+              });
+            }
+            updateWaitingRoomUI();
+            broadcastRoomLobby();
+            showToast(`${cleanIncomingName} 加入了房間！`, 'success');
+          }
+        } else if (data.type === 'ACTION_END_TURN') {
+          if (gameState.status !== 'playing' || !Array.isArray(gameState.players) || gameState.players.length === 0) return;
+          const activePlayer = gameState.players[gameState.currentTurnIndex];
+          if (!activePlayer || activePlayer.id !== conn.peer) return;
+
+          if (Array.isArray(data.tableMelds)) gameState.tableMelds = data.tableMelds;
+          if (Array.isArray(data.playerRack)) activePlayer.rack = data.playerRack;
+          activePlayer.hasBrokenIce = Boolean(data.hasBrokenIce);
+          if (typeof data.chips === 'number') {
+            activePlayer.chips = Math.max(0, data.chips);
+          }
+
+          if (activePlayer.rack.length === 0) {
+            endGameWithWinner(activePlayer.id);
+          } else {
+            advanceToNextPlayer();
+          }
+        } else if (data.type === 'ACTION_DRAW_TILE') {
+          if (gameState.status !== 'playing' || !Array.isArray(gameState.players) || gameState.players.length === 0) return;
+          const activePlayer = gameState.players[gameState.currentTurnIndex];
+          if (!activePlayer || activePlayer.id !== conn.peer) return;
+
+          if (gameState.deck.length > 0) {
+            const drawn = gameState.deck.pop();
+            activePlayer.rack.push(drawn);
+          }
+          advanceToNextPlayer();
+        }
+      } catch (err) {
+        console.warn('Host message handling warning:', err);
+      }
+    }
+
+    function handleGuestReceiveData(data) {
+      if (!data || !data.type) return;
+      try {
+        if (data.type === 'ERROR') {
+          showToast(data.message || '連線發生錯誤', 'error');
+        } else if (data.type === 'LOBBY_UPDATE') {
+          gameState.players = Array.isArray(data.players) ? data.players : [];
+          document.getElementById('display-room-code').textContent = currentRoomCode;
+          document.getElementById('waiting-room-box').classList.remove('hidden');
+          document.getElementById('host-start-controls').classList.add('hidden');
+          document.getElementById('guest-waiting-msg').classList.remove('hidden');
+          updateWaitingRoomUI();
+        } else if (data.type === 'GAME_START' || data.type === 'GAME_STATE' || data.type === 'RECONNECTED') {
+          const prevTurnIdx = gameState.currentTurnIndex;
+          const wasLobby = gameState.status !== 'playing';
+          gameState = data.state;
+
+          const me = getMyPlayer();
+          if (me) {
+            syncRackSlotsWithHand(me.rack || []);
+          }
+
+          if (data.type === 'GAME_START' || data.type === 'RECONNECTED' || wasLobby) {
+            rackSlots = new Array(RACK_CAPACITY).fill(null);
+            rackReadyHighlightIds.clear();
+            rackGroupDividerBeforeIndices.clear();
+            if (me) syncRackSlotsWithHand(me.rack || []);
+            enterGameScreen();
+            if (data.type === 'RECONNECTED') {
+              showToast('📱 已成功重連並恢復你的手牌與回合！', 'success');
+            }
+          }
+
+          if (gameState.status === 'ended') {
+            clearTimers();
+            if (Array.isArray(gameState.settlementResults) && deviceProfile) {
+              const myResult = gameState.settlementResults.find(
+                r => r.playerId === myPlayerId || r.name === getPlayerNickname()
+              );
+              if (myResult) {
+                saveDeviceProfile({ chips: myResult.finalChips });
+              }
+            }
+            renderAll();
+            showGameOverModal();
+          } else {
+            if (wasLobby || prevTurnIdx !== gameState.currentTurnIndex) {
+              startTurnTimer();
+            }
+            if (isMyTurn()) {
+              saveTurnSnapshot();
+              SoundFX.turn();
+              showToast('輪到你出牌了！', 'info');
+            } else {
+              updateTurnButtons();
+            }
+            renderAll();
+          }
+        }
+      } catch (err) {
+        console.warn('Guest message handling warning:', err);
+      }
+    }
+
+    function broadcastRoomLobby() {
+      const msg = { type: 'LOBBY_UPDATE', players: gameState.players };
+      guestConnections.forEach(c => { if (c.open) c.send(msg); });
+    }
+
+    function broadcastGameState() {
+      if (gameMode !== 'online_host') return;
+      const msg = { type: 'GAME_STATE', state: gameState };
+      guestConnections.forEach(c => { if (c.open) c.send(msg); });
+    }
+
+    function updateWaitingRoomUI() {
+      document.getElementById('waiting-player-count').textContent = `${gameState.players.length} / 4`;
+      const list = document.getElementById('waiting-players-list');
+      list.innerHTML = gameState.players.map((p, idx) => `
+        <li class="flex items-center justify-between bg-emerald-950/70 px-3 py-1.5 rounded-lg border border-emerald-800">
+          <div class="flex items-center gap-1.5 min-w-0">
+            <span class="truncate">👤 ${escapeHtml(p.name)}</span>
+            ${p.deviceId ? `<span class="text-[10px] font-mono text-emerald-400/80 bg-black/30 px-1.5 py-0.5 rounded">${escapeHtml(p.deviceId)}</span>` : ''}
+            <span class="text-[10px] font-bold text-amber-300 bg-amber-500/15 px-1.5 py-0.5 rounded">🪙${normalizeChips(p.chips).toLocaleString()}</span>
+          </div>
+          <span class="text-xs text-amber-300 shrink-0">${idx === 0 ? '房主' : '已就緒'}</span>
+        </li>
+      `).join('');
+    }
+
+    function hostStartOnlineGame() {
+      SoundFX.click();
+      const fillBots = document.getElementById('fill-bots-checkbox').checked;
+      const deck = createFullDeck();
+      const botNames = ['🤖 機器人 Alpha', '🤖 機器人 Beta', '🤖 機器人 Gamma'];
+
+      if (fillBots) {
+        let bIdx = 0;
+        while (gameState.players.length < 4) {
+          gameState.players.push({
+            id: `bot_${Date.now()}_${bIdx}`,
+            deviceId: `BOT-${bIdx + 1}`,
+            name: botNames[bIdx++],
+            isBot: true,
+            rack: [],
+            hasBrokenIce: false,
+            chips: INITIAL_CHIPS
+          });
+        }
+      }
+
+      if (gameState.players.length < 2) {
+        showToast('至少需要 2 位玩家（或勾選自動補滿 AI）才能開始！', 'error');
+        return;
+      }
+
+      gameState.players.forEach(p => {
+        p.rack = deck.splice(0, 14);
+        p.hasBrokenIce = false;
+      });
+
+      applyEntryFeeToPlayers(gameState.players);
+
+      turnDuration = 90;
+      aiDifficulty = 'hard';
+      gameState.status = 'playing';
+      gameState.deck = deck;
+      gameState.tableMelds = [];
+      gameState.currentTurnIndex = 0;
+      gameState.timeLeft = turnDuration;
+      gameState.winnerId = null;
+      gameState.settlementResults = null;
+
+      rackSlots = new Array(RACK_CAPACITY).fill(null);
+      rackReadyHighlightIds.clear();
+      rackGroupDividerBeforeIndices.clear();
+      syncRackSlotsWithHand(gameState.players[0].rack);
+
+      guestConnections.forEach(c => {
+        if (c.open) c.send({ type: 'GAME_START', state: gameState });
+      });
+
+      enterGameScreen();
+      beginTurn();
+    }
+
+    function copyRoomCode() {
+      copyTextToClipboard(currentRoomCode, `已複製房號：${currentRoomCode}`);
+    }
+
+    function copyInviteLink() {
+      const url = `${window.location.origin}${window.location.pathname}?room=${currentRoomCode}`;
+      copyTextToClipboard(url, '已複製邀請連結！傳給好友即可加入');
+    }
+
+    function copyTextToClipboard(text, successMsg) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand('copy');
+        showToast(successMsg, 'success');
+      } catch (e) {
+        showToast(`請手動複製：${text}`, 'info');
+      }
+      document.body.removeChild(ta);
+    }
+
+    // =========================================================
+    // 7. TURN FLOW & TIMERS
+    // =========================================================
+    function enterGameScreen() {
+      document.body.classList.add('active-game-mode');
+      document.getElementById('lobby-view').classList.add('hidden');
+      document.getElementById('gameover-modal').classList.add('hidden');
+      document.getElementById('game-view').classList.remove('hidden');
+      renderAll();
+    }
+
+    function clearTimers() {
+      if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+      if (aiTimeout) { clearTimeout(aiTimeout); aiTimeout = null; }
+    }
+
+    function beginTurn() {
+      clearTimers();
+      isProcessingTurn = false;
+      const curr = getCurrentPlayer();
+      if (!curr) return;
+
+      gameState.timeLeft = turnDuration;
+      startTurnTimer();
+
+      if (curr.id === myPlayerId) {
+        saveTurnSnapshot();
+        SoundFX.turn();
+        showToast('輪到你出牌了！', 'info');
+      } else {
+        selectedItems = [];
+        updateTurnButtons();
+      }
+
+      renderAll();
+      if (gameMode === 'online_host') broadcastGameState();
+
+      if (curr.isBot && (gameMode === 'solo' || gameMode === 'online_host')) {
+        triggerAITurn();
+      }
+    }
+
+    function startTurnTimer() {
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
+      const timerBox = document.getElementById('timer-box');
+      if (turnDuration <= 0) {
+        timerBox.classList.add('hidden');
+        return;
+      }
+      timerBox.classList.remove('hidden');
+      if (!gameState.timeLeft || gameState.timeLeft <= 0) {
+        gameState.timeLeft = turnDuration;
+      }
+      updateTimerDisplay();
+
+      timerInterval = setInterval(() => {
+        if (gameState.status !== 'playing') {
+          clearInterval(timerInterval);
+          timerInterval = null;
+          return;
+        }
+        gameState.timeLeft = Math.max(0, gameState.timeLeft - 1);
+        updateTimerDisplay();
+        if (gameState.timeLeft <= 0) {
+          clearInterval(timerInterval);
+          timerInterval = null;
+          if (isMyTurn()) {
+            showToast('思考時間到！自動重置並抽牌結束回合', 'error');
+            resetCurrentTurn(true);
+            drawTileAndEndTurn();
+          } else if (gameMode === 'online_host') {
+            const activePlayer = getCurrentPlayer();
+            if (activePlayer && !activePlayer.isBot) {
+              if (gameState.deck.length > 0) {
+                activePlayer.rack.push(gameState.deck.pop());
+              }
+              showToast(`${activePlayer.name} 超時未出牌，自動抽牌換下一位`, 'info');
+              advanceToNextPlayer();
+            }
+          }
+        }
+      }, 1000);
+    }
+
+    function updateTimerDisplay() {
+      const el = document.getElementById('turn-timer-text');
+      el.textContent = `${gameState.timeLeft}s`;
+      if (gameState.timeLeft <= 15) {
+        el.className = 'font-mono font-black text-xs sm:text-sm text-red-400 animate-pulse';
+      } else {
+        el.className = 'font-mono font-black text-xs sm:text-sm text-white';
+      }
+    }
+
+    function advanceToNextPlayer() {
+      gameState.currentTurnIndex = (gameState.currentTurnIndex + 1) % gameState.players.length;
+      gameState.timeLeft = turnDuration;
+      beginTurn();
+    }
+
+    // =========================================================
+    // 8. PLAYER BOARD & RACK INTERACTIONS
+    // =========================================================
+    function toggleSelectRackTile(tileId) {
+      if (!isMyTurn()) {
+        showToast('現在還不是你的回合喔！', 'info');
+        return;
+      }
+      const me = getMyPlayer();
+      const tile = me.rack.find(t => t.id === tileId);
+      if (!tile) return;
+
+      const existingIdx = selectedItems.findIndex(item => item.source === 'rack' && item.tile.id === tileId);
+      if (existingIdx >= 0) {
+        selectedItems.splice(existingIdx, 1);
+      } else {
+        selectedItems.push({ source: 'rack', tile });
+      }
+      SoundFX.click();
+      renderRack();
+      updateSelectionToolbar();
+    }
+
+    function toggleSelectTableTile(meldId, tileId) {
+      if (!isMyTurn()) {
+        showToast('現在還不是你的回合喔！', 'info');
+        return;
+      }
+      const me = getMyPlayer();
+      if (!me.hasBrokenIce) {
+        showToast('尚未破冰（需先用純手牌打出 ≥ 30 分），還不能移動牌桌上的牌！', 'error');
+        SoundFX.error();
+        return;
+      }
+
+      const existingIdx = selectedItems.findIndex(item => item.source === 'table' && item.tile.id === tileId);
+      if (existingIdx >= 0) {
+        selectedItems.splice(existingIdx, 1);
+      } else {
+        const meld = gameState.tableMelds.find(m => m.id === meldId);
+        if (!meld) return;
+        const tile = meld.tiles.find(t => t.id === tileId);
+        if (!tile) return;
+        selectedItems.push({ source: 'table', tile, originMeldId: meldId });
+      }
+      SoundFX.click();
+      renderTableMelds();
+      updateSelectionToolbar();
+    }
+
+    function clearSelection() {
+      selectedItems = [];
+      renderRack();
+      renderTableMelds();
+      updateSelectionToolbar();
+    }
+
+    function removeSelectedItemsFromOrigins() {
+      const me = getMyPlayer();
+      const rackIdsToRemove = new Set(selectedItems.filter(i => i.source === 'rack').map(i => i.tile.id));
+      const tableItems = selectedItems.filter(i => i.source === 'table');
+
+      if (rackIdsToRemove.size > 0) {
+        me.rack = me.rack.filter(t => !rackIdsToRemove.has(t.id));
+        rackSlots = rackSlots.map(id => (id && rackIdsToRemove.has(id)) ? null : id);
+        rackIdsToRemove.forEach(id => rackReadyHighlightIds.delete(id));
+        rackGroupDividerBeforeIndices.clear();
+      }
+
+      if (tableItems.length > 0) {
+        const tableIdsToRemove = new Set(tableItems.map(i => i.tile.id));
+        const nextMelds = [];
+
+        for (const meld of gameState.tableMelds) {
+          const removedInThisMeld = meld.tiles.filter(t => tableIdsToRemove.has(t.id));
+          if (removedInThisMeld.length === 0) {
+            nextMelds.push(meld);
+            continue;
+          }
+
+          if (removedInThisMeld.length === 1) {
+            const splitParts = trySmartSplitAfterRemoval(meld.tiles, removedInThisMeld[0].id);
+            if (splitParts && splitParts.length === 2) {
+              nextMelds.push({
+                id: `meld_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+                tiles: splitParts[0]
+              });
+              nextMelds.push({
+                id: `meld_${Date.now() + 1}_${Math.random().toString(36).slice(2, 6)}`,
+                tiles: splitParts[1]
+              });
+              showToast('✨ 移出牌張後已自動智能拆分為兩組合法牌組！', 'success');
+              continue;
+            }
+          }
+
+          const remainingTiles = meld.tiles.filter(t => !tableIdsToRemove.has(t.id));
+          if (remainingTiles.length > 0) {
+            meld.tiles = autoOrderMeldIfPossible(remainingTiles);
+            nextMelds.push(meld);
+          }
+        }
+
+        gameState.tableMelds = nextMelds;
+      }
+
+      const extractedTiles = selectedItems.map(i => ({ ...i.tile }));
+      selectedItems = [];
+      return extractedTiles;
+    }
+
+    function playSelectedAsNewMeld() {
+      if (!isMyTurn() || selectedItems.length === 0) return;
+      const tilesToPlay = removeSelectedItemsFromOrigins();
+      const ordered = autoOrderMeldIfPossible(tilesToPlay);
+
+      gameState.tableMelds.push({
+        id: `meld_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        tiles: ordered
+      });
+
+      SoundFX.place();
+      renderAll();
+    }
+
+    function appendSelectedToExistingMeld(targetMeldId, position = 'end') {
+      if (!isMyTurn()) return;
+      if (selectedItems.length === 0) {
+        showToast('請先點選要加入此牌組的手牌或桌面牌', 'info');
+        return;
+      }
+      const me = getMyPlayer();
+      if (!me.hasBrokenIce) {
+        showToast('尚未破冰前，只能建立自己的新牌組，不能併入桌面既有牌組！', 'error');
+        SoundFX.error();
+        return;
+      }
+
+      const targetMeldIndex = gameState.tableMelds.findIndex(m => m.id === targetMeldId);
+      if (targetMeldIndex === -1) return;
+      const targetMeld = gameState.tableMelds[targetMeldIndex];
+
+      const tilesToAdd = removeSelectedItemsFromOrigins();
+      const combined = position === 'start'
+        ? [...tilesToAdd, ...targetMeld.tiles]
+        : [...targetMeld.tiles, ...tilesToAdd];
+
+      const directValidation = validateMeld(combined);
+      if (directValidation.valid) {
+        targetMeld.tiles = directValidation.orderedTiles;
+      } else {
+        const splitMelds = trySmartSplitCombinedMeld(combined);
+        if (splitMelds && splitMelds.length >= 2) {
+          const newMeldObjects = splitMelds.map((mTiles, idx) => ({
+            id: `meld_${Date.now() + idx}_${Math.random().toString(36).slice(2, 6)}`,
+            tiles: mTiles
+          }));
+          gameState.tableMelds.splice(targetMeldIndex, 1, ...newMeldObjects);
+          showToast('✨ 已智能將牌組自動拆分為兩組合法牌組！', 'success');
+        } else {
+          targetMeld.tiles = combined;
+        }
+      }
+
+      SoundFX.place();
+      renderAll();
+    }
+
+    function handleTableBackgroundClick(event) {
+      if (event.target.closest('.meld-group') || event.target.closest('.rummi-tile')) return;
+      if (isMyTurn() && selectedItems.length > 0) {
+        playSelectedAsNewMeld();
+      }
+    }
+
+    function returnSelectedTableTilesToBoard() {
+      clearSelection();
+    }
+
+    function resetCurrentTurn(silent = false) {
+      if (!turnSnapshot) return;
+      gameState.tableMelds = cloneData(turnSnapshot.tableMelds);
+      gameState.players = cloneData(turnSnapshot.players);
+      if (Array.isArray(turnSnapshot.rackSlots)) {
+        rackSlots = [...turnSnapshot.rackSlots];
+      }
+      selectedItems = [];
+      if (!silent) {
+        SoundFX.click();
+        showToast('已還原至本回合開始前的狀態', 'info');
+      }
+      renderAll();
+    }
+
+    function drawTileAndEndTurn() {
+      if (!isMyTurn() || isProcessingTurn) return;
+      if (turnSnapshot) {
+        gameState.tableMelds = cloneData(turnSnapshot.tableMelds);
+        gameState.players = cloneData(turnSnapshot.players);
+      }
+      selectedItems = [];
+      isProcessingTurn = true;
+      SoundFX.draw();
+
+      if (gameMode === 'online_guest') {
+        hostConn.send({ type: 'ACTION_DRAW_TILE' });
+        updateTurnButtons();
+        return;
+      }
+
+      const me = getMyPlayer();
+      if (gameState.deck.length > 0) {
+        const tile = gameState.deck.pop();
+        me.rack.push(tile);
+        syncRackSlotsWithHand(me.rack);
+        showToast(`抽了一張【${tile.isJoker ? '百搭鬼牌 ☺' : COLOR_NAMES[tile.color] + tile.number}】`, 'info');
+      } else {
+        showToast('牌庫已無牌，跳過本回合', 'info');
+      }
+      advanceToNextPlayer();
+    }
+
+    function confirmEndTurn() {
+      if (!isMyTurn() || isProcessingTurn) return;
+      const me = getMyPlayer();
+      const origRackCount = turnSnapshot.players.find(p => p.id === myPlayerId).rack.length;
+
+      if (me.rack.length >= origRackCount) {
+        showToast('你本回合尚未打出任何手牌！若無牌可出請按「抽牌結束回合」', 'error');
+        SoundFX.error();
+        return;
+      }
+
+      if (gameState.tableMelds.length === 0) {
+        showToast('牌桌上沒有任何牌組', 'error');
+        SoundFX.error();
+        return;
+      }
+
+      let totalCurrentTablePoints = 0;
+      for (const meld of gameState.tableMelds) {
+        const res = validateMeld(meld.tiles);
+        if (!res.valid) {
+          showToast(`牌桌上有不合法的牌組：${res.reason}`, 'error');
+          SoundFX.error();
+          return;
+        }
+        meld.tiles = res.orderedTiles;
+        totalCurrentTablePoints += res.points;
+      }
+
+      if (!me.hasBrokenIce) {
+        const origIds = new Set();
+        turnSnapshot.tableMelds.forEach(m => m.tiles.forEach(t => origIds.add(t.id)));
+        const currentIds = new Set();
+        gameState.tableMelds.forEach(m => m.tiles.forEach(t => currentIds.add(t.id)));
+
+        for (const id of origIds) {
+          if (!currentIds.has(id)) {
+            showToast('首次破冰不能動用桌面原本的牌！請先重置本回合', 'error');
+            SoundFX.error();
+            return;
+          }
+        }
+
+        let origTablePoints = 0;
+        turnSnapshot.tableMelds.forEach(m => {
+          origTablePoints += validateMeld(m.tiles).points;
+        });
+
+        const newlyPlayedPoints = totalCurrentTablePoints - origTablePoints;
+        if (newlyPlayedPoints < 30) {
+          showToast(`首次破冰點數不足！目前僅 ${newlyPlayedPoints} 分，需至少 30 分`, 'error');
+          SoundFX.error();
+          return;
+        }
+        me.hasBrokenIce = true;
+        showToast(`🎉 破冰成功！（打出 ${newlyPlayedPoints} 分）`, 'success');
+      }
+
+      isProcessingTurn = true;
+      selectedItems = [];
+      SoundFX.place();
+
+      if (gameMode === 'online_guest') {
+        hostConn.send({
+          type: 'ACTION_END_TURN',
+          tableMelds: gameState.tableMelds,
+          playerRack: me.rack,
+          hasBrokenIce: me.hasBrokenIce,
+          chips: me.chips
+        });
+        updateTurnButtons();
+        renderAll();
+        return;
+      }
+
+      if (me.rack.length === 0) {
+        endGameWithWinner(me.id);
+      } else {
+        advanceToNextPlayer();
+      }
+    }
+
+    // =========================================================
+    // 8.5 SMART RACK SORTING & PLAYABLE MELD VISUAL GROUPING
+    // =========================================================
+    function extractBestPlayableMeldsFromHand(tiles) {
+      let pool = [...tiles];
+      const extractedMelds = [];
+
+      while (pool.length >= 3) {
+        let bestCandidate = null;
+        let bestScore = -1;
+
+        // 1. Check same-color runs (prefer longer runs & higher points)
+        for (const color of COLORS) {
+          const sameColorTiles = pool
+            .filter(t => !t.isJoker && t.color === color)
+            .sort((a, b) => a.number - b.number);
+
+          const uniqueByNum = [];
+          for (const t of sameColorTiles) {
+            if (uniqueByNum.length === 0 || uniqueByNum[uniqueByNum.length - 1].number !== t.number) {
+              uniqueByNum.push(t);
+            }
+          }
+
+          let streak = [];
+          for (let i = 0; i < uniqueByNum.length; i++) {
+            if (streak.length === 0 || uniqueByNum[i].number === streak[streak.length - 1].number + 1) {
+              streak.push(uniqueByNum[i]);
+            } else {
+              if (streak.length >= 3) {
+                const v = validateMeld(streak);
+                if (v.valid) {
+                  const score = v.points + streak.length * 4;
+                  if (score > bestScore) {
+                    bestScore = score;
+                    bestCandidate = v.orderedTiles;
+                  }
+                }
+              }
+              streak = [uniqueByNum[i]];
+            }
+          }
+          if (streak.length >= 3) {
+            const v = validateMeld(streak);
+            if (v.valid) {
+              const score = v.points + streak.length * 4;
+              if (score > bestScore) {
+                bestScore = score;
+                bestCandidate = v.orderedTiles;
+              }
+            }
+          }
+        }
+
+        // 2. Check same-number distinct-color groups (3 or 4 tiles)
+        for (let num = 1; num <= 13; num++) {
+          const sameNum = pool.filter(t => !t.isJoker && t.number === num);
+          const byColor = [];
+          const seenColor = new Set();
+          for (const t of sameNum) {
+            if (!seenColor.has(t.color)) {
+              seenColor.add(t.color);
+              byColor.push(t);
+            }
+          }
+          if (byColor.length >= 3) {
+            const v = validateMeld(byColor);
+            if (v.valid) {
+              const score = v.points + byColor.length * 3;
+              if (score > bestScore) {
+                bestScore = score;
+                bestCandidate = v.orderedTiles;
+              }
+            }
+          }
+        }
+
+        // 3. If no pure-tile meld found, allow 1 joker to bridge a 2-tile group or near-run
+        if (!bestCandidate) {
+          const jokers = pool.filter(t => t.isJoker);
+          if (jokers.length > 0) {
+            const jk = jokers[0];
+            for (const color of COLORS) {
+              const sameColorTiles = pool
+                .filter(t => !t.isJoker && t.color === color)
+                .sort((a, b) => a.number - b.number);
+              for (let i = 0; i < sameColorTiles.length - 1; i++) {
+                const diff = sameColorTiles[i + 1].number - sameColorTiles[i].number;
+                if (diff === 1 || diff === 2) {
+                  const cand = [sameColorTiles[i], sameColorTiles[i + 1], jk];
+                  const v = validateMeld(cand);
+                  if (v.valid && v.points > bestScore) {
+                    bestScore = v.points;
+                    bestCandidate = v.orderedTiles;
+                  }
+                }
+              }
+            }
+            for (let num = 1; num <= 13; num++) {
+              const sameNum = pool.filter(t => !t.isJoker && t.number === num);
+              const byColor = [];
+              const seenColor = new Set();
+              for (const t of sameNum) {
+                if (!seenColor.has(t.color)) {
+                  seenColor.add(t.color);
+                  byColor.push(t);
+                }
+              }
+              if (byColor.length === 2) {
+                const cand = [...byColor, jk];
+                const v = validateMeld(cand);
+                if (v.valid && v.points > bestScore) {
+                  bestScore = v.points;
+                  bestCandidate = v.orderedTiles;
+                }
+              }
+            }
+          }
+        }
+
+        if (!bestCandidate) break;
+
+        extractedMelds.push(bestCandidate);
+        const usedIds = new Set(bestCandidate.map(t => t.id));
+        pool = pool.filter(t => !usedIds.has(t.id));
+      }
+
+      return { melds: extractedMelds, remaining: pool };
+    }
+
+    function sortPlayerRack(mode) {
+      const me = getMyPlayer();
+      if (!me) return;
+      SoundFX.click();
+
+      const { melds, remaining } = extractBestPlayableMeldsFromHand(me.rack);
+
+      const orderedMelds = [...melds].sort((a, b) => {
+        if (mode === 'group') {
+          const numA = a.find(t => !t.isJoker)?.number || 99;
+          const numB = b.find(t => !t.isJoker)?.number || 99;
+          return numA - numB;
+        } else {
+          const colA = COLOR_ORDER[a.find(t => !t.isJoker)?.color] ?? 99;
+          const colB = COLOR_ORDER[b.find(t => !t.isJoker)?.color] ?? 99;
+          if (colA !== colB) return colA - colB;
+          const numA = a.find(t => !t.isJoker)?.number || 99;
+          const numB = b.find(t => !t.isJoker)?.number || 99;
+          return numA - numB;
+        }
+      });
+
+      const sortedRemaining = [...remaining].sort((a, b) => {
+        if (a.isJoker !== b.isJoker) return a.isJoker ? 1 : -1;
+        if (mode === 'group') {
+          if (a.number !== b.number) return a.number - b.number;
+          return COLOR_ORDER[a.color] - COLOR_ORDER[b.color];
+        } else {
+          if (a.color !== b.color) return COLOR_ORDER[a.color] - COLOR_ORDER[b.color];
+          return a.number - b.number;
+        }
+      });
+
+      const finalOrder = [];
+      rackReadyHighlightIds.clear();
+      rackGroupDividerBeforeIndices.clear();
+
+      orderedMelds.forEach((meldTiles, mIdx) => {
+        if (mIdx > 0) {
+          rackGroupDividerBeforeIndices.add(finalOrder.length);
+        }
+        meldTiles.forEach(t => {
+          rackReadyHighlightIds.add(t.id);
+          finalOrder.push(t);
+        });
+      });
+
+      if (orderedMelds.length > 0 && sortedRemaining.length > 0) {
+        rackGroupDividerBeforeIndices.add(finalOrder.length);
+      }
+
+      sortedRemaining.forEach(t => finalOrder.push(t));
+
+      me.rack = finalOrder;
+      const totalSlots = Math.max(RACK_CAPACITY, finalOrder.length);
+      rackSlots = new Array(totalSlots).fill(null);
+      finalOrder.forEach((tile, idx) => {
+        rackSlots[idx] = tile.id;
+      });
+
+      renderRack();
+      if (orderedMelds.length > 0) {
+        const totalPts = orderedMelds.reduce((sum, m) => sum + validateMeld(m).points, 0);
+        showToast(`✨ 已完成智慧理牌：偵測到 ${orderedMelds.length} 組可出牌組（共 ${totalPts} 分）`, 'success');
+      } else {
+        showToast('已完成理牌整理（目前手牌尚無完整 3 張組合）', 'info');
+      }
+    }
+
+    function autoSelectBestPlayableMeld() {
+      if (!isMyTurn()) {
+        showToast('現在還不是你的回合喔！', 'info');
+        return;
+      }
+      const me = getMyPlayer();
+      if (!me) return;
+
+      const { melds } = extractBestPlayableMeldsFromHand(me.rack);
+      if (melds.length === 0) {
+        showToast('目前手牌尚未湊齊 3 張以上的合法牌組', 'info');
+        SoundFX.error();
+        return;
+      }
+
+      const sortedByPts = [...melds].sort((a, b) => validateMeld(b).points - validateMeld(a).points);
+      const chosen = sortedByPts[0];
+      const val = validateMeld(chosen);
+
+      selectedItems = chosen.map(t => ({
+        source: 'rack',
+        tile: me.rack.find(rt => rt.id === t.id) || t
+      }));
+
+      SoundFX.click();
+      renderRack();
+      updateSelectionToolbar();
+      showToast(`✨ 已選取最佳牌組（${val.points} 分），點擊「🃏 出牌」即可放上牌桌！`, 'success');
+    }
+
+    // =========================================================
+    // 9. SMART AI ENGINE
+    // =========================================================
+    function triggerAITurn() {
+      aiTimeout = setTimeout(() => {
+        if (gameState.status !== 'playing') return;
+        const bot = getCurrentPlayer();
+        if (!bot || !bot.isBot) return;
+
+        const moveMade = executeSmartAIMove(bot);
+        if (moveMade) {
+          SoundFX.place();
+          if (bot.rack.length === 0) {
+            endGameWithWinner(bot.id);
+            return;
+          }
+        } else {
+          if (gameState.deck.length > 0) {
+            bot.rack.push(gameState.deck.pop());
+            SoundFX.draw();
+          }
+        }
+        advanceToNextPlayer();
+      }, 1100);
+    }
+
+    function executeSmartAIMove(bot) {
+      const foundMelds = findAllPossibleMeldsFromHand(bot.rack);
+
+      if (!bot.hasBrokenIce) {
+        const totalPts = foundMelds.reduce((sum, m) => sum + m.points, 0);
+        if (totalPts >= 30) {
+          const usedIds = new Set();
+          for (const m of foundMelds) {
+            m.tiles.forEach(t => usedIds.add(t.id));
+            gameState.tableMelds.push({
+              id: `meld_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+              tiles: m.orderedTiles
+            });
+          }
+          bot.rack = bot.rack.filter(t => !usedIds.has(t.id));
+          bot.hasBrokenIce = true;
+          showToast(`${bot.name} 成功破冰（${totalPts} 分）！`, 'info');
+          return true;
+        }
+        return false;
+      }
+
+      let playedAnything = false;
+
+      if (foundMelds.length > 0) {
+        const usedIds = new Set();
+        for (const m of foundMelds) {
+          m.tiles.forEach(t => usedIds.add(t.id));
+          gameState.tableMelds.push({
+            id: `meld_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+            tiles: m.orderedTiles
+          });
+        }
+        bot.rack = bot.rack.filter(t => !usedIds.has(t.id));
+        playedAnything = true;
+      }
+
+      if (aiDifficulty === 'hard' && bot.rack.length > 0) {
+        let extended = true;
+        while (extended) {
+          extended = false;
+          for (let i = 0; i < bot.rack.length; i++) {
+            const candidateTile = bot.rack[i];
+            for (const meld of gameState.tableMelds) {
+              const testRes = validateMeld([...meld.tiles, candidateTile]);
+              if (testRes.valid) {
+                meld.tiles = testRes.orderedTiles;
+                bot.rack.splice(i, 1);
+                playedAnything = true;
+                extended = true;
+                break;
+              }
+            }
+            if (extended) break;
+          }
+        }
+      }
+
+      return playedAnything;
+    }
+
+    function findAllPossibleMeldsFromHand(hand) {
+      let pool = [...hand];
+      const results = [];
+
+      while (pool.length >= 3) {
+        let bestMeld = null;
+
+        for (const color of COLORS) {
+          const sameColor = pool.filter(t => !t.isJoker && t.color === color)
+            .sort((a, b) => a.number - b.number);
+          const uniqueNums = [];
+          for (const t of sameColor) {
+            if (!uniqueNums.some(u => u.number === t.number)) uniqueNums.push(t);
+          }
+          let streak = [];
+          for (let i = 0; i < uniqueNums.length; i++) {
+            if (streak.length === 0 || uniqueNums[i].number === streak[streak.length - 1].number + 1) {
+              streak.push(uniqueNums[i]);
+            } else {
+              if (streak.length >= 3) {
+                const v = validateMeld(streak);
+                if (v.valid && (!bestMeld || v.points > bestMeld.points)) bestMeld = { ...v, tiles: streak };
+              }
+              streak = [uniqueNums[i]];
+            }
+          }
+          if (streak.length >= 3) {
+            const v = validateMeld(streak);
+            if (v.valid && (!bestMeld || v.points > bestMeld.points)) bestMeld = { ...v, tiles: streak };
+          }
+        }
+
+        for (let num = 1; num <= 13; num++) {
+          const sameNum = pool.filter(t => !t.isJoker && t.number === num);
+          const distinctColors = [];
+          for (const t of sameNum) {
+            if (!distinctColors.some(d => d.color === t.color)) distinctColors.push(t);
+          }
+          if (distinctColors.length >= 3) {
+            const v = validateMeld(distinctColors);
+            if (v.valid && (!bestMeld || v.points > bestMeld.points)) bestMeld = { ...v, tiles: distinctColors };
+          }
+        }
+
+        const jokers = pool.filter(t => t.isJoker);
+        if (!bestMeld && jokers.length > 0) {
+          const jk = jokers[0];
+          for (const color of COLORS) {
+            const sameColor = pool.filter(t => !t.isJoker && t.color === color).sort((a, b) => a.number - b.number);
+            for (let i = 0; i < sameColor.length - 1; i++) {
+              const diff = sameColor[i + 1].number - sameColor[i].number;
+              if (diff === 1 || diff === 2) {
+                const cand = [sameColor[i], sameColor[i + 1], jk];
+                const v = validateMeld(cand);
+                if (v.valid && (!bestMeld || v.points > bestMeld.points)) bestMeld = { ...v, tiles: cand };
+              }
+            }
+          }
+          for (let num = 1; num <= 13; num++) {
+            const sameNum = pool.filter(t => !t.isJoker && t.number === num);
+            const distinctColors = [];
+            for (const t of sameNum) {
+              if (!distinctColors.some(d => d.color === t.color)) distinctColors.push(t);
+            }
+            if (distinctColors.length === 2) {
+              const cand = [...distinctColors, jk];
+              const v = validateMeld(cand);
+              if (v.valid && (!bestMeld || v.points > bestMeld.points)) bestMeld = { ...v, tiles: cand };
+            }
+          }
+        }
+
+        if (!bestMeld) break;
+        results.push(bestMeld);
+        const usedIds = new Set(bestMeld.tiles.map(t => t.id));
+        pool = pool.filter(t => !usedIds.has(t.id));
+      }
+
+      return results;
+    }
+
+    // =========================================================
+    // 10. END GAME & SCOREBOARD
+    // =========================================================
+    function endGameWithWinner(winnerId) {
+      clearTimers();
+      gameState.status = 'ended';
+      gameState.winnerId = winnerId;
+
+      const sorted = [...gameState.players].sort((a, b) => {
+        if (a.id === winnerId) return -1;
+        if (b.id === winnerId) return 1;
+        return calculateHandPenalty(a.rack) - calculateHandPenalty(b.rack);
+      });
+      gameState.settlementResults = settleMatchChips(sorted);
+
+      if (gameMode === 'online_host') broadcastGameState();
+
+      SoundFX.win();
+      renderAll();
+      showGameOverModal();
+    }
+
+    function showGameOverModal() {
+      const winner = gameState.players.find(p => p.id === gameState.winnerId);
+      document.getElementById('winner-title').textContent = `${winner ? winner.name : '玩家'} 獲勝！`;
+      document.getElementById('winner-subtitle').textContent = winner?.id === myPlayerId
+        ? '太神啦！你率先清空所有手牌贏得勝利！'
+        : '本局已分出勝負，看看大家的剩餘點數排行：';
+
+      const sorted = [...gameState.players].sort((a, b) => {
+        if (a.id === gameState.winnerId) return -1;
+        if (b.id === gameState.winnerId) return 1;
+        return calculateHandPenalty(a.rack) - calculateHandPenalty(b.rack);
+      });
+
+      const resultsMap = new Map(
+        (gameState.settlementResults || []).map(r => [r.playerId, r])
+      );
+
+      const listEl = document.getElementById('scoreboard-list');
+      listEl.innerHTML = sorted.map((p, idx) => {
+        const penalty = calculateHandPenalty(p.rack);
+        const isWin = p.id === gameState.winnerId;
+        const res = resultsMap.get(p.id);
+        const prize = res ? res.prize : (RANK_PRIZE_CHIPS[idx] ?? 40);
+        const netDelta = res ? res.netDelta : (prize - ENTRY_FEE_CHIPS);
+        const finalChips = res ? res.finalChips : normalizeChips(p.chips);
+        const floorNote = res && res.floorTriggered ? ' (保底100)' : '';
+        const netText = netDelta >= 0 ? `+${netDelta}` : `${netDelta}`;
+        const netColor = netDelta >= 0 ? 'text-emerald-300' : 'text-rose-300';
+
+        return `
+          <li class="flex items-center justify-between px-3 py-2 rounded-xl ${isWin ? 'bg-amber-500/20 border border-amber-400/50' : 'bg-emerald-950/60'}">
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="font-black text-amber-300 shrink-0">#${idx + 1}</span>
+              <span class="font-bold truncate ${isWin ? 'text-amber-200' : 'text-white'}">${escapeHtml(p.name)}</span>
+              <span class="text-[11px] font-mono shrink-0 ${isWin ? 'text-emerald-300' : 'text-red-300'}">
+                ${isWin ? '0張' : `${p.rack.length}張(-${penalty})`}
+              </span>
+            </div>
+            <div class="text-right shrink-0 ml-2">
+              <div class="font-mono font-bold text-xs ${netColor}">
+                獎金+${prize} (${netText}元)
+              </div>
+              <div class="font-mono text-[11px] text-amber-300">
+                🪙 ${finalChips.toLocaleString()}元${floorNote}
+              </div>
+            </div>
+          </li>
+        `;
+      }).join('');
+
+      document.getElementById('btn-play-again').classList.toggle('hidden', gameMode === 'online_guest');
+      document.getElementById('gameover-modal').classList.remove('hidden');
+    }
+
+    function playAgain() {
+      document.getElementById('gameover-modal').classList.add('hidden');
+      if (gameMode === 'solo') {
+        startSoloGame();
+      } else if (gameMode === 'online_host') {
+        hostStartOnlineGame();
+      }
+    }
+
+    function confirmLeaveGame() {
+      if (gameState.status === 'playing') {
+        showLeaveConfirmBar();
+      } else {
+        returnToLobby();
+      }
+    }
+
+    function showLeaveConfirmBar() {
+      const container = document.getElementById('toast-container');
+      container.innerHTML = `
+        <div class="pointer-events-auto bg-red-950 border-2 border-red-500 text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center justify-between gap-3 w-full animate-pop">
+          <span class="text-xs sm:text-sm font-bold">確定要離開目前對局嗎？</span>
+          <div class="flex gap-2 shrink-0">
+            <button onclick="document.getElementById('toast-container').innerHTML=''" class="px-3 py-1 rounded-lg bg-stone-700 text-xs font-bold cursor-pointer">繼續玩</button>
+            <button onclick="returnToLobby()" class="px-3 py-1 rounded-lg bg-red-500 text-white text-xs font-black cursor-pointer">確定離開</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function returnToLobby() {
+      clearTimers();
+      cleanupNetwork();
+      gameState.status = 'lobby';
+      document.getElementById('toast-container').innerHTML = '';
+      document.getElementById('gameover-modal').classList.add('hidden');
+      document.getElementById('game-view').classList.add('hidden');
+      document.body.classList.remove('active-game-mode');
+      document.getElementById('lobby-view').classList.remove('hidden');
+      document.getElementById('waiting-room-box').classList.add('hidden');
+      renderLobbyChipBalance();
+    }
+
+    // =========================================================
+    // 11. UI RENDERING
+    // =========================================================
+    function renderAll() {
+      renderPlayersBar();
+      renderDeckAndTurnBanner();
+      renderTableMelds();
+      renderRack();
+      updateSelectionToolbar();
+      updateTurnButtons();
+    }
+
+    function renderPlayersBar() {
+      const bar = document.getElementById('players-bar');
+      bar.innerHTML = gameState.players.map((p, idx) => {
+        const isTurn = idx === gameState.currentTurnIndex && gameState.status === 'playing';
+        const isMe = p.id === myPlayerId;
+        const displayChips = isMe && deviceProfile && gameState.status !== 'playing'
+          ? normalizeChips(deviceProfile.chips)
+          : Math.max(0, Number(p.chips ?? INITIAL_CHIPS));
+
+        return `
+          <div class="flex items-center justify-between sm:justify-start gap-1.5 px-2.5 py-1 rounded-xl border text-xs min-w-0 transition
+            ${isTurn ? 'bg-amber-500/20 border-amber-400 active-turn-ring' : 'bg-emerald-900/60 border-emerald-800/80 opacity-85'}">
+            <div class="flex items-center gap-1 min-w-0">
+              <span class="font-bold truncate ${isTurn ? 'text-amber-300' : 'text-white'}">
+                ${isTurn ? '▶ ' : ''}${escapeHtml(p.name)}${isMe ? ' (你)' : ''}
+              </span>
+              <span class="px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0 ${p.hasBrokenIce ? 'bg-emerald-500/30 text-emerald-300' : 'bg-stone-700/80 text-stone-300'}">
+                ${p.hasBrokenIce ? '已破冰' : '未破冰'}
+              </span>
+            </div>
+            <div class="flex items-center gap-1 shrink-0">
+              <span class="font-mono text-[10px] font-bold text-amber-300 bg-amber-500/15 px-1.5 py-0.5 rounded border border-amber-400/30" title="目前籌碼">
+                🪙${displayChips.toLocaleString()}
+              </span>
+              <span class="font-mono font-black text-amber-200 bg-black/35 px-1.5 py-0.5 rounded">
+                ${p.rack.length}張
+              </span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderDeckAndTurnBanner() {
+      document.getElementById('deck-count-badge').textContent = gameState.deck.length;
+      const curr = getCurrentPlayer();
+      const me = getMyPlayer();
+      const turnTextEl = document.getElementById('floating-turn-text');
+      const turnPillEl = document.getElementById('floating-turn-pill');
+      const icePillEl = document.getElementById('floating-ice-pill');
+      const iceScoreEl = document.getElementById('floating-ice-score');
+
+      if (!curr) return;
+
+      if (isMyTurn()) {
+        turnTextEl.textContent = '出牌方：輪到你';
+        turnPillEl.className = 'bg-amber-950/85 backdrop-blur-md border border-amber-400/75 rounded-full px-2.5 py-1 flex items-center gap-1.5 shadow-lg text-[11px] sm:text-xs font-black text-amber-200';
+      } else {
+        turnTextEl.textContent = `出牌方：${curr.name}`;
+        turnPillEl.className = 'bg-emerald-950/75 backdrop-blur-md border border-emerald-500/40 rounded-full px-2.5 py-1 flex items-center gap-1.5 shadow-lg text-[11px] sm:text-xs font-bold text-emerald-100';
+      }
+
+      if (me && !me.hasBrokenIce && gameState.status === 'playing') {
+        let origPts = 0;
+        if (turnSnapshot) {
+          turnSnapshot.tableMelds.forEach(m => origPts += validateMeld(m.tiles).points);
+        }
+        let currPts = 0;
+        gameState.tableMelds.forEach(m => currPts += validateMeld(m.tiles).points);
+        const diff = Math.max(0, currPts - origPts);
+        iceScoreEl.textContent = diff;
+        icePillEl.classList.remove('hidden');
+      } else {
+        icePillEl.classList.add('hidden');
+      }
+    }
+
+    function computeAutoFitTableMetrics(melds, areaWidth, areaHeight) {
+      const isDesktop = window.innerWidth >= 640;
+      const baseTileW = isDesktop ? 40 : 34;
+      const baseTileH = isDesktop ? 54 : 46;
+      const baseFontSingle = isDesktop ? 33 : 27;
+      const baseFontDouble = isDesktop ? 28 : 23;
+      const baseFontJoker = isDesktop ? 31 : 26;
+      const baseAddBtnW = isDesktop ? 22 : 18;
+      const baseAddBtnH = isDesktop ? 32 : 28;
+      const baseGap = isDesktop ? 10 : 6;
+
+      if (!melds || melds.length === 0 || areaWidth <= 0 || areaHeight <= 0) {
+        return {
+          scale: 1,
+          tileW: baseTileW,
+          tileH: baseTileH,
+          fontSingle: baseFontSingle,
+          fontDouble: baseFontDouble,
+          fontJoker: baseFontJoker,
+          addBtnW: baseAddBtnW,
+          addBtnH: baseAddBtnH,
+          gap: baseGap
+        };
+      }
+
+      const showAddBtns = isMyTurn() && getMyPlayer()?.hasBrokenIce && selectedItems.length > 0;
+      const extraPerMeld = showAddBtns ? (baseAddBtnW * 2 + 18) : 12;
+
+      for (let scale = 1.0; scale >= 0.34; scale -= 0.03) {
+        const tW = baseTileW * scale;
+        const tH = baseTileH * scale;
+        const g = Math.max(3, baseGap * scale);
+        const rowH = tH + Math.max(6, 10 * scale) + g;
+
+        let rows = 1;
+        let curRowW = 0;
+        let fitsSingleWidth = true;
+
+        for (const m of melds) {
+          const meldW = m.tiles.length * (tW + 2) + extraPerMeld * scale;
+          if (meldW > areaWidth) {
+            fitsSingleWidth = false;
+            break;
+          }
+          if (curRowW === 0) {
+            curRowW = meldW;
+          } else if (curRowW + g + meldW <= areaWidth) {
+            curRowW += g + meldW;
+          } else {
+            rows++;
+            curRowW = meldW;
+          }
+        }
+
+        if (fitsSingleWidth && rows * rowH <= areaHeight) {
+          return {
+            scale,
+            tileW: Math.max(14, Math.round(tW)),
+            tileH: Math.max(20, Math.round(tH)),
+            fontSingle: Math.max(11, Math.round(baseFontSingle * scale)),
+            fontDouble: Math.max(10, Math.round(baseFontDouble * scale)),
+            fontJoker: Math.max(11, Math.round(baseFontJoker * scale)),
+            addBtnW: Math.max(12, Math.round(baseAddBtnW * scale)),
+            addBtnH: Math.max(16, Math.round(baseAddBtnH * scale)),
+            gap: Math.max(3, Math.round(g))
+          };
+        }
+      }
+
+      const minScale = 0.34;
+      return {
+        scale: minScale,
+        tileW: Math.max(14, Math.round(baseTileW * minScale)),
+        tileH: Math.max(20, Math.round(baseTileH * minScale)),
+        fontSingle: Math.max(11, Math.round(baseFontSingle * minScale)),
+        fontDouble: Math.max(10, Math.round(baseFontDouble * minScale)),
+        fontJoker: Math.max(11, Math.round(baseFontJoker * minScale)),
+        addBtnW: Math.max(12, Math.round(baseAddBtnW * minScale)),
+        addBtnH: Math.max(16, Math.round(baseAddBtnH * minScale)),
+        gap: 3
+      };
+    }
+
+    function renderTableMelds() {
+      const container = document.getElementById('table-melds-container');
+      const tableArea = document.getElementById('table-area');
+      const selectedTableIds = new Set(selectedItems.filter(i => i.source === 'table').map(i => i.tile.id));
+      const canAppendToMelds = isMyTurn() && getMyPlayer()?.hasBrokenIce && selectedItems.length > 0;
+
+      if (gameState.tableMelds.length === 0) {
+        container.innerHTML = '';
+        return;
+      }
+
+      const availW = Math.max(220, (tableArea ? tableArea.clientWidth : window.innerWidth) - 24);
+      const availH = Math.max(120, (tableArea ? tableArea.clientHeight : (window.innerHeight * 0.45)) - 42);
+      const fit = computeAutoFitTableMetrics(gameState.tableMelds, availW, availH);
+
+      container.style.gap = `${fit.gap}px`;
+      const meldPad = fit.scale < 0.65 ? '2px 3px' : '4px 5px';
+      const addBtnFont = Math.max(10, Math.round(13 * fit.scale));
+
+      container.innerHTML = gameState.tableMelds.map(meld => {
+        const validation = validateMeld(meld.tiles);
+        const statusClass = validation.valid ? 'valid' : 'invalid';
+
+        const addStartBtn = canAppendToMelds
+          ? `<button onclick="appendSelectedToExistingMeld('${meld.id}', 'start')" style="width:${fit.addBtnW}px;height:${fit.addBtnH}px;font-size:${addBtnFont}px;" class="rounded bg-amber-400/90 hover:bg-amber-300 text-emerald-950 font-black flex items-center justify-center shadow cursor-pointer shrink-0" title="加入前端">+</button>`
+          : '';
+        const addEndBtn = canAppendToMelds
+          ? `<button onclick="appendSelectedToExistingMeld('${meld.id}', 'end')" style="width:${fit.addBtnW}px;height:${fit.addBtnH}px;font-size:${addBtnFont}px;" class="rounded bg-amber-400/90 hover:bg-amber-300 text-emerald-950 font-black flex items-center justify-center shadow cursor-pointer shrink-0" title="加入尾端">+</button>`
+          : '';
+
+        const tilesHtml = meld.tiles.map(tile => {
+          const isSel = selectedTableIds.has(tile.id);
+          return renderTileHTML(tile, 'table-tile', isSel, `toggleSelectTableTile('${meld.id}', '${tile.id}')`, fit);
+        }).join('');
+
+        return `
+          <div class="meld-group ${statusClass}" style="padding:${meldPad};" title="${validation.reason}">
+            ${addStartBtn}
+            ${tilesHtml}
+            ${addEndBtn}
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderRack() {
+      const me = getMyPlayer();
+      const row1El = document.getElementById('player-rack-row-1');
+      const row2El = document.getElementById('player-rack-row-2');
+      const countLabel = document.getElementById('rack-count-label');
+      if (!me || !row1El || !row2El) return;
+
+      syncRackSlotsWithHand(me.rack);
+      countLabel.textContent = `手牌: ${me.rack.length} 張`;
+
+      const handMap = new Map(me.rack.map(t => [t.id, t]));
+      const selectedRackIds = new Set(selectedItems.filter(i => i.source === 'rack').map(i => i.tile.id));
+      const canSwapToEmpty = selectedItems.length === 1 && selectedItems[0].source === 'rack';
+
+      const totalDisplaySlots = Math.max(RACK_CAPACITY, rackSlots.length);
+      const row1End = Math.ceil(totalDisplaySlots / 2);
+
+      const rackContainerWidth = (row1El.parentElement?.clientWidth || window.innerWidth) - 24;
+      const perRowSlots = row1End;
+      const isDesktop = window.innerWidth >= 640;
+      const defaultW = isDesktop ? 43 : 35;
+      const defaultH = isDesktop ? 58 : 48;
+      const gapPx = isDesktop ? 6 : 4;
+      const availableSlotW = Math.floor((rackContainerWidth - gapPx * (perRowSlots - 1)) / perRowSlots);
+      const customTileW = availableSlotW < defaultW ? Math.max(24, availableSlotW) : null;
+      const customTileH = customTileW ? Math.round(customTileW * (defaultH / defaultW)) : null;
+
+      const buildRowSlotsHTML = (startIdx, endIdx) => {
+        let html = '';
+        for (let idx = startIdx; idx < endIdx; idx++) {
+          if (idx > startIdx && rackGroupDividerBeforeIndices.has(idx)) {
+            html += `<div class="w-1 h-7 sm:h-9 rounded-full bg-amber-300/75 mx-0.5 shrink-0 shadow" title="可出牌組分隔"></div>`;
+          }
+          const tileId = rackSlots[idx];
+          const tile = tileId ? handMap.get(tileId) : null;
+          if (tile) {
+            const isSel = selectedRackIds.has(tile.id);
+            const isReadyMeldTile = rackReadyHighlightIds.has(tile.id);
+            let tileHtml = renderTileHTML(tile, 'rack-tile', isSel, `toggleSelectRackTile('${tile.id}')`, null, isReadyMeldTile);
+            if (customTileW && customTileH) {
+              const fontSingle = Math.max(19, Math.round(customTileW * 0.78));
+              const fontDouble = Math.max(16, Math.round(customTileW * 0.66));
+              const fontSize = tile.isJoker ? fontSingle : (tile.number >= 10 ? fontDouble : fontSingle);
+              tileHtml = tileHtml.replace(
+                'class="rummi-tile',
+                `style="width:${customTileW}px;height:${customTileH}px;" class="rummi-tile`
+              ).replace(
+                'class="tile-digit"',
+                `style="font-size:${fontSize}px;" class="tile-digit"`
+              );
+            }
+            html += tileHtml;
+          } else {
+            const sizeClass = customTileW ? '' : 'w-[35px] h-[48px] sm:w-[43px] sm:h-[58px]';
+            const sizeStyle = customTileW ? `style="width:${customTileW}px;height:${customTileH}px;"` : '';
+            html += `
+              <div onclick="handleRackSlotClick(${idx})" ${sizeStyle}
+                class="rack-slot-empty ${sizeClass} shrink-0 flex items-center justify-center ${canSwapToEmpty ? 'cursor-pointer ring-1 ring-amber-400/50' : ''}"
+                title="${canSwapToEmpty ? '點擊將選取的手牌移到此空位' : `牌架空位 #${idx + 1}`}">
+              </div>
+            `;
+          }
+        }
+        return html;
+      };
+
+      row1El.innerHTML = buildRowSlotsHTML(0, row1End);
+      row2El.innerHTML = buildRowSlotsHTML(row1End, totalDisplaySlots);
+    }
+
+    function renderTileHTML(tile, sizeClass, isSelected, onClickStr, customFit = null, isReadyMeld = false) {
+      const displayColor = tile.isJoker ? (tile.assignedColor || tile.color) : tile.color;
+      const colorClass = `tile-${displayColor}`;
+      const selectedClass = isSelected ? 'selected' : '';
+      const fromTableClass = tile.fromTable ? 'from-table' : '';
+      const readyMeldClass = (!isSelected && isReadyMeld) ? 'in-ready-meld' : '';
+      const isTwoDigits = !tile.isJoker && tile.number >= 10;
+      const digitTypeClass = tile.isJoker ? 'joker-tile' : (isTwoDigits ? 'two-digits' : '');
+
+      let inlineTileStyle = '';
+      let inlineDigitStyle = '';
+      if (customFit) {
+        inlineTileStyle = `style="width:${customFit.tileW}px;height:${customFit.tileH}px;"`;
+        const fSize = tile.isJoker ? customFit.fontJoker : (isTwoDigits ? customFit.fontDouble : customFit.fontSingle);
+        inlineDigitStyle = `style="font-size:${fSize}px;"`;
+      }
+
+      const mainText = tile.isJoker ? '☺' : tile.number;
+      const jokerSubBadge = (tile.isJoker && tile.assignedNumber)
+        ? `<span class="absolute top-0.5 right-0.5 text-[9px] font-black leading-none opacity-85">${tile.assignedNumber}</span>`
+        : '';
+      const readyDotBadge = (!isSelected && isReadyMeld && !tile.isJoker)
+        ? `<span class="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-emerald-500"></span>`
+        : '';
+
+      return `
+        <div onclick="${onClickStr}" ${inlineTileStyle} class="rummi-tile ${sizeClass} ${digitTypeClass} ${colorClass} ${selectedClass} ${fromTableClass} ${readyMeldClass} shrink-0">
+          ${jokerSubBadge}
+          ${readyDotBadge}
+          <span class="tile-digit" ${inlineDigitStyle}>${mainText}</span>
+        </div>
+      `;
+    }
+
+    function updateSelectionToolbar() {
+      const toolbar = document.getElementById('selection-toolbar');
+      if (selectedItems.length === 0) {
+        toolbar.classList.add('hidden');
+        return;
+      }
+
+      toolbar.classList.remove('hidden');
+      document.getElementById('selected-count-badge').textContent = selectedItems.length;
+
+      const hasTableTiles = selectedItems.some(i => i.source === 'table');
+      document.getElementById('btn-return-table-tiles').classList.toggle('hidden', !hasTableTiles);
+
+      const tiles = selectedItems.map(i => i.tile);
+      const check = validateMeld(tiles);
+      const valText = document.getElementById('selection-validation-text');
+      if (check.valid) {
+        valText.textContent = `✓ ${check.points}分`;
+        valText.className = 'font-bold text-emerald-300 truncate';
+      } else {
+        valText.textContent = selectedItems.length < 3 ? '選滿3張或點牌組+' : '可點牌組+併入';
+        valText.className = 'font-bold text-amber-200 truncate';
+      }
+    }
+
+    function updateTurnButtons() {
+      const myTurn = isMyTurn() && !isProcessingTurn;
+      document.getElementById('btn-reset-turn').disabled = !myTurn;
+      document.getElementById('btn-draw-tile').disabled = !myTurn;
+      document.getElementById('btn-end-turn').disabled = !myTurn;
+    }
+
+    // =========================================================
+    // 12. MODALS & TOAST NOTIFICATIONS
+    // =========================================================
+    function toggleRulesModal(show) {
+      document.getElementById('rules-modal').classList.toggle('hidden', !show);
+    }
+
+    function toggleSound() {
+      const on = SoundFX.toggle();
+      document.getElementById('btn-sound').textContent = on ? '🔊' : '🔇';
+      showToast(on ? '音效已開啟' : '音效已靜音', 'info');
+    }
+
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const colors = {
+        info: 'bg-emerald-900/95 border-emerald-500 text-emerald-50',
+        success: 'bg-amber-500 border-amber-300 text-emerald-950 font-black',
+        error: 'bg-red-900/95 border-red-400 text-red-50'
+      };
+      const el = document.createElement('div');
+      el.className = `px-4 py-2 rounded-full border shadow-xl text-xs sm:text-sm text-center animate-pop ${colors[type] || colors.info}`;
+      el.textContent = message;
+      container.appendChild(el);
+      setTimeout(() => {
+        el.style.opacity = '0';
+        el.style.transition = 'opacity 0.25s ease';
+        setTimeout(() => el.remove(), 260);
+      }, 2800);
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    // =========================================================
+    // 13. FULLSCREEN, SAFE-AREA CAMERA ADAPTATION & URL INIT
+    // =========================================================
+    function isNativeFullscreenActive() {
+      return !!(
+        document.fullscreenElement ||
+        document.webkitFullscreenElement ||
+        document.mozFullScreenElement ||
+        document.msFullscreenElement
+      );
+    }
+
+    function isIOSDevice() {
+      return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    }
+
+    function isStandalonePWA() {
+      return window.navigator.standalone === true ||
+        window.matchMedia('(display-mode: standalone)').matches ||
+        window.matchMedia('(display-mode: fullscreen)').matches;
+    }
+
+    function updateFullscreenButtonUI() {
+      const iconEl = document.getElementById('fullscreen-icon');
+      const labelEl = document.getElementById('fullscreen-label');
+      const isPseudo = document.body.classList.contains('ios-pseudo-fullscreen');
+      const isFull = isNativeFullscreenActive() || isPseudo || isStandalonePWA();
+      document.body.classList.toggle('is-fullscreen-mode', isFull);
+
+      if (!iconEl || !labelEl) return;
+      if (isFull) {
+        iconEl.textContent = '🗗';
+        labelEl.textContent = '退出全螢幕';
+      } else {
+        iconEl.textContent = '⛶';
+        labelEl.textContent = '全螢幕';
+      }
+      if (gameState.status === 'playing') {
+        renderTableMelds();
+        renderRack();
+      }
+    }
+
+    function toggleFullScreen() {
+      SoundFX.click();
+      const docEl = document.documentElement;
+      const isPseudo = document.body.classList.contains('ios-pseudo-fullscreen');
+
+      if (isNativeFullscreenActive() || isPseudo) {
+        if (isPseudo) {
+          document.body.classList.remove('ios-pseudo-fullscreen');
+          updateFullscreenButtonUI();
+          showToast('已退出全螢幕模式', 'info');
+          return;
+        }
+        const exitFn = document.exitFullscreen ||
+          document.webkitExitFullscreen ||
+          document.mozCancelFullScreen ||
+          document.msExitFullscreen;
+        if (exitFn) {
+          Promise.resolve(exitFn.call(document)).catch(() => {});
+        }
+        return;
+      }
+
+      if (isStandalonePWA()) {
+        showToast('目前已處於主畫面全螢幕模式！', 'info');
+        return;
+      }
+
+      const reqFn = docEl.requestFullscreen ||
+        docEl.webkitRequestFullscreen ||
+        docEl.mozRequestFullScreen ||
+        docEl.msRequestFullscreen;
+
+      if (reqFn) {
+        try {
+          const result = reqFn.call(docEl);
+          if (result && typeof result.catch === 'function') {
+            result.catch(() => {
+              enablePseudoFullscreen();
+            });
+          }
+          return;
+        } catch (e) {}
+      }
+
+      enablePseudoFullscreen();
+    }
+
+    function enablePseudoFullscreen() {
+      document.body.classList.add('ios-pseudo-fullscreen');
+      window.scrollTo(0, 1);
+      updateFullscreenButtonUI();
+      if (isIOSDevice()) {
+        showToast('已啟用全螢幕避讓模式！若要隱藏 Safari 網址列，可點下方「分享 → 加入主畫面」', 'success');
+      } else {
+        showToast('已啟用全螢幕避讓模式（自動避開前鏡頭）', 'success');
+      }
+    }
+
+    document.addEventListener('fullscreenchange', updateFullscreenButtonUI);
+    document.addEventListener('webkitfullscreenchange', updateFullscreenButtonUI);
+    document.addEventListener('mozfullscreenchange', updateFullscreenButtonUI);
+    document.addEventListener('MSFullscreenChange', updateFullscreenButtonUI);
+
+    window.addEventListener('resize', () => {
+      if (gameState.status === 'playing') {
+        renderTableMelds();
+        renderRack();
+      }
+    });
+    window.addEventListener('orientationchange', () => {
+      setTimeout(() => {
+        updateFullscreenButtonUI();
+        if (gameState.status === 'playing') {
+          renderTableMelds();
+          renderRack();
+        }
+      }, 220);
+    });
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', () => {
+        if (gameState.status === 'playing') {
+          renderTableMelds();
+          renderRack();
+        }
+      });
+    }
+
+    // Prevent Mobile Pull-to-Refresh Gestures
+    let touchStartY = 0;
+    document.addEventListener('touchstart', (e) => {
+      if (e.touches && e.touches.length === 1) {
+        touchStartY = e.touches[0].clientY;
+      }
+    }, { passive: true });
+
+    document.addEventListener('touchmove', (e) => {
+      if (!e.touches || e.touches.length !== 1) return;
+      const currentY = e.touches[0].clientY;
+      const isPullingDown = currentY > touchStartY + 6;
+      const isInsideScrollableModal = e.target.closest('#rules-modal .overflow-y-auto, #players-bar');
+
+      if (document.body.classList.contains('active-game-mode')) {
+        if (!isInsideScrollableModal) {
+          e.preventDefault();
+        }
+      } else if (isPullingDown && (window.scrollY || document.documentElement.scrollTop || 0) <= 0 && !isInsideScrollableModal) {
+        e.preventDefault();
+      }
+    }, { passive: false });
+
+    window.addEventListener('DOMContentLoaded', () => {
+      initDeviceProfileUI();
+      updateFullscreenButtonUI();
+      const params = new URLSearchParams(window.location.search);
+      const roomParam = params.get('room');
+      if (roomParam) {
+        switchLobbyTab('online');
+        document.getElementById('room-code-input').value = roomParam.toUpperCase();
+        showToast(`偵測到邀請房號 ${roomParam.toUpperCase()}，輸入暱稱後按「加入」！`, 'info');
+      }
+    });
+  </script>
+</body>
+</html>
