@@ -508,7 +508,7 @@
         <div id="create-room-card" class="bg-emerald-900/45 border border-emerald-700/50 rounded-xl p-2.5">
           <div class="flex items-center justify-between mb-1.5">
             <h3 class="font-bold text-amber-300 text-xs">建立新房間（當房主）</h3>
-            <span class="text-[10px] text-emerald-300/80">最多 4 人同樂</span>
+            <span class="text-[10px] text-emerald-300/80">支援同Wi-Fi / 4G跨網</span>
           </div>
           <button id="btn-create-room" onclick="createOnlineRoom()" class="w-full py-2 rounded-lg font-bold text-xs sm:text-sm bg-emerald-600 hover:bg-emerald-500 text-white shadow transition active:scale-[0.98] cursor-pointer">
             ➕ 建立房間並取得房號
@@ -549,7 +549,7 @@
           </div>
 
           <div class="bg-amber-950/50 border border-amber-500/30 rounded-lg px-2 py-1 text-[10px] text-amber-200/90 leading-snug">
-            💡 若曾跳出瀏覽器傳房號給好友，切回後請按右上角「<strong>🔄 重新連線</strong>」恢復房間待命狀態，好友即可立即加入。
+            💡 已啟用 <strong>TURN 雲端中繼通道</strong>（同 Wi-Fi 與 4G/5G 皆可連線）；若曾跳出頁面傳房號，切回後請按「<strong>🔄 重新連線</strong>」。
           </div>
 
           <div class="border-t border-emerald-800/80 pt-1.5">
@@ -583,7 +583,7 @@
 
       <div class="mt-2 pt-1.5 border-t border-emerald-800/60 flex justify-between items-center text-[10px] text-emerald-300/80">
         <span>支援 iOS / Android 手機全螢幕</span>
-        <span>純前端 P2P 連線版</span>
+        <span>P2P + TURN 跨網中繼版</span>
       </div>
     </div>
   </div>
@@ -728,7 +728,7 @@
             <li><strong>組牌出新牌組</strong>：點擊手牌選取多張牌（牌會浮起發光），再點擊操作列的「<strong>🃏 出牌</strong>」或直接點擊牌桌空白處即可放上牌桌。</li>
             <li><strong>智慧理牌與視覺區隔</strong>：點擊「<strong>777理牌</strong>」或「<strong>789理牌</strong>」時，手牌中已成組的 3 張以上合法牌組會自動排到前方並以<strong>淡綠牌底＋金色分隔線</strong>標示；按「<strong>✨ 智慧選牌</strong>」還可一鍵選取最佳可出牌組！</li>
             <li><strong>智慧牌組自動拆分</strong>：在既有的牌組兩側點擊「<strong>＋</strong>」加入新牌，或從長牌組移出一張牌時，若能拆成兩組 3 張以上的合法牌組，系統會自動智能拆分！</li>
-            <li><strong>抽牌 / 確認出牌</strong>：本回合若無法出牌，點擊「<strong>🎴 抽牌結束回合</strong>」抽 1 張牌；若有出牌且桌上所有牌組皆為綠框合法狀態，點擊「<strong>✅ 確認出牌</strong>」。</li>
+            <li><strong>抽牌 / 確認出牌</strong>：本回合若無法出牌，點擊「<strong>🎴 抽牌結束回合</strong>」抽 1 張牌；若有出牌且桌上所有牌組皆為綠框合法狀態，點擊「<strong>✅ 確認出牌</strong>」（若倒數結束時已打出合法牌組，系統也會自動判定完成出牌）。</li>
           </ul>
         </div>
       </div>
@@ -772,7 +772,7 @@
   </div>
 
   <!-- =========================================================
-       JAVASCRIPT: RUMMIKUB ENGINE, AI, & P2P MULTIPLAYER
+       JAVASCRIPT: RUMMIKUB ENGINE, AI, & P2P + TURN MULTIPLAYER
   ========================================================= -->
   <script>
     // =========================================================
@@ -1412,7 +1412,7 @@
     }
 
     // =========================================================
-    // 5. SERVERLESS P2P MULTIPLAYER (WITH AUTO-RECONNECT & KEEP-ALIVE)
+    // 5. SERVERLESS P2P + TURN RELAY MULTIPLAYER (SAME WI-FI READY)
     // =========================================================
     let peer = null;
     let hostConn = null;
@@ -1427,10 +1427,19 @@
       debug: 0,
       pingInterval: 5000,
       config: {
+        iceCandidatePoolSize: 4,
         iceServers: [
           { urls: 'stun:stun.l.google.com:19302' },
           { urls: 'stun:stun1.l.google.com:19302' },
-          { urls: 'stun:stun2.l.google.com:19302' }
+          {
+            urls: [
+              'turn:openrelay.metered.ca:80',
+              'turn:openrelay.metered.ca:443',
+              'turn:openrelay.metered.ca:443?transport=tcp'
+            ],
+            username: 'openrelayproject',
+            credential: 'openrelayproject'
+          }
         ]
       }
     };
@@ -1850,7 +1859,7 @@
           resetJoinBtn();
           showToast(`連線逾時，請請房主按「重新連線」後再按加入`, 'error');
         }
-      }, 10000);
+      }, 12000);
 
       try {
         peer = new Peer(undefined, PEER_ICE_CONFIG);
@@ -2076,6 +2085,7 @@
             renderAll();
             showGameOverModal();
           } else {
+            isProcessingTurn = false;
             if (wasLobby || prevTurnIdx !== gameState.currentTurnIndex) {
               startTurnTimer();
             }
@@ -2625,7 +2635,9 @@
       SoundFX.draw();
 
       if (gameMode === 'online_guest') {
-        hostConn.send({ type: 'ACTION_DRAW_TILE' });
+        if (hostConn && hostConn.open) {
+          hostConn.send({ type: 'ACTION_DRAW_TILE' });
+        }
         updateTurnButtons();
         return;
       }
@@ -2644,62 +2656,19 @@
 
     function confirmEndTurn() {
       if (!isMyTurn() || isProcessingTurn) return;
-      const me = getMyPlayer();
-      const origRackCount = turnSnapshot.players.find(p => p.id === myPlayerId).rack.length;
-
-      if (me.rack.length >= origRackCount) {
-        showToast('你本回合尚未打出任何手牌！若無牌可出請按「抽牌結束回合」', 'error');
+      const check = evaluateCurrentTurnSubmission();
+      if (!check.ok) {
+        const msg = check.reason === '尚未打出任何手牌'
+          ? '你本回合尚未打出任何手牌！若無牌可出請按「抽牌結束回合」'
+          : (check.reason === '首次破冰不能動用桌面原本的牌'
+            ? '首次破冰不能動用桌面原本的牌！請先重置本回合'
+            : check.reason);
+        showToast(msg, 'error');
         SoundFX.error();
         return;
       }
 
-      if (gameState.tableMelds.length === 0) {
-        showToast('牌桌上沒有任何牌組', 'error');
-        SoundFX.error();
-        return;
-      }
-
-      let totalCurrentTablePoints = 0;
-      for (const meld of gameState.tableMelds) {
-        const res = validateMeld(meld.tiles);
-        if (!res.valid) {
-          showToast(`牌桌上有不合法的牌組：${res.reason}`, 'error');
-          SoundFX.error();
-          return;
-        }
-        meld.tiles = res.orderedTiles;
-        totalCurrentTablePoints += res.points;
-      }
-
-      if (!me.hasBrokenIce) {
-        const origIds = new Set();
-        turnSnapshot.tableMelds.forEach(m => m.tiles.forEach(t => origIds.add(t.id)));
-        const currentIds = new Set();
-        gameState.tableMelds.forEach(m => m.tiles.forEach(t => currentIds.add(t.id)));
-
-        for (const id of origIds) {
-          if (!currentIds.has(id)) {
-            showToast('首次破冰不能動用桌面原本的牌！請先重置本回合', 'error');
-            SoundFX.error();
-            return;
-          }
-        }
-
-        let origTablePoints = 0;
-        turnSnapshot.tableMelds.forEach(m => {
-          origTablePoints += validateMeld(m.tiles).points;
-        });
-
-        const newlyPlayedPoints = totalCurrentTablePoints - origTablePoints;
-        if (newlyPlayedPoints < 30) {
-          showToast(`首次破冰點數不足！目前僅 ${newlyPlayedPoints} 分，需至少 30 分`, 'error');
-          SoundFX.error();
-          return;
-        }
-        me.hasBrokenIce = true;
-        showToast(`🎉 破冰成功！（打出 ${newlyPlayedPoints} 分）`, 'success');
-      }
-
+      const me = check.player;
       isProcessingTurn = true;
       selectedItems = [];
       SoundFX.place();
