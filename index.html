@@ -415,17 +415,18 @@
       body.active-game-mode #players-bar {
         grid-area: players;
         display: grid !important;
-        grid-template-rows: repeat(4, minmax(0, 1fr));
-        gap: 5px;
+        grid-template-columns: minmax(0, 1fr);
+        grid-auto-rows: minmax(0, 1fr);
+        gap: 6px;
         height: 100%;
         min-height: 0;
         overflow: hidden;
         background: rgba(2, 44, 34, 0.96);
         border-right: 1px solid rgba(16, 185, 129, 0.35);
-        padding-top: max(5px, var(--effective-safe-top));
-        padding-bottom: max(5px, var(--effective-safe-bottom));
-        padding-left: calc(var(--effective-safe-left) + 5px);
-        padding-right: 5px;
+        padding-top: max(6px, var(--effective-safe-top));
+        padding-bottom: max(6px, var(--effective-safe-bottom));
+        padding-left: calc(var(--effective-safe-left) + 6px);
+        padding-right: 6px;
         z-index: 22;
       }
 
@@ -434,11 +435,12 @@
         height: 100% !important;
         min-width: 0 !important;
         min-height: 0 !important;
-        padding: clamp(3px, 0.8dvh, 7px) clamp(5px, 0.9vw, 9px) !important;
-        border-radius: 10px !important;
+        padding: clamp(5px, 1.1dvh, 10px) clamp(6px, 1vw, 11px) !important;
+        border-radius: 12px !important;
         display: flex !important;
         flex-direction: column !important;
-        justify-content: space-between !important;
+        justify-content: center !important;
+        gap: clamp(3px, 0.7dvh, 7px) !important;
         overflow: hidden !important;
       }
 
@@ -3909,25 +3911,17 @@
       const players = Array.isArray(gameState.players) ? gameState.players : [];
 
       if (isLandscape) {
+        const activeCount = Math.max(1, players.length);
+        bar.style.gridTemplateRows = `repeat(${activeCount}, minmax(0, 1fr))`;
+
         const barW = Math.max(120, bar.clientWidth || Math.round(window.innerWidth * 0.2));
         const barH = Math.max(220, bar.clientHeight || window.innerHeight);
-        const slotH = Math.floor((barH - 25) / 4);
-        const nameFontPx = Math.max(10, Math.min(14, Math.floor(Math.min(barW * 0.095, slotH * 0.25))));
-        const metaFontPx = Math.max(9, Math.min(12, Math.floor(Math.min(barW * 0.075, slotH * 0.21))));
-        const countFontPx = Math.max(11, Math.min(15, Math.floor(Math.min(barW * 0.1, slotH * 0.27))));
+        const slotH = Math.floor((barH - (activeCount + 1) * 6) / activeCount);
+        const nameFontPx = Math.max(11, Math.min(16, Math.floor(Math.min(barW * 0.105, slotH * 0.25))));
+        const metaFontPx = Math.max(10, Math.min(13, Math.floor(Math.min(barW * 0.082, slotH * 0.21))));
+        const countFontPx = Math.max(12, Math.min(18, Math.floor(Math.min(barW * 0.115, slotH * 0.28))));
 
-        const slotsHTML = [];
-        for (let idx = 0; idx < 4; idx++) {
-          const p = players[idx];
-          if (!p) {
-            slotsHTML.push(`
-              <div class="landscape-player-slot rounded-xl border border-emerald-800/40 bg-emerald-950/35 opacity-45 flex items-center justify-center">
-                <span class="text-emerald-400/60 font-bold" style="font-size:${metaFontPx}px;">空位</span>
-              </div>
-            `);
-            continue;
-          }
-
+        bar.innerHTML = players.map((p, idx) => {
           const isCurrent = idx === gameState.currentTurnIndex && gameState.status === 'playing';
           const isMe = p.id === myPlayerId;
           const count = Array.isArray(p.rack) ? p.rack.length : 0;
@@ -3941,29 +3935,29 @@
             : `<span class="px-1.5 py-0.5 rounded bg-stone-800/85 text-stone-300 leading-none whitespace-nowrap" style="font-size:${metaFontPx}px;">未破冰</span>`;
 
           const bubbleHTML = bubble
-            ? `<div class="player-chat-bubble absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 max-w-[94%] px-2 py-0.5 rounded-xl bg-amber-300/85 backdrop-blur-sm text-emerald-950 font-black shadow-lg border border-amber-100/80 truncate ${bubble.isEmojiOnly ? 'text-lg leading-tight' : 'leading-tight'}" style="${bubble.isEmojiOnly ? '' : `font-size:${nameFontPx}px;`}">
+            ? `<div class="player-chat-bubble absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 max-w-[94%] px-2 py-0.5 rounded-xl bg-amber-300/85 backdrop-blur-sm text-emerald-950 font-black shadow-lg border border-amber-100/80 truncate ${bubble.isEmojiOnly ? 'text-xl leading-tight' : 'leading-tight'}" style="${bubble.isEmojiOnly ? '' : `font-size:${nameFontPx}px;`}">
                 ${escapeHtml(bubble.text)}
               </div>`
             : '';
 
-          slotsHTML.push(`
+          return `
             <div class="landscape-player-slot relative border ${ringClass} transition">
               ${bubbleHTML}
-              <div class="flex items-center gap-1 min-w-0 w-full">
-                <span class="shrink-0 leading-none" style="font-size:${nameFontPx + 1}px;">${p.isBot ? '🤖' : (isMe ? '😎' : '🧑')}</span>
+              <div class="flex items-center gap-1.5 min-w-0 w-full">
+                <span class="shrink-0 leading-none" style="font-size:${nameFontPx + 2}px;">${p.isBot ? '🤖' : (isMe ? '😎' : '🧑')}</span>
                 <span class="font-black truncate leading-tight ${isCurrent ? 'text-amber-200' : 'text-white'}" style="font-size:${nameFontPx}px;">${escapeHtml(p.name)}${isMe ? '(你)' : ''}</span>
               </div>
               <div class="flex items-center justify-between gap-1 w-full min-w-0">
                 ${iceTag}
-                <span class="font-mono font-black px-1.5 py-0.5 rounded bg-black/40 text-amber-300 leading-none shrink-0" style="font-size:${countFontPx}px;">${count}張</span>
+                <span class="font-mono font-black px-2 py-0.5 rounded bg-black/40 text-amber-300 leading-none shrink-0" style="font-size:${countFontPx}px;">${count}張</span>
               </div>
             </div>
-          `);
-        }
-        bar.innerHTML = slotsHTML.join('');
+          `;
+        }).join('');
         return;
       }
 
+      bar.style.gridTemplateRows = '';
       bar.innerHTML = players.map((p, idx) => {
         const isCurrent = idx === gameState.currentTurnIndex && gameState.status === 'playing';
         const isMe = p.id === myPlayerId;
