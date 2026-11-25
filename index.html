@@ -389,13 +389,13 @@
     }
 
     /* =========================================================
-       LANDSCAPE (橫幅遊玩): Left Player Column + Maximized Table
-       + Compact Bottom Rack, 100% Locked Inside Mobile Viewport
+       LANDSCAPE (橫幅遊玩): 4-Slot Large Left Player Column
+       + Full-Width Widened Bottom Rack + Maximized Table
     ========================================================= */
     @media screen and (orientation: landscape) {
       body.active-game-mode #game-view {
         display: grid !important;
-        grid-template-columns: clamp(118px, 19vw, 185px) minmax(0, 1fr);
+        grid-template-columns: clamp(136px, 21vw, 210px) minmax(0, 1fr);
         grid-template-rows: auto minmax(0, 1fr) auto;
         grid-template-areas:
           "players topbar"
@@ -414,28 +414,32 @@
 
       body.active-game-mode #players-bar {
         grid-area: players;
-        display: flex !important;
-        flex-direction: column !important;
-        justify-content: center;
-        align-items: stretch;
-        gap: 4px;
+        display: grid !important;
+        grid-template-rows: repeat(4, minmax(0, 1fr));
+        gap: 5px;
         height: 100%;
         min-height: 0;
         overflow: hidden;
         background: rgba(2, 44, 34, 0.96);
         border-right: 1px solid rgba(16, 185, 129, 0.35);
-        padding-top: max(4px, var(--effective-safe-top));
-        padding-bottom: max(4px, var(--effective-safe-bottom));
+        padding-top: max(5px, var(--effective-safe-top));
+        padding-bottom: max(5px, var(--effective-safe-bottom));
         padding-left: calc(var(--effective-safe-left) + 5px);
         padding-right: 5px;
         z-index: 22;
       }
 
-      body.active-game-mode #players-bar > div {
+      body.active-game-mode #players-bar > div.landscape-player-slot {
         width: 100% !important;
+        height: 100% !important;
         min-width: 0 !important;
-        padding: 4px 6px !important;
-        border-radius: 9px !important;
+        min-height: 0 !important;
+        padding: clamp(3px, 0.8dvh, 7px) clamp(5px, 0.9vw, 9px) !important;
+        border-radius: 10px !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: space-between !important;
+        overflow: hidden !important;
       }
 
       body.active-game-mode #top-actions-bar {
@@ -473,10 +477,16 @@
         width: 100%;
         min-width: 0;
         padding-top: 3px !important;
-        padding-left: 6px !important;
-        padding-right: calc(var(--effective-safe-right) + 6px) !important;
+        padding-left: 4px !important;
+        padding-right: calc(var(--effective-safe-right) + 4px) !important;
         padding-bottom: max(2px, var(--effective-safe-bottom)) !important;
         border-top-width: 2px;
+      }
+
+      body.active-game-mode #rack-controls-bar,
+      body.active-game-mode #rack-outer-container {
+        max-width: 100% !important;
+        width: 100% !important;
       }
 
       body.active-game-mode #rack-controls-bar {
@@ -494,9 +504,8 @@
       }
 
       body.active-game-mode .rack-tier-ledge {
-        min-height: 28px !important;
-        padding-top: 1.5px !important;
-        padding-bottom: 1.5px !important;
+        min-height: 27px !important;
+        padding: 1.5px 3px !important;
         border-radius: 7px !important;
         border-bottom-width: 2px !important;
       }
@@ -943,7 +952,7 @@
       </div>
 
       <!-- Two-Tier Wooden Rack Strictly Fitted Within Screen Width -->
-      <div class="w-full max-w-4xl mx-auto overflow-hidden">
+      <div id="rack-outer-container" class="w-full max-w-4xl mx-auto overflow-hidden">
         <div id="rack-rows-wrapper" class="flex flex-col gap-1 w-full">
           <div id="player-rack-row-1" class="rack-tier-ledge flex items-center justify-center px-1 py-1 min-h-[44px] sm:min-h-[62px]"></div>
           <div id="player-rack-row-2" class="rack-tier-ledge flex items-center justify-center px-1 py-1 min-h-[44px] sm:min-h-[62px]"></div>
@@ -3630,33 +3639,33 @@
       }
 
       const wrapperEl = document.getElementById('rack-rows-wrapper');
-      const availWidth = Math.max(240, (wrapperEl ? wrapperEl.clientWidth : window.innerWidth - 16) - 12);
       const isLandscape = window.innerWidth > window.innerHeight;
+      const availWidth = Math.max(240, (wrapperEl ? wrapperEl.clientWidth : window.innerWidth - 16) - (isLandscape ? 8 : 12));
       const slotsPerRow = 10;
       const dividerCountRow1 = Array.from(rackGroupDividerBeforeIndices).filter(idx => idx > 0 && idx < slotsPerRow).length;
       const dividerCountRow2 = Array.from(rackGroupDividerBeforeIndices).filter(idx => idx > slotsPerRow && idx < RACK_CAPACITY).length;
       const maxDividers = Math.max(dividerCountRow1, dividerCountRow2);
-      const gapPx = isLandscape ? 2 : (availWidth < 380 ? 2 : 3);
+      const gapPx = isLandscape ? 3 : (availWidth < 380 ? 2 : 3);
       const dividerReservePx = maxDividers * 6;
       const rawTileW = Math.floor((availWidth - (slotsPerRow - 1) * gapPx - dividerReservePx) / slotsPerRow);
       const isDesktop = window.innerWidth >= 640 && !isLandscape;
 
-      let tileW, tileH;
+      let tileW, tileH, fontPx, twoDigitFontPx;
       if (isLandscape) {
-        // 橫幅模式：縮小手牌區卡牌高度與寬度，把最大螢幕空間留給中央牌桌
-        const maxLandscapeTileH = Math.max(24, Math.min(34, Math.floor(window.innerHeight * 0.072)));
-        const maxLandscapeTileW = Math.round(maxLandscapeTileH / 1.32);
-        tileW = Math.max(19, Math.min(maxLandscapeTileW, rawTileW));
-        tileH = Math.round(tileW * 1.32);
+        // 橫幅模式：卡牌寬度充分填滿整個下方木架寬度，同時壓低高度以保留最大牌桌空間
+        tileW = Math.max(24, rawTileW);
+        tileH = Math.max(25, Math.min(35, Math.floor(window.innerHeight * 0.076)));
+        fontPx = Math.max(15, Math.min(Math.round(tileH * 0.72), Math.round(tileW * 0.52)));
+        twoDigitFontPx = Math.max(13, Math.min(Math.round(tileH * 0.62), Math.round(tileW * 0.44)));
       } else {
         const maxTileW = isDesktop ? 43 : 35;
         const minTileW = 24;
         tileW = Math.max(minTileW, Math.min(maxTileW, rawTileW));
         tileH = Math.round(tileW * 1.35);
+        fontPx = Math.max(14, Math.round(tileW * 0.74));
+        twoDigitFontPx = Math.max(12, Math.round(tileW * 0.62));
       }
 
-      const fontPx = Math.max(14, Math.round(tileW * 0.74));
-      const twoDigitFontPx = Math.max(12, Math.round(tileW * 0.62));
       const customTileStyle = `width:${tileW}px;height:${tileH}px;`;
 
       const selectedRackIds = new Set(
@@ -3898,6 +3907,63 @@
 
       const isLandscape = window.innerWidth > window.innerHeight;
       const players = Array.isArray(gameState.players) ? gameState.players : [];
+
+      if (isLandscape) {
+        const barW = Math.max(120, bar.clientWidth || Math.round(window.innerWidth * 0.2));
+        const barH = Math.max(220, bar.clientHeight || window.innerHeight);
+        const slotH = Math.floor((barH - 25) / 4);
+        const nameFontPx = Math.max(10, Math.min(14, Math.floor(Math.min(barW * 0.095, slotH * 0.25))));
+        const metaFontPx = Math.max(9, Math.min(12, Math.floor(Math.min(barW * 0.075, slotH * 0.21))));
+        const countFontPx = Math.max(11, Math.min(15, Math.floor(Math.min(barW * 0.1, slotH * 0.27))));
+
+        const slotsHTML = [];
+        for (let idx = 0; idx < 4; idx++) {
+          const p = players[idx];
+          if (!p) {
+            slotsHTML.push(`
+              <div class="landscape-player-slot rounded-xl border border-emerald-800/40 bg-emerald-950/35 opacity-45 flex items-center justify-center">
+                <span class="text-emerald-400/60 font-bold" style="font-size:${metaFontPx}px;">空位</span>
+              </div>
+            `);
+            continue;
+          }
+
+          const isCurrent = idx === gameState.currentTurnIndex && gameState.status === 'playing';
+          const isMe = p.id === myPlayerId;
+          const count = Array.isArray(p.rack) ? p.rack.length : 0;
+          const bubble = activePlayerBubbles.get(p.id);
+          const ringClass = isCurrent
+            ? 'border-amber-400 bg-amber-500/20 active-turn-ring'
+            : 'border-emerald-700/70 bg-emerald-900/55';
+
+          const iceTag = p.hasBrokenIce
+            ? `<span class="px-1.5 py-0.5 rounded bg-emerald-500/25 text-emerald-300 font-bold leading-none whitespace-nowrap" style="font-size:${metaFontPx}px;">已破冰</span>`
+            : `<span class="px-1.5 py-0.5 rounded bg-stone-800/85 text-stone-300 leading-none whitespace-nowrap" style="font-size:${metaFontPx}px;">未破冰</span>`;
+
+          const bubbleHTML = bubble
+            ? `<div class="player-chat-bubble absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 max-w-[94%] px-2 py-0.5 rounded-xl bg-amber-300/85 backdrop-blur-sm text-emerald-950 font-black shadow-lg border border-amber-100/80 truncate ${bubble.isEmojiOnly ? 'text-lg leading-tight' : 'leading-tight'}" style="${bubble.isEmojiOnly ? '' : `font-size:${nameFontPx}px;`}">
+                ${escapeHtml(bubble.text)}
+              </div>`
+            : '';
+
+          slotsHTML.push(`
+            <div class="landscape-player-slot relative border ${ringClass} transition">
+              ${bubbleHTML}
+              <div class="flex items-center gap-1 min-w-0 w-full">
+                <span class="shrink-0 leading-none" style="font-size:${nameFontPx + 1}px;">${p.isBot ? '🤖' : (isMe ? '😎' : '🧑')}</span>
+                <span class="font-black truncate leading-tight ${isCurrent ? 'text-amber-200' : 'text-white'}" style="font-size:${nameFontPx}px;">${escapeHtml(p.name)}${isMe ? '(你)' : ''}</span>
+              </div>
+              <div class="flex items-center justify-between gap-1 w-full min-w-0">
+                ${iceTag}
+                <span class="font-mono font-black px-1.5 py-0.5 rounded bg-black/40 text-amber-300 leading-none shrink-0" style="font-size:${countFontPx}px;">${count}張</span>
+              </div>
+            </div>
+          `);
+        }
+        bar.innerHTML = slotsHTML.join('');
+        return;
+      }
+
       bar.innerHTML = players.map((p, idx) => {
         const isCurrent = idx === gameState.currentTurnIndex && gameState.status === 'playing';
         const isMe = p.id === myPlayerId;
@@ -3907,13 +3973,9 @@
         const ringClass = isCurrent
           ? 'border-amber-400 bg-amber-500/20 active-turn-ring'
           : 'border-emerald-700/70 bg-emerald-900/55';
-        const iceBadge = isLandscape
-          ? (p.hasBrokenIce
-              ? '<span class="text-[9px] px-1 py-0.2 rounded bg-emerald-500/25 text-emerald-300 font-bold shrink-0">破</span>'
-              : '<span class="text-[9px] px-1 py-0.2 rounded bg-stone-800/80 text-stone-300 shrink-0">未</span>')
-          : (p.hasBrokenIce
-              ? '<span class="text-[9px] px-1 py-0.2 rounded bg-emerald-500/25 text-emerald-300 font-bold shrink-0">已破冰</span>'
-              : '<span class="text-[9px] px-1 py-0.2 rounded bg-stone-800/80 text-stone-300 shrink-0">未破冰</span>');
+        const iceBadge = p.hasBrokenIce
+          ? '<span class="text-[9px] px-1 py-0.2 rounded bg-emerald-500/25 text-emerald-300 font-bold shrink-0">已破冰</span>'
+          : '<span class="text-[9px] px-1 py-0.2 rounded bg-stone-800/80 text-stone-300 shrink-0">未破冰</span>';
 
         const bubbleHTML = bubble
           ? `<div class="player-chat-bubble absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 max-w-[94%] px-2 py-0.5 rounded-xl bg-amber-300/85 backdrop-blur-sm text-emerald-950 font-black shadow-lg border border-amber-100/80 truncate ${bubble.isEmojiOnly ? 'text-lg leading-tight' : 'text-[11px] leading-tight'}">
