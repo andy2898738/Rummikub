@@ -545,22 +545,27 @@
           </div>
 
           <div id="host-start-controls" class="space-y-2 pt-0.5">
+            <label class="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-emerald-900/60 border border-emerald-800 text-xs text-emerald-100 cursor-pointer">
+              <div class="min-w-0">
+                <div class="font-bold text-amber-200">🤖 加入陪打人員（未滿 4 人時補滿）</div>
+                <div class="text-[10px] text-emerald-300/80">困難等級 · 各陪打人員獨立運作</div>
+              </div>
+              <input id="online-fill-bots-checkbox" type="checkbox" checked onchange="toggleOnlineFillBots(this.checked)"
+                class="w-4 h-4 accent-amber-400 rounded cursor-pointer shrink-0" />
+            </label>
+
             <div class="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-emerald-900/60 border border-emerald-800 text-xs text-emerald-100">
-              <span>AI 玩家難易度</span>
-              <select id="online-bot-difficulty-select" onchange="updateOnlineBotDifficulty(this.value)"
+              <span class="shrink-0">每回合思考秒數</span>
+              <select id="online-turn-seconds-select" onchange="updateOnlineTurnSeconds(this.value)"
                 class="rounded-lg bg-emerald-950 border border-emerald-600 px-2.5 py-1 text-xs font-black text-amber-300 focus:outline-none focus:border-amber-400 cursor-pointer">
-                <option value="easy">🌱 休閒入門</option>
-                <option value="normal" selected>⚔️ 標準進階</option>
-                <option value="hard">🔥 拆牌大師</option>
+                <option value="30">⚡ 30 秒</option>
+                <option value="60" selected>⏱ 60 秒</option>
+                <option value="90">🧘 90 秒</option>
               </select>
             </div>
-            <label class="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-emerald-900/60 border border-emerald-800 text-xs text-emerald-100 cursor-pointer">
-              <span>不足 4 人時自動以 AI 電腦補滿席次</span>
-              <input id="fill-bots-checkbox" type="checkbox" checked class="w-4 h-4 rounded accent-amber-500 cursor-pointer" />
-            </label>
             <button type="button" onclick="hostStartOnlineGame()"
               class="w-full py-3 rounded-2xl bg-gradient-to-r from-emerald-400 via-teal-400 to-emerald-400 hover:brightness-105 text-emerald-950 font-black text-sm shadow-lg active:scale-[0.99] transition cursor-pointer">
-              🎮 全員就緒，開始對戰！
+              🎮 開始對戰！
             </button>
           </div>
 
@@ -771,7 +776,8 @@
       turnSeconds: 60
     };
 
-    let onlineBotDifficulty = 'normal';
+    let onlineTurnSeconds = 60;
+    let onlineFillBots = true;
 
     let onlineState = {
       peer: null,
@@ -1037,9 +1043,16 @@
       });
     }
 
-    function updateOnlineBotDifficulty(val) {
+    function updateOnlineTurnSeconds(val) {
       SoundFX.click();
-      onlineBotDifficulty = ['easy', 'normal', 'hard'].includes(val) ? val : 'normal';
+      const parsed = Number(val);
+      onlineTurnSeconds = [30, 60, 90].includes(parsed) ? parsed : 60;
+    }
+
+    function toggleOnlineFillBots(checked) {
+      SoundFX.click();
+      onlineFillBots = Boolean(checked);
+      renderWaitingPlayers();
     }
 
     // =========================================================
@@ -1189,15 +1202,18 @@
 
       incomingState.players = incomingState.players.map(p => {
         const prev = prevPlayersMap.get(p.id);
-        const validRack = Array.isArray(p.rack)
-          ? p.rack
-          : (prev && Array.isArray(prev.rack) ? prev.rack : []);
-        const validSlots = p.id === deviceProfile.deviceId && prev && Array.isArray(prev.rackSlots)
+        const isMe = p.id === deviceProfile.deviceId;
+        const validRack = Array.isArray(p.rack) ? p.rack : [];
+        const syncedCount = typeof p.rackCount === 'number' && !p.isBot
+          ? validRack.length
+          : (typeof p.rackCount === 'number' ? p.rackCount : validRack.length);
+        const validSlots = isMe && prev && Array.isArray(prev.rackSlots)
           ? prev.rackSlots
           : (Array.isArray(p.rackSlots) ? p.rackSlots : buildDefaultRackSlots(validRack));
         return {
           ...p,
           rack: validRack,
+          rackCount: syncedCount,
           rackSlots: validSlots,
           online: p.online !== false
         };
@@ -1427,7 +1443,7 @@
         } else {
           slots.push(`
             <div class="flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-xl bg-emerald-950/50 border border-dashed border-emerald-800 text-[11px] text-emerald-500">
-              <span>空位 #${i + 1}</span>
+              <span>${onlineFillBots ? `🤖 陪打空位 #${i + 1} (困難)` : `空位 #${i + 1}`}</span>
             </div>
           `);
         }
@@ -1525,6 +1541,9 @@
           const cur = getCurrentTurnPlayer();
           if (cur && cur.id === msg.operatorId && Array.isArray(msg.tableMelds)) {
             gameState.tableMelds = msg.tableMelds;
+            if (typeof msg.operatorRackCount === 'number') {
+              cur.rackCount = msg.operatorRackCount;
+            }
             remoteOperatorHint = {
               operatorId: msg.operatorId,
               operatorName: msg.operatorName || cur.name,
@@ -1714,6 +1733,15 @@
               return;
             }
 
+            if (msg.type === 'TIMER_SYNC') {
+              if (gameState && gameState.mode === 'online' && !gameState.winnerId) {
+                gameState.turnTimeLeft = Math.max(0, Number(msg.turnTimeLeft) || 0);
+                gameState.currentTurnIdx = Number.isFinite(msg.currentTurnIdx) ? msg.currentTurnIdx : gameState.currentTurnIdx;
+                updateTimerBadge();
+              }
+              return;
+            }
+
             if (msg.type === 'ROOM_CLOSED') {
               showToast('房主已關閉房間', 'warning');
               leaveOnlineRoom();
@@ -1736,6 +1764,13 @@
             } else if (msg.type === 'LIVE_MOVE_SYNC') {
               if (gameState && gameState.mode === 'online' && !isMyTurn() && Array.isArray(msg.tableMelds)) {
                 gameState.tableMelds = msg.tableMelds;
+                const opPlayer = gameState.players.find(p => p.id === msg.operatorId);
+                if (opPlayer && typeof msg.operatorRackCount === 'number') {
+                  opPlayer.rackCount = msg.operatorRackCount;
+                  if (Array.isArray(opPlayer.rack) && opPlayer.rack.length > msg.operatorRackCount) {
+                    opPlayer.rack = opPlayer.rack.slice(0, msg.operatorRackCount);
+                  }
+                }
                 remoteOperatorHint = {
                   operatorId: msg.operatorId,
                   operatorName: msg.operatorName,
@@ -1998,7 +2033,6 @@
     function buildShuffledDeck() {
       const deck = [];
       let uid = 1;
-      // 104 number tiles: 4 colors x 1..13 x 2 sets
       for (let copy = 0; copy < 2; copy++) {
         for (const color of TILE_COLORS) {
           for (let num = 1; num <= 13; num++) {
@@ -2006,11 +2040,9 @@
           }
         }
       }
-      // + 2 joker tiles = 106 tiles total
       for (let j = 0; j < 2; j++) {
         deck.push({ id: `t_${uid++}`, color: 'joker', number: 0, joker: true });
       }
-      // 5-pass Fisher-Yates shuffle + random cut so two duplicate sets are thoroughly separated
       for (let pass = 0; pass < 5; pass++) {
         shuffleArrayInPlace(deck);
         const cutPos = Math.floor(getSecureRandom() * deck.length);
@@ -2080,7 +2112,6 @@
         return { valid: false, type: null, points: 0 };
       }
 
-      // 1. Check Set (3 or 4 tiles, same number, distinct colors)
       if (tiles.length <= 4) {
         const targetNum = normals[0].number;
         const colors = new Set(normals.map(t => t.color));
@@ -2093,7 +2124,6 @@
         }
       }
 
-      // 2. Check Run (3..13 tiles, same color, strictly consecutive numbers)
       if (tiles.length <= 13) {
         const targetColor = normals[0].color;
         if (normals.every(t => t.color === targetColor)) {
@@ -2295,8 +2325,7 @@
       dealOrderIndices.forEach(idx => {
         dealtHandsMap.set(idx, drawRandomTilesFromDeck(deck, 14));
       });
-
-      const botStyles = shuffleArrayInPlace(['run_first', 'set_first', 'joker_hunter', 'balanced']);
+      const botStyles = shuffleArrayInPlace(['run_first', 'set_first', 'joker_hunter', 'balanced', 'patient_builder']);
       const players = playersList.map((p, idx) => {
         const hand = dealtHandsMap.get(idx) || drawRandomTilesFromDeck(deck, 14);
         const isMe = p.id === deviceProfile.deviceId;
@@ -2310,12 +2339,15 @@
           id: p.id,
           name: p.name,
           isBot: Boolean(p.isBot),
+          botDifficulty: p.botDifficulty || botDifficulty || 'normal',
           botStyle: botStyles[idx % botStyles.length],
           online: p.online !== false,
           rack: hand,
+          rackCount: hand.length,
           rackSlots: buildDefaultRackSlots(hand),
           hasBrokenIce: false,
-          chips: startChips
+          chips: startChips,
+          lastActionText: idx === 0 ? '出牌中' : '等待回合'
         };
       });
 
@@ -2329,6 +2361,8 @@
         players,
         currentTurnIdx: 0,
         turnTimeLeft: Number(turnSeconds) || 60,
+        turnDeadlineAt: Date.now() + (Number(turnSeconds) || 60) * 1000,
+        lastPlayAnnouncement: '',
         winnerId: null
       };
 
@@ -2373,34 +2407,50 @@
     function hostStartOnlineGame() {
       SoundFX.click();
       if (!onlineState.isHost) return;
-      const fillBots = document.getElementById('fill-bots-checkbox')?.checked !== false;
-      const list = onlineState.players.map(p => ({
-        id: p.deviceId,
-        name: p.name,
-        isBot: Boolean(p.isBot),
-        online: p.online !== false
-      }));
+      const fillChk = document.getElementById('online-fill-bots-checkbox');
+      if (fillChk) onlineFillBots = Boolean(fillChk.checked);
 
-      if (fillBots) {
-        const botNames = ['雲端電腦 A', '雲端電腦 B', '雲端電腦 C'];
-        let bIdx = 0;
+      const list = onlineState.players
+        .filter(p => !p.isBot)
+        .map(p => ({
+          id: p.deviceId,
+          name: p.name,
+          isBot: false,
+          online: p.online !== false
+        }));
+
+      if (onlineFillBots && list.length < 4) {
+        const companionNames = ['陪打大師 A', '陪打高手 B', '陪打專家 C'];
+        const distinctStyles = shuffleArrayInPlace(['run_first', 'set_first', 'joker_hunter', 'balanced']);
+        let botIdx = 0;
         while (list.length < 4) {
           list.push({
-            id: `online_bot_${bIdx + 1}`,
-            name: botNames[bIdx % botNames.length],
+            id: `online_bot_${botIdx + 1}_${Math.random().toString(36).slice(2, 6)}`,
+            name: companionNames[botIdx % companionNames.length],
             isBot: true,
+            botDifficulty: 'hard',
+            botStyle: distinctStyles[botIdx % distinctStyles.length],
             online: true
           });
-          bIdx++;
+          botIdx++;
         }
       }
 
       if (list.length < 2) {
-        showToast('至少需要 2 位玩家（或勾選自動以 AI 補滿席次）', 'warning');
+        showToast('人數不足 2 人！請勾選「加入陪打人員」或等待好友加入', 'warning');
         return;
       }
 
-      initializeMatchState('online', list, 60, onlineBotDifficulty, `房號 ${onlineState.roomCode}`);
+      initializeMatchState('online', list, onlineTurnSeconds, 'hard', `房號 ${onlineState.roomCode}`);
+      if (gameState && Array.isArray(gameState.players)) {
+        const onlineStyles = shuffleArrayInPlace(['run_first', 'set_first', 'joker_hunter', 'balanced']);
+        let styleCursor = 0;
+        gameState.players.forEach(p => {
+          if (p.isBot) {
+            p.botStyle = onlineStyles[styleCursor++ % onlineStyles.length];
+          }
+        });
+      }
       broadcastWaitingRoomState();
       syncOnlineGameState();
     }
@@ -2448,10 +2498,18 @@
 
     function syncOnlineGameState() {
       if (gameState && gameState.mode === 'online' && onlineState.isHost) {
-        const sanitized = sanitizeSyncedGameState(gameState);
+        gameState.players.forEach(p => {
+          if (Array.isArray(p.rack)) {
+            p.rackCount = p.rack.length;
+          }
+        });
+        const clonedPayload = JSON.parse(JSON.stringify(gameState));
+        clonedPayload.players.forEach(p => {
+          p.rackCount = Array.isArray(p.rack) ? p.rack.length : (p.rackCount || 0);
+        });
         broadcastToGuests({
           type: 'GAME_SYNC',
-          gameState: sanitized
+          gameState: clonedPayload
         });
       }
     }
@@ -2461,9 +2519,18 @@
       if (turnTimerInterval) clearInterval(turnTimerInterval);
       if (botActionTimeout) clearTimeout(botActionTimeout);
 
-      gameState.turnTimeLeft = gameState.turnSeconds;
+      const isGuestOnline = gameState.mode === 'online' && !onlineState.isHost;
+      if (!isGuestOnline) {
+        gameState.turnTimeLeft = gameState.turnSeconds;
+        gameState.turnDeadlineAt = Date.now() + gameState.turnSeconds * 1000;
+      } else if (!Number.isFinite(gameState.turnTimeLeft)) {
+        gameState.turnTimeLeft = gameState.turnSeconds;
+      }
       remoteOperatorHint = null;
       const cur = getCurrentTurnPlayer();
+      if (cur && cur.isBot) {
+        cur.lastActionText = '🤔 思考中...';
+      }
 
       if (cur && cur.id === deviceProfile.deviceId) {
         captureTurnSnapshot();
@@ -2479,18 +2546,28 @@
           clearInterval(turnTimerInterval);
           return;
         }
-        gameState.turnTimeLeft -= 1;
+        if (gameState.mode === 'online' && onlineState.isHost && gameState.turnDeadlineAt) {
+          gameState.turnTimeLeft = Math.max(0, Math.ceil((gameState.turnDeadlineAt - Date.now()) / 1000));
+          broadcastToGuests({
+            type: 'TIMER_SYNC',
+            turnTimeLeft: gameState.turnTimeLeft,
+            currentTurnIdx: gameState.currentTurnIdx
+          });
+        } else {
+          gameState.turnTimeLeft = Math.max(0, gameState.turnTimeLeft - 1);
+        }
         updateTimerBadge();
-        if (gameState.turnTimeLeft <= 0) {
+        if (gameState.turnTimeLeft <= 0 && !isGuestOnline) {
           clearInterval(turnTimerInterval);
           handleTurnTimeout();
         }
       }, 1000);
 
       if (cur && cur.isBot && (gameState.mode === 'solo' || onlineState.isHost)) {
+        const humanThinkMs = Math.round(1050 + getSecureRandom() * 1250);
         botActionTimeout = setTimeout(() => {
           executeBotTurn(cur);
-        }, 1100);
+        }, humanThinkMs);
       }
     }
 
@@ -2520,15 +2597,23 @@
         const randIdx = Math.floor(getSecureRandom() * gameState.pool.length);
         const [drawn] = gameState.pool.splice(randIdx, 1);
         player.rack.push(drawn);
+        player.rackCount = player.rack.length;
         syncPlayerRackSlots(player);
+        player.lastActionText = `🎴 抽1張(剩${player.rack.length})`;
+        gameState.lastPlayAnnouncement = `${player.name} 抽了 1 張牌（剩 ${player.rack.length} 張）`;
         if (player.id === deviceProfile.deviceId) {
           newlyDrawnTileIds.clear();
           newlyDrawnTileIds.add(drawn.id);
           SoundFX.draw();
         }
       } else {
+        player.rackCount = player.rack.length;
+        player.lastActionText = `⏭ 跳過(剩${player.rack.length})`;
+        gameState.lastPlayAnnouncement = `${player.name} 跳過回合（牌庫已空）`;
         showToast('牌庫已空，跳過抽牌', 'info');
       }
+      renderPlayersBar();
+      syncOnlineGameState();
       advanceToNextPlayer();
     }
 
@@ -2625,9 +2710,15 @@
           return;
         }
         me.hasBrokenIce = true;
+        me.lastActionText = `🔥 破冰(剩${me.rack.length})`;
+        gameState.lastPlayAnnouncement = `${me.name} 成功破冰（${newPoints} 分）！`;
         showToast(`🔥 破冰成功！（${newPoints} 分）`, 'success');
+      } else {
+        me.lastActionText = `🃏 出${playedCount}張(剩${me.rack.length})`;
+        gameState.lastPlayAnnouncement = `${me.name} 打出了 ${playedCount} 張牌`;
       }
 
+      me.rackCount = me.rack.length;
       SoundFX.place();
 
       if (gameState.mode === 'online' && !onlineState.isHost && onlineState.hostConn && onlineState.hostConn.open) {
@@ -2636,6 +2727,8 @@
           playerId: me.id,
           rack: me.rack,
           hasBrokenIce: me.hasBrokenIce,
+          lastActionText: me.lastActionText,
+          lastPlayAnnouncement: gameState.lastPlayAnnouncement,
           tableMelds: gameState.tableMelds
         });
       }
@@ -2653,7 +2746,10 @@
       const cur = getCurrentTurnPlayer();
       if (!cur || cur.id !== msg.playerId) return;
       cur.rack = Array.isArray(msg.rack) ? msg.rack : cur.rack;
+      cur.rackCount = cur.rack.length;
       cur.hasBrokenIce = Boolean(msg.hasBrokenIce);
+      if (msg.lastActionText) cur.lastActionText = msg.lastActionText;
+      if (msg.lastPlayAnnouncement) gameState.lastPlayAnnouncement = msg.lastPlayAnnouncement;
       if (Array.isArray(msg.tableMelds)) {
         gameState.tableMelds = msg.tableMelds;
       }
@@ -2669,236 +2765,234 @@
       const cur = getCurrentTurnPlayer();
       if (!cur || cur.id !== bot.id) return;
 
-      const diff = gameState.botDifficulty || 'normal';
-      const initialRackCount = bot.rack.length;
+      try {
+        const diff = bot.botDifficulty || gameState.botDifficulty || 'normal';
+        const initialRackCount = bot.rack.length;
 
-      // Track recent table meld patterns (e.g. "run:10-11-12" or "set:13") so different AIs avoid echoing identical shapes
-      const existingMeldSignatures = new Set(
-        gameState.tableMelds.map(m => {
-          const ev = evaluateMeld(m.tiles);
-          const nums = m.tiles.filter(t => !t.joker).map(t => t.number).sort((a, b) => a - b).join('-');
-          return `${ev.type || 'unknown'}:${nums}`;
-        })
-      );
+        const existingMeldSignatures = new Set(
+          gameState.tableMelds.map(m => {
+            const ev = evaluateMeld(m.tiles);
+            const nums = m.tiles.filter(t => !t.joker).map(t => t.number).sort((a, b) => a - b).join('-');
+            return `${ev.type || 'unknown'}:${nums}`;
+          })
+        );
 
-      const getMeldSignature = (tiles) => {
-        const ev = evaluateMeld(tiles);
-        const nums = tiles.filter(t => !t.joker).map(t => t.number).sort((a, b) => a - b).join('-');
-        return `${ev.type || 'unknown'}:${nums}`;
-      };
+        const getMeldSignature = (tiles) => {
+          const ev = evaluateMeld(tiles);
+          const nums = tiles.filter(t => !t.joker).map(t => t.number).sort((a, b) => a - b).join('-');
+          const cols = tiles.filter(t => !t.joker).map(t => t.color).sort().join(',');
+          return `${ev.type || 'unknown'}:${nums}:${cols}`;
+        };
 
-      // Use each AI's distinct playstyle + per-turn randomization so different AIs never play identical patterns
-      let preferredMode = getSecureRandom() < 0.5 ? 'run' : 'set';
-      if (bot.botStyle === 'run_first') preferredMode = getSecureRandom() < 0.78 ? 'run' : 'set';
-      else if (bot.botStyle === 'set_first') preferredMode = getSecureRandom() < 0.78 ? 'set' : 'run';
+        // Collect all valid non-overlapping meld combinations from bot's own rack (including joker-assisted melds)
+        function buildDiverseRackMelds(rackTiles, style) {
+          const working = shuffleArrayInPlace([...rackTiles]);
+          const found = [];
 
-      const { groups } = extractSmartMeldsFromRack(bot.rack, preferredMode, true);
-      if (groups.length > 1) {
-        shuffleArrayInPlace(groups);
-        // Deprioritize groups that mirror a number pattern already sitting on the table
-        groups.sort((a, b) => {
-          const dupA = existingMeldSignatures.has(getMeldSignature(a.tiles)) ? 1 : 0;
-          const dupB = existingMeldSignatures.has(getMeldSignature(b.tiles)) ? 1 : 0;
-          return dupA - dupB;
-        });
-      }
-
-      // Helper to also try forming a 3-tile meld using 1 Joker if normal melds aren't enough
-      function findJokerAssistedMeld(rackTiles) {
-        const jokers = rackTiles.filter(t => t.joker);
-        if (jokers.length === 0) return null;
-        const joker = jokers[0];
-        const normals = rackTiles.filter(t => !t.joker);
-        const candidates = [];
-
-        // Try 2-tile same-number + 1 joker
-        for (let num = 1; num <= 13; num++) {
-          const sameNum = normals.filter(t => t.number === num);
-          shuffleArrayInPlace(sameNum);
-          const distinct = [];
-          const seenC = new Set();
-          for (const t of sameNum) {
-            if (!seenC.has(t.color)) {
-              seenC.add(t.color);
-              distinct.push(t);
+          // Step A: Try joker-assisted melds first if bot is joker_hunter or randomly 50% of the time
+          const jokers = working.filter(t => t.joker);
+          if (jokers.length > 0 && (style === 'joker_hunter' || getSecureRandom() < 0.55)) {
+            const jm = findJokerAssistedMeld(working);
+            if (jm && jm.tiles.length >= 3) {
+              found.push(jm);
+              const used = new Set(jm.tiles.map(t => t.id));
+              for (let i = working.length - 1; i >= 0; i--) {
+                if (used.has(working[i].id)) working.splice(i, 1);
+              }
             }
           }
-          if (distinct.length >= 2) {
-            const cand = autoArrangeMeldTiles([distinct[0], distinct[1], joker]);
-            const ev = evaluateMeld(cand);
-            if (ev.valid) candidates.push({ type: 'set', tiles: cand, points: ev.points });
-          }
-        }
 
-        // Try 2-tile near-consecutive same-color + 1 joker
-        for (const color of shuffleArrayInPlace([...TILE_COLORS])) {
-          const sameCol = normals.filter(t => t.color === color).sort((a, b) => a.number - b.number);
-          for (let i = 0; i < sameCol.length - 1; i++) {
-            const gap = sameCol[i + 1].number - sameCol[i].number;
-            if (gap === 1 || gap === 2) {
-              const cand = autoArrangeMeldTiles([sameCol[i], sameCol[i + 1], joker]);
-              const ev = evaluateMeld(cand);
-              if (ev.valid) candidates.push({ type: 'run', tiles: cand, points: ev.points });
+          // Step B: Alternate run-first vs set-first randomly per turn so bots never repeat fixed patterns
+          let primaryMode = getSecureRandom() < 0.5 ? 'run' : 'set';
+          if (style === 'run_first') primaryMode = getSecureRandom() < 0.65 ? 'run' : 'set';
+          else if (style === 'set_first') primaryMode = getSecureRandom() < 0.65 ? 'set' : 'run';
+
+          const { groups, ungroupedTiles } = extractSmartMeldsFromRack(working, primaryMode, true);
+          found.push(...groups);
+
+          // Step C: Check remaining ungrouped tiles + any leftover joker for another meld
+          if (ungroupedTiles.some(t => t.joker) && ungroupedTiles.length >= 3) {
+            const extraJm = findJokerAssistedMeld(ungroupedTiles);
+            if (extraJm && extraJm.tiles.length >= 3) {
+              found.push(extraJm);
             }
           }
-        }
-        if (candidates.length === 0) return null;
-        return candidates[Math.floor(getSecureRandom() * candidates.length)];
-      }
 
-      if (!bot.hasBrokenIce) {
-        const candidateGroups = [...groups];
-        let totalPts = candidateGroups.reduce((s, g) => s + g.points, 0);
-
-        if ((totalPts < 30 || bot.botStyle === 'joker_hunter') && diff !== 'easy') {
-          const usedTemp = new Set(candidateGroups.flatMap(g => g.tiles.map(t => t.id)));
-          const leftover = bot.rack.filter(t => !usedTemp.has(t.id));
-          const jokerGroup = findJokerAssistedMeld(leftover);
-          if (jokerGroup) {
-            candidateGroups.push(jokerGroup);
-            totalPts += jokerGroup.points;
-          }
-        }
-
-        if (candidateGroups.length > 0 && totalPts >= 30) {
-          // Prefer novel number patterns over patterns already on the table, while keeping randomness
-          shuffleArrayInPlace(candidateGroups);
-          candidateGroups.sort((a, b) => {
+          // Randomize order and deprioritize signatures already on table
+          shuffleArrayInPlace(found);
+          found.sort((a, b) => {
             const dupA = existingMeldSignatures.has(getMeldSignature(a.tiles)) ? 1 : 0;
             const dupB = existingMeldSignatures.has(getMeldSignature(b.tiles)) ? 1 : 0;
-            return dupA - dupB;
+            if (dupA !== dupB) return dupA - dupB;
+            return (getSecureRandom() - 0.5);
           });
-          const chosenBreakGroups = [];
-          let accPts = 0;
-          for (const g of candidateGroups) {
-            chosenBreakGroups.push(g);
-            accPts += g.points;
-            if (accPts >= 30 && (diff === 'easy' || getSecureRandom() < 0.65)) break;
+          return found;
+        }
+
+        function findJokerAssistedMeld(rackTiles) {
+          const jokers = rackTiles.filter(t => t.joker);
+          if (jokers.length === 0) return null;
+          const joker = jokers[0];
+          const normals = rackTiles.filter(t => !t.joker);
+          const candidates = [];
+
+          const nums = shuffleArrayInPlace(Array.from({ length: 13 }, (_, i) => i + 1));
+          for (const num of nums) {
+            const sameNum = normals.filter(t => t.number === num);
+            shuffleArrayInPlace(sameNum);
+            const distinct = [];
+            const seenC = new Set();
+            for (const t of sameNum) {
+              if (!seenC.has(t.color)) {
+                seenC.add(t.color);
+                distinct.push(t);
+              }
+            }
+            if (distinct.length >= 2) {
+              const cand = autoArrangeMeldTiles([distinct[0], distinct[1], joker]);
+              const ev = evaluateMeld(cand);
+              if (ev.valid) candidates.push({ type: 'set', tiles: cand, points: ev.points });
+            }
           }
 
-          const usedIds = new Set();
-          chosenBreakGroups.forEach(g => {
-            g.tiles.forEach(t => usedIds.add(t.id));
-            gameState.tableMelds.push({
-              id: `meld_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-              tiles: g.tiles,
-              newlyPlaced: true
-            });
-          });
-          bot.rack = bot.rack.filter(t => !usedIds.has(t.id));
-          bot.hasBrokenIce = true;
-          if (bot.rack.length === 0) {
+          for (const color of shuffleArrayInPlace([...TILE_COLORS])) {
+            const sameCol = normals.filter(t => t.color === color).sort((a, b) => a.number - b.number);
+            for (let i = 0; i < sameCol.length - 1; i++) {
+              const gap = sameCol[i + 1].number - sameCol[i].number;
+              if (gap === 1 || gap === 2) {
+                const cand = autoArrangeMeldTiles([sameCol[i], sameCol[i + 1], joker]);
+                const ev = evaluateMeld(cand);
+                if (ev.valid) candidates.push({ type: 'run', tiles: cand, points: ev.points });
+              }
+            }
+          }
+          if (candidates.length === 0) return null;
+          return candidates[Math.floor(getSecureRandom() * candidates.length)];
+        }
+
+        const groups = buildDiverseRackMelds(bot.rack, bot.botStyle);
+
+        const broadcastBotPlayStep = (delayBeforeNextTurnMs = 550) => {
+          const remainingCount = Array.isArray(bot.rack) ? bot.rack.length : 0;
+          bot.rackCount = remainingCount;
+          if (Array.isArray(bot.rackSlots)) {
+            syncPlayerRackSlots(bot);
+          }
+          remoteOperatorHint = null;
+          renderPlayersBar();
+          renderTableBoard();
+          renderTurnControls();
+          if (gameState.mode === 'online' && onlineState.isHost) {
+            syncOnlineGameState();
+          }
+          if (remainingCount === 0) {
             finishMatchWithWinner(bot);
             return;
           }
-          advanceToNextPlayer();
-          return;
-        }
-      } else {
-        let playedAny = false;
-        const preferAttachFirst = diff !== 'easy' && gameState.tableMelds.length > 0 && getSecureRandom() < 0.45;
-
-        const playHandGroups = () => {
-          if (groups.length === 0) return;
-          const maxPlayCount = diff === 'easy'
-            ? 1
-            : (diff === 'normal' ? Math.max(1, Math.ceil(groups.length * (0.45 + getSecureRandom() * 0.55))) : groups.length);
-          const groupsToPlay = groups.slice(0, maxPlayCount);
-          const usedIds = new Set();
-          groupsToPlay.forEach(g => {
-            g.tiles.forEach(t => usedIds.add(t.id));
-            gameState.tableMelds.push({
-              id: `meld_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-              tiles: g.tiles,
-              newlyPlaced: true
-            });
-          });
-          bot.rack = bot.rack.filter(t => !usedIds.has(t.id));
-          playedAny = true;
+          botActionTimeout = setTimeout(() => {
+            advanceToNextPlayer();
+          }, gameState.mode === 'online' ? delayBeforeNextTurnMs : 120);
         };
 
-        if (!preferAttachFirst) {
-          playHandGroups();
-        }
+        if (!bot.hasBrokenIce) {
+          const totalPts = groups.reduce((s, g) => s + g.points, 0);
 
-        // Attach single tiles onto existing valid table melds in randomized order
-        if (diff !== 'easy') {
-          const rackIndices = Array.from({ length: bot.rack.length }, (_, idx) => idx);
-          shuffleArrayInPlace(rackIndices);
-
-          for (const rIdx of rackIndices) {
-            const tile = bot.rack[rIdx];
-            if (!tile) continue;
-            if (tile.joker && bot.rack.length > 3) continue;
-            let placedTile = false;
-
-            const meldOrder = shuffleArrayInPlace([...gameState.tableMelds]);
-            for (const meld of meldOrder) {
-              const tryAppend = [...meld.tiles, tile];
-              if (evaluateMeld(tryAppend).valid) {
-                meld.tiles = tryAppend;
-                meld.newlyPlaced = true;
-                bot.rack[rIdx] = null;
-                playedAny = true;
-                placedTile = true;
-                break;
-              }
-              const tryPrepend = [tile, ...meld.tiles];
-              if (evaluateMeld(tryPrepend).valid) {
-                meld.tiles = tryPrepend;
-                meld.newlyPlaced = true;
-                bot.rack[rIdx] = null;
-                playedAny = true;
-                placedTile = true;
-                break;
-              }
+          if (groups.length > 0 && totalPts >= 30) {
+            const chosenBreakGroups = [];
+            let accPts = 0;
+            for (const g of groups) {
+              chosenBreakGroups.push(g);
+              accPts += g.points;
+              if (accPts >= 30 && (diff === 'easy' || getSecureRandom() < 0.6)) break;
             }
 
-            // Hard AI can split an existing table meld into 2 valid melds with 1 hand tile
-            if (!placedTile && diff === 'hard') {
-              const meldIndices = Array.from({ length: gameState.tableMelds.length }, (_, idx) => idx);
-              shuffleArrayInPlace(meldIndices);
-              for (const mIdx of meldIndices) {
-                const meld = gameState.tableMelds[mIdx];
-                if (!meld || meld.tiles.length < 5) continue;
-                const splitResult = findExactValidMeldPartition([...meld.tiles, tile], 2);
-                if (splitResult && splitResult.length >= 2) {
-                  meld.tiles = splitResult[0];
+            const usedIds = new Set();
+            chosenBreakGroups.forEach(g => {
+              g.tiles.forEach(t => usedIds.add(t.id));
+              gameState.tableMelds.push({
+                id: `meld_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+                tiles: g.tiles,
+                newlyPlaced: true
+              });
+            });
+            bot.rack = bot.rack.filter(t => !usedIds.has(t.id));
+            bot.rackCount = bot.rack.length;
+            bot.hasBrokenIce = true;
+            const playedCnt = initialRackCount - bot.rack.length;
+            bot.lastActionText = `🔥 破冰 ${initialRackCount}→${bot.rack.length}張`;
+            gameState.lastPlayAnnouncement = `${bot.name} 破冰出 ${playedCnt} 張（${accPts} 分，手牌 ${initialRackCount}→${bot.rack.length} 張）`;
+            broadcastBotPlayStep();
+            return;
+          }
+        } else {
+          let playedAny = false;
+
+          // Step 1: Always prioritize playing new multi-tile melds from own hand so rack visibly drops by 3~9+ tiles
+          if (groups.length > 0) {
+            const maxPlayCount = diff === 'easy'
+              ? 1
+              : (diff === 'normal' ? Math.max(1, Math.ceil(groups.length * (0.5 + getSecureRandom() * 0.5))) : groups.length);
+            const groupsToPlay = groups.slice(0, maxPlayCount);
+            const usedIds = new Set();
+            groupsToPlay.forEach(g => {
+              g.tiles.forEach(t => usedIds.add(t.id));
+              gameState.tableMelds.push({
+                id: `meld_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+                tiles: g.tiles,
+                newlyPlaced: true
+              });
+            });
+            bot.rack = bot.rack.filter(t => !usedIds.has(t.id));
+            bot.rackCount = bot.rack.length;
+            playedAny = true;
+          }
+
+          // Step 2: Optionally extend existing table melds cleanly (without endlessly splitting old table melds into duplicate-looking groups)
+          if (diff !== 'easy' && gameState.tableMelds.length > 0) {
+            const rackIndices = Array.from({ length: bot.rack.length }, (_, idx) => idx);
+            shuffleArrayInPlace(rackIndices);
+
+            for (const rIdx of rackIndices) {
+              const tile = bot.rack[rIdx];
+              if (!tile) continue;
+              if (tile.joker && bot.rack.length > 2) continue;
+
+              const meldOrder = shuffleArrayInPlace([...gameState.tableMelds]);
+              for (const meld of meldOrder) {
+                if (meld.tiles.length >= 6) continue;
+                const tryAppend = [...meld.tiles, tile];
+                if (evaluateMeld(tryAppend).valid) {
+                  meld.tiles = tryAppend;
                   meld.newlyPlaced = true;
-                  const extraMelds = splitResult.slice(1).map(groupTiles => ({
-                    id: `meld_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-                    tiles: groupTiles,
-                    newlyPlaced: true
-                  }));
-                  gameState.tableMelds.splice(mIdx + 1, 0, ...extraMelds);
+                  bot.rack[rIdx] = null;
+                  playedAny = true;
+                  break;
+                }
+                const tryPrepend = [tile, ...meld.tiles];
+                if (evaluateMeld(tryPrepend).valid) {
+                  meld.tiles = tryPrepend;
+                  meld.newlyPlaced = true;
                   bot.rack[rIdx] = null;
                   playedAny = true;
                   break;
                 }
               }
             }
+            bot.rack = bot.rack.filter(Boolean);
+            bot.rackCount = bot.rack.length;
           }
-          bot.rack = bot.rack.filter(Boolean);
-        }
 
-        if (preferAttachFirst) {
-          const { groups: remainingGroups } = extractSmartMeldsFromRack(bot.rack, preferredMode, true);
-          if (remainingGroups.length > 0) {
-            groups.length = 0;
-            groups.push(...remainingGroups);
-            playHandGroups();
-          }
-        }
-
-        // Ensure AI actually reduced its rack before advancing turn
-        if (playedAny && bot.rack.length < initialRackCount) {
-          if (bot.rack.length === 0) {
-            finishMatchWithWinner(bot);
+          if (playedAny && bot.rack.length < initialRackCount) {
+            const playedTilesNum = initialRackCount - bot.rack.length;
+            bot.rackCount = bot.rack.length;
+            bot.lastActionText = `🃏 出${playedTilesNum}張 (${initialRackCount}→${bot.rack.length})`;
+            gameState.lastPlayAnnouncement = `${bot.name} 打出 ${playedTilesNum} 張牌（手牌 ${initialRackCount}→${bot.rack.length} 張）`;
+            broadcastBotPlayStep();
             return;
           }
-          advanceToNextPlayer();
-          return;
         }
+      } catch (err) {
+        console.warn('Bot turn fallback draw:', err);
       }
 
       drawTileAndAdvance(bot);
@@ -2990,6 +3084,7 @@
       if (rackTiles.length > 0) {
         const rackMoveIds = new Set(rackTiles.map(t => t.id));
         me.rack = me.rack.filter(t => !rackMoveIds.has(t.id));
+        me.rackCount = me.rack.length;
         syncPlayerRackSlots(me);
       }
       if (tableTiles.length > 0) {
@@ -3684,6 +3779,7 @@
 
       const moveIds = new Set(tiles.map(t => t.id));
       me.rack = me.rack.filter(t => !moveIds.has(t.id));
+      me.rackCount = me.rack.length;
       syncPlayerRackSlots(me);
       moveIds.forEach(id => selectedTileIds.delete(id));
 
@@ -3746,6 +3842,7 @@
 
       const moveIds = new Set(tiles.map(t => t.id));
       me.rack = me.rack.filter(t => !moveIds.has(t.id));
+      me.rackCount = me.rack.length;
       syncPlayerRackSlots(me);
       moveIds.forEach(id => selectedTileIds.delete(id));
 
@@ -3796,6 +3893,7 @@
       if (idx === -1) return;
       const [tile] = meld.tiles.splice(idx, 1);
       me.rack.push(tile);
+      me.rackCount = me.rack.length;
 
       const slots = syncPlayerRackSlots(me);
       if (preferredSlotIdx !== null && preferredSlotIdx >= 0 && preferredSlotIdx < slots.length) {
@@ -3939,9 +4037,14 @@
         const bubbleHtml = bubble
           ? `<div class="player-chat-bubble">${escapeHtml(bubble.text)}</div>`
           : '';
-        const liveCount = (remoteOperatorHint && remoteOperatorHint.operatorId === p.id && typeof remoteOperatorHint.operatorRackCount === 'number')
-          ? remoteOperatorHint.operatorRackCount
-          : (Array.isArray(p.rack) ? p.rack.length : 0);
+        const actualRackCount = Array.isArray(p.rack)
+          ? p.rack.length
+          : (typeof p.rackCount === 'number' ? p.rackCount : 0);
+        p.rackCount = actualRackCount;
+        const liveCount = actualRackCount;
+        const actionBadge = (remoteOperatorHint && remoteOperatorHint.operatorId === p.id)
+          ? '👀 排牌中'
+          : (p.lastActionText || (active && p.isBot ? '🤔 思考中...' : ''));
 
         return `
           <div class="player-pill px-2.5 py-1.5 rounded-xl border text-xs flex items-center justify-between gap-2 ${
@@ -3955,6 +4058,7 @@
               ${p.hasBrokenIce ? '<span class="text-[10px] px-1 rounded bg-emerald-500/25 text-emerald-300 shrink-0">破冰</span>' : ''}
             </div>
             <div class="flex items-center gap-1.5 shrink-0 font-bold tabular-nums">
+              ${actionBadge ? `<span class="text-[10px] px-1.5 py-0.2 rounded bg-emerald-950/75 text-emerald-200 truncate max-w-[104px]">${escapeHtml(actionBadge)}</span>` : ''}
               <span class="px-1.5 py-0.2 rounded bg-emerald-950/90 text-amber-300">${liveCount} 張</span>
             </div>
             ${bubbleHtml}
@@ -4142,7 +4246,8 @@
           statusEl.textContent = `👀 ${cur.name} ${remoteOperatorHint.hintText}`;
           statusEl.className = 'font-bold text-sky-300 truncate';
         } else {
-          statusEl.textContent = `等待 ${cur ? cur.name : '對手'} 思考與出牌中...`;
+          const prevNote = gameState.lastPlayAnnouncement ? `（上一步：${gameState.lastPlayAnnouncement}）` : '';
+          statusEl.textContent = `等待 ${cur ? cur.name : '對手'} 思考與出牌中... ${prevNote}`;
           statusEl.className = 'font-bold text-emerald-200 truncate';
         }
       }
