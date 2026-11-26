@@ -564,6 +564,18 @@
             <span class="animate-spin">⏳</span>
             <span>等待房主按下開始對戰...</span>
           </div>
+
+          <!-- Rejoin Active Match Banner (Shown when match is already in progress) -->
+          <div id="rejoin-active-match-box" class="hidden rounded-2xl bg-gradient-to-r from-amber-500/25 via-orange-500/25 to-amber-500/25 border-2 border-amber-400 p-3 space-y-2 shadow-lg">
+            <div class="flex items-center justify-between text-xs">
+              <span class="font-black text-amber-300">🔥 本房間對戰正在進行中！</span>
+              <span class="text-[11px] text-emerald-200 font-bold">已保留您的手牌進度</span>
+            </div>
+            <button type="button" onclick="rejoinActiveMatch()"
+              class="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-emerald-950 font-black text-sm shadow-md active:scale-[0.98] transition cursor-pointer">
+              ⚔️ 加入戰局（恢復對戰畫面）
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -582,10 +594,11 @@
           <span class="px-2 py-0.5 rounded bg-emerald-900 text-emerald-200 font-bold text-[11px] shrink-0">🎴 牌庫 <strong id="pool-count-display" class="text-amber-300">50</strong></span>
         </div>
 
-        <div class="flex items-center gap-1.5 shrink-0">
-          <div id="turn-timer-badge" class="px-2.5 py-0.5 rounded-full bg-amber-500/20 border border-amber-400/60 text-amber-300 font-black text-xs tabular-nums">
+        <div class="flex items-center gap-1 shrink-0">
+          <div id="turn-timer-badge" class="px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-400/60 text-amber-300 font-black text-xs tabular-nums">
             ⏱ 60s
           </div>
+          <button type="button" id="btn-ingame-reconnect" onclick="refreshInGameConnection()" class="hidden px-2 py-1 rounded-lg bg-emerald-900 hover:bg-emerald-800 border border-emerald-600/60 text-emerald-200 font-bold text-[11px] cursor-pointer" title="重新整理連線並同步牌局">🔄</button>
           <button type="button" onclick="toggleGameChatDrawer()" class="px-2 py-1 rounded-lg bg-emerald-900 hover:bg-emerald-800 text-xs cursor-pointer" title="對戰聊天">💬</button>
           <button type="button" onclick="toggleRulesModal(true)" class="px-2 py-1 rounded-lg bg-emerald-900 hover:bg-emerald-800 text-xs cursor-pointer" title="規則說明">📖</button>
         </div>
@@ -764,7 +777,11 @@
       guestConns: new Map(), // deviceId -> DataConnection
       players: [], // { deviceId, name, isHost, isBot, online }
       chatMessages: [],
-      reconnectTimer: null
+      reconnectTimer: null,
+      heartbeatTimer: null,
+      lastPongAt: 0,
+      hasActiveMatch: false,
+      wakeLock: null
     };
 
     let gameState = null;
@@ -773,6 +790,8 @@
     let botActionTimeout = null;
     let selectedTileIds = new Set();
     let selectedTableTileIds = new Set();
+    let liveSyncThrottleTimer = null;
+    let remoteOperatorHint = null;
     let newlyDrawnTileIds = new Set();
     let rackSortMode = 'none'; // 'none' | 'run' | 'set'
     let activeChatBubbles = {}; // playerId -> { text, timerId }
@@ -1016,6 +1035,11 @@
       });
     }
 
+    function updateOnlineBotDifficulty(val) {
+      SoundFX.click();
+      onlineBotDifficulty = ['easy', 'normal', 'hard'].includes(val) ? val : 'normal';
+    }
+
     // =========================================================
     // 3. ONLINE P2P MULTIPLAYER ROOM & RECONNECTION (PEERJS)
     // =========================================================
@@ -1037,6 +1061,10 @@
         clearTimeout(onlineState.reconnectTimer);
         onlineState.reconnectTimer = null;
       }
+      if (onlineState.heartbeatTimer) {
+        clearInterval(onlineState.heartbeatTimer);
+        onlineState.heartbeatTimer = null;
+      }
       if (onlineState.hostConn) {
         try { onlineState.hostConn.close(); } catch (e) {}
         onlineState.hostConn = null;
@@ -1049,6 +1077,170 @@
         try { onlineState.peer.destroy(); } catch (e) {}
         onlineState.peer = null;
       }
+    }
+
+    async function requestScreenWakeLock() {
+      try {
+        if ('wakeLock' in navigator && !onlineState.wakeLock) {
+          onlineState.wakeLock = await navigator.wakeLock.request('screen');
+          onlineState.wakeLock.addEventListener('release', () => {
+            onlineState.wakeLock = null;
+          });
+        }
+      } catch (e) {}
+    }
+
+    function startConnectionHeartbeat() {
+      if (onlineState.heartbeatTimer) clearInterval(onlineState.heartbeatTimer);
+      onlineState.lastPongAt = Date.now();
+      requestScreenWakeLock();
+
+      onlineState.heartbeatTimer = setInterval(() => {
+        if (!onlineState.roomCode) return;
+
+        if (onlineState.peer && !onlineState.peer.destroyed && onlineState.peer.disconnected) {
+          try { onlineState.peer.reconnect(); } catch (e) {}
+        }
+
+        if (onlineState.isHost) {
+          onlineState.guestConns.forEach((conn, devId) => {
+            if (conn && conn.open) {
+              try { conn.send({ type: 'PING', ts: Date.now() }); } catch (e) {}
+            } else {
+              onlineState.guestConns.delete(devId);
+            }
+          });
+          setWaitingConnLight(onlineState.peer && onlineState.peer.open ? 'ok' : 'warn');
+        } else {
+          if (onlineState.hostConn && onlineState.hostConn.open) {
+            try { onlineState.hostConn.send({ type: 'PING', deviceId: deviceProfile.deviceId, ts: Date.now() }); } catch (e) {}
+            if (Date.now() - onlineState.lastPongAt > 14000) {
+              setWaitingConnLight('warn');
+              joinOnlineRoom(onlineState.roomCode);
+            }
+          } else if (onlineState.roomCode) {
+            setWaitingConnLight('warn');
+            joinOnlineRoom(onlineState.roomCode);
+          }
+        }
+      }, 4000);
+    }
+
+    function sanitizeSyncedGameState(incomingState) {
+      if (!incomingState || typeof incomingState !== 'object') return null;
+      if (!Array.isArray(incomingState.players)) return null;
+
+      const prevPlayersMap = new Map();
+      if (gameState && Array.isArray(gameState.players)) {
+        gameState.players.forEach(p => prevPlayersMap.set(p.id, p));
+      }
+
+      incomingState.players = incomingState.players.map(p => {
+        const prev = prevPlayersMap.get(p.id);
+        const validRack = Array.isArray(p.rack)
+          ? p.rack
+          : (prev && Array.isArray(prev.rack) ? prev.rack : []);
+        return {
+          ...p,
+          rack: validRack,
+          online: p.online !== false
+        };
+      });
+
+      if (!Array.isArray(incomingState.tableMelds)) incomingState.tableMelds = [];
+      if (!Array.isArray(incomingState.pool)) incomingState.pool = [];
+      return incomingState;
+    }
+
+    function rejoinActiveMatch() {
+      SoundFX.click();
+      if (!onlineState.roomCode) return;
+
+      if (onlineState.isHost) {
+        if (gameState && gameState.mode === 'online') {
+          switchView('game');
+          syncOnlineGameState();
+          renderAll();
+          showToast('已重新回到對戰畫面', 'success');
+        } else {
+          showToast('目前尚無進行中的戰局', 'info');
+        }
+        return;
+      }
+
+      if (gameState && gameState.mode === 'online' && !gameState.winnerId) {
+        switchView('game');
+        if (isMyTurn() && !turnSnapshot) captureTurnSnapshot();
+        renderAll();
+        showToast('已重新加入戰局！', 'success');
+      }
+
+      if (onlineState.hostConn && onlineState.hostConn.open) {
+        onlineState.hostConn.send({
+          type: 'REQUEST_GAME_SYNC',
+          deviceId: deviceProfile.deviceId,
+          name: deviceProfile.nickname
+        });
+      } else {
+        joinOnlineRoom(onlineState.roomCode);
+      }
+    }
+
+    function refreshInGameConnection() {
+      SoundFX.click();
+      if (!gameState || gameState.mode !== 'online' || !onlineState.roomCode) return;
+
+      if (onlineState.isHost) {
+        if (onlineState.peer && !onlineState.peer.destroyed && onlineState.peer.disconnected) {
+          try { onlineState.peer.reconnect(); } catch (e) {}
+        }
+        onlineState.guestConns.forEach((conn, devId) => {
+          if (!conn || !conn.open) {
+            onlineState.guestConns.delete(devId);
+          }
+        });
+        syncOnlineGameState();
+        renderAll();
+        showToast('已刷新連線並重新同步全場牌局', 'success');
+      } else {
+        if (onlineState.hostConn && onlineState.hostConn.open) {
+          onlineState.hostConn.send({
+            type: 'REQUEST_GAME_SYNC',
+            deviceId: deviceProfile.deviceId,
+            name: deviceProfile.nickname
+          });
+          showToast('已向房主重新同步最新牌局狀態', 'success');
+        } else {
+          showToast('正在重新連線至房主...', 'warning');
+          joinOnlineRoom(onlineState.roomCode);
+        }
+      }
+    }
+
+    function broadcastLiveBoardPreview(actionLabel = '正在操作桌面牌組...') {
+      if (!gameState || gameState.mode !== 'online' || !isMyTurn()) return;
+      if (liveSyncThrottleTimer) clearTimeout(liveSyncThrottleTimer);
+
+      liveSyncThrottleTimer = setTimeout(() => {
+        liveSyncThrottleTimer = null;
+        const me = getMyPlayer();
+        if (!me || !gameState || !isMyTurn()) return;
+
+        const previewPayload = {
+          type: 'LIVE_MOVE_SYNC',
+          operatorId: deviceProfile.deviceId,
+          operatorName: deviceProfile.nickname,
+          hintText: actionLabel,
+          tableMelds: gameState.tableMelds,
+          operatorRackCount: me.rack.length
+        };
+
+        if (onlineState.isHost) {
+          broadcastToGuests(previewPayload);
+        } else if (onlineState.hostConn && onlineState.hostConn.open) {
+          try { onlineState.hostConn.send(previewPayload); } catch (e) {}
+        }
+      }, 90);
     }
 
     function saveOnlineSession() {
@@ -1090,13 +1282,19 @@
       const roleEl = document.getElementById('waiting-role-badge');
       const hostCtrls = document.getElementById('host-start-controls');
       const guestHint = document.getElementById('guest-waiting-hint');
+      const rejoinBox = document.getElementById('rejoin-active-match-box');
+
+      const matchOngoing = isHost
+        ? Boolean(gameState && gameState.mode === 'online' && !gameState.winnerId)
+        : Boolean(onlineState.hasActiveMatch || (gameState && gameState.mode === 'online' && !gameState.winnerId));
 
       if (entryBox) entryBox.classList.add('hidden');
       if (waitBox) waitBox.classList.remove('hidden');
       if (codeEl) codeEl.textContent = roomCode;
       if (roleEl) roleEl.textContent = isHost ? '👑 房主' : '🎮 成員';
-      if (hostCtrls) hostCtrls.classList.toggle('hidden', !isHost);
-      if (guestHint) guestHint.classList.toggle('hidden', isHost);
+      if (hostCtrls) hostCtrls.classList.toggle('hidden', !isHost || matchOngoing);
+      if (guestHint) guestHint.classList.toggle('hidden', isHost || matchOngoing);
+      if (rejoinBox) rejoinBox.classList.toggle('hidden', !matchOngoing);
 
       setWaitingConnLight('ok');
       renderWaitingPlayers();
@@ -1146,12 +1344,15 @@
 
     function broadcastWaitingRoomState() {
       if (!onlineState.isHost) return;
+      const matchOngoing = Boolean(gameState && gameState.mode === 'online' && !gameState.winnerId);
+      onlineState.hasActiveMatch = matchOngoing;
       renderWaitingPlayers();
       broadcastToGuests({
         type: 'WAITING_SYNC',
         roomCode: onlineState.roomCode,
         players: onlineState.players,
-        chatMessages: onlineState.chatMessages
+        chatMessages: onlineState.chatMessages,
+        hasActiveMatch: matchOngoing
       });
     }
 
@@ -1159,7 +1360,12 @@
       conn.on('data', (msg) => {
         if (!msg || typeof msg !== 'object') return;
 
-        if (msg.type === 'JOIN_HELLO') {
+        if (msg.type === 'PING') {
+          try { conn.send({ type: 'PONG', ts: msg.ts || Date.now() }); } catch (e) {}
+          return;
+        }
+
+        if (msg.type === 'JOIN_HELLO' || msg.type === 'REQUEST_GAME_SYNC') {
           const devId = msg.deviceId || conn.peer;
           const pName = (msg.name || '好友玩家').slice(0, 14);
           onlineState.guestConns.set(devId, conn);
@@ -1188,13 +1394,36 @@
               gp.online = true;
               gp.name = pName;
             }
+            broadcastWaitingRoomState();
             syncOnlineGameState();
+            renderPlayersBar();
           } else {
             broadcastWaitingRoomState();
           }
-          showToast(`${pName} 已連線加入房間`, 'success');
+          if (msg.type === 'JOIN_HELLO') {
+            showToast(`${pName} 已連線加入房間`, 'success');
+          }
         } else if (msg.type === 'CHAT_MSG') {
           appendChatEntry(msg.senderId, msg.senderName, msg.text);
+        } else if (msg.type === 'LIVE_MOVE_SYNC' && gameState && gameState.mode === 'online') {
+          const cur = getCurrentTurnPlayer();
+          if (cur && cur.id === msg.operatorId && Array.isArray(msg.tableMelds)) {
+            gameState.tableMelds = msg.tableMelds;
+            remoteOperatorHint = {
+              operatorId: msg.operatorId,
+              operatorName: msg.operatorName || cur.name,
+              hintText: msg.hintText || '正在排牌...',
+              operatorRackCount: msg.operatorRackCount
+            };
+            renderTableBoard();
+            renderPlayersBar();
+            renderTurnControls();
+            onlineState.guestConns.forEach((gConn, gId) => {
+              if (gId !== msg.operatorId && gConn && gConn.open) {
+                try { gConn.send(msg); } catch (e) {}
+              }
+            });
+          }
         } else if (msg.type === 'GUEST_ACTION' && gameState && gameState.mode === 'online') {
           applyGuestGameAction(msg);
         }
@@ -1210,6 +1439,7 @@
             const gp = gameState.players.find(p => p.id === devId);
             if (gp) gp.online = false;
             syncOnlineGameState();
+            renderPlayersBar();
           } else {
             broadcastWaitingRoomState();
           }
@@ -1261,6 +1491,7 @@
           btn.textContent = '🏠 建立新對戰房間（產生 6 碼房號）';
         }
         saveOnlineSession();
+        startConnectionHeartbeat();
         showWaitingRoomUI(code, true);
         showToast(`房間已建立：${code}`, 'success');
       });
@@ -1339,6 +1570,7 @@
               btn.textContent = '加入房間';
             }
             saveOnlineSession();
+            startConnectionHeartbeat();
             conn.send({
               type: 'JOIN_HELLO',
               deviceId: deviceProfile.deviceId,
@@ -1350,12 +1582,22 @@
 
           conn.on('data', (msg) => {
             if (!msg || typeof msg !== 'object') return;
+            onlineState.lastPongAt = Date.now();
+
+            if (msg.type === 'PONG' || msg.type === 'PING') {
+              if (msg.type === 'PING') {
+                try { conn.send({ type: 'PONG', ts: msg.ts || Date.now() }); } catch (e) {}
+              }
+              setWaitingConnLight('ok');
+              return;
+            }
+
             if (msg.type === 'WAITING_SYNC') {
               onlineState.players = msg.players || [];
               onlineState.chatMessages = msg.chatMessages || [];
+              onlineState.hasActiveMatch = Boolean(msg.hasActiveMatch);
               setWaitingConnLight('ok');
-              renderWaitingPlayers();
-              renderChatMessages('waiting');
+              showWaitingRoomUI(onlineState.roomCode, false);
             } else if (msg.type === 'CHAT_SYNC') {
               onlineState.chatMessages = msg.chatMessages || [];
               renderChatMessages('waiting');
@@ -1363,12 +1605,36 @@
               if (msg.latest) {
                 triggerPlayerChatBubble(msg.latest.senderId, msg.latest.text);
               }
+            } else if (msg.type === 'LIVE_MOVE_SYNC') {
+              if (gameState && gameState.mode === 'online' && !isMyTurn() && Array.isArray(msg.tableMelds)) {
+                gameState.tableMelds = msg.tableMelds;
+                remoteOperatorHint = {
+                  operatorId: msg.operatorId,
+                  operatorName: msg.operatorName,
+                  hintText: msg.hintText || '正在操作桌面牌組...',
+                  operatorRackCount: msg.operatorRackCount
+                };
+                renderTableBoard();
+                renderPlayersBar();
+                renderTurnControls();
+              }
             } else if (msg.type === 'GAME_SYNC') {
-              gameState = msg.gameState;
-              if (document.getElementById('game-view')?.classList.contains('hidden')) {
+              const cleanState = sanitizeSyncedGameState(msg.gameState);
+              if (!cleanState) return;
+              const wasMyTurn = isMyTurn();
+              gameState = cleanState;
+              onlineState.hasActiveMatch = !gameState.winnerId;
+              remoteOperatorHint = null;
+
+              const waitingVisible = !document.getElementById('lobby-view')?.classList.contains('hidden');
+              if (waitingVisible) {
+                showWaitingRoomUI(onlineState.roomCode, false);
+              }
+
+              if (document.getElementById('game-view')?.classList.contains('hidden') && !waitingVisible) {
                 switchView('game');
               }
-              if (isMyTurn() && !turnSnapshot) {
+              if (isMyTurn() && (!wasMyTurn || !turnSnapshot)) {
                 captureTurnSnapshot();
               }
               renderAll();
@@ -1470,51 +1736,94 @@
       onlineState.isHost = false;
       onlineState.players = [];
       onlineState.chatMessages = [];
+      onlineState.hasActiveMatch = false;
 
       const entryBox = document.getElementById('online-entry-box');
       const waitBox = document.getElementById('online-waiting-box');
+      const rejoinBox = document.getElementById('rejoin-active-match-box');
       if (entryBox) entryBox.classList.remove('hidden');
       if (waitBox) waitBox.classList.add('hidden');
+      if (rejoinBox) rejoinBox.classList.add('hidden');
     }
 
-    function confirmExitGame() {
-      SoundFX.click();
-      if (turnTimerInterval) clearInterval(turnTimerInterval);
-      if (botActionTimeout) clearTimeout(botActionTimeout);
-      document.getElementById('gameover-modal')?.classList.add('hidden');
-      const wasOnline = gameState && gameState.mode === 'online';
-      gameState = null;
-      turnSnapshot = null;
-      selectedTileIds.clear();
-      selectedTableTileIds.clear();
-      syncLobbyChipsDisplay();
-      switchView('lobby');
-      if (wasOnline && onlineState.roomCode) {
-        switchLobbyTab('online');
-        showWaitingRoomUI(onlineState.roomCode, onlineState.isHost);
+    // =========================================================
+    // 4. CHAT & PLAYER STATUS BUBBLES
+    // =========================================================
+    function toggleGameChatDrawer(forceState) {
+      const drawer = document.getElementById('game-chat-drawer');
+      if (!drawer) return;
+      const show = typeof forceState === 'boolean' ? forceState : drawer.classList.contains('hidden');
+      drawer.classList.toggle('hidden', !show);
+      if (show) renderChatMessages('game');
+    }
+
+    function sendQuickChat(text) {
+      appendChatEntry(deviceProfile.deviceId, deviceProfile.nickname, text);
+    }
+
+    function sendChatMessage(context) {
+      const input = document.getElementById(context === 'waiting' ? 'waiting-chat-input' : 'game-chat-input');
+      if (!input) return;
+      const text = input.value.trim();
+      if (!text) return;
+      input.value = '';
+      appendChatEntry(deviceProfile.deviceId, deviceProfile.nickname, text);
+    }
+
+    function appendChatEntry(senderId, senderName, text) {
+      const entry = {
+        id: `msg_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`,
+        senderId,
+        senderName,
+        text
+      };
+
+      if (gameState && gameState.mode === 'solo') {
+        onlineState.chatMessages.push(entry);
+        if (onlineState.chatMessages.length > 40) onlineState.chatMessages.shift();
+        renderChatMessages('game');
+        triggerPlayerChatBubble(senderId, text);
+        return;
+      }
+
+      if (onlineState.isHost) {
+        onlineState.chatMessages.push(entry);
+        if (onlineState.chatMessages.length > 40) onlineState.chatMessages.shift();
+        renderChatMessages('waiting');
+        renderChatMessages('game');
+        triggerPlayerChatBubble(senderId, text);
+        broadcastToGuests({
+          type: 'CHAT_SYNC',
+          chatMessages: onlineState.chatMessages,
+          latest: entry
+        });
+      } else if (onlineState.hostConn && onlineState.hostConn.open) {
+        onlineState.hostConn.send({
+          type: 'CHAT_MSG',
+          senderId,
+          senderName,
+          text
+        });
       }
     }
 
-    function returnToLobbyFromGameOver() {
-      confirmExitGame();
+    function renderChatMessages(context) {
+      const box = document.getElementById(context === 'waiting' ? 'waiting-chat-messages' : 'game-chat-messages');
+      if (!box) return;
+      box.innerHTML = onlineState.chatMessages.map(m => {
+        const isMe = m.senderId === deviceProfile.deviceId;
+        return `
+          <div class="flex items-baseline gap-1.5 ${isMe ? 'justify-end' : 'justify-start'}">
+            <span class="text-[10px] font-bold ${isMe ? 'text-amber-300' : 'text-emerald-300'}">${escapeHtml(m.senderName)}:</span>
+            <span class="px-2 py-0.5 rounded-xl ${isMe ? 'bg-amber-500/25 text-amber-100' : 'bg-emerald-800/80 text-white'}">${escapeHtml(m.text)}</span>
+          </div>
+        `;
+      }).join('');
+      box.scrollTop = box.scrollHeight;
     }
 
-    function playAgainFromGameOver() {
-      SoundFX.click();
-      document.getElementById('gameover-modal')?.classList.add('hidden');
-      if (!gameState) return;
-      if (gameState.mode === 'online' && onlineState.isHost) {
-        hostStartOnlineGame();
-      } else if (gameState.mode === 'solo') {
-        startSoloGame();
-      } else {
-        confirmExitGame();
-      }
-    }
-
-    // Chat & In-Pill Translucent Bubble
     function triggerPlayerChatBubble(playerId, text) {
-      if (!playerId || !text) return;
+      if (!gameState || !playerId) return;
       if (activeChatBubbles[playerId]?.timerId) {
         clearTimeout(activeChatBubbles[playerId].timerId);
       }
@@ -1526,126 +1835,20 @@
       renderPlayersBar();
     }
 
-    function appendChatEntry(senderId, senderName, text) {
-      const clean = String(text || '').trim().slice(0, 60);
-      if (!clean) return;
-      const entry = {
-        senderId,
-        senderName: senderName || '玩家',
-        text: clean,
-        ts: Date.now()
-      };
-      onlineState.chatMessages.push(entry);
-      if (onlineState.chatMessages.length > 40) {
-        onlineState.chatMessages.shift();
-      }
-      renderChatMessages('waiting');
-      renderChatMessages('game');
-      triggerPlayerChatBubble(senderId, clean);
-
-      if (onlineState.isHost) {
-        broadcastToGuests({
-          type: 'CHAT_SYNC',
-          chatMessages: onlineState.chatMessages,
-          latest: entry
-        });
-      }
-    }
-
-    function sendChatMessage(context) {
-      const inputId = context === 'waiting' ? 'waiting-chat-input' : 'game-chat-input';
-      const input = document.getElementById(inputId);
-      if (!input) return;
-      const text = input.value.trim();
-      if (!text) return;
-      input.value = '';
-      SoundFX.click();
-
-      if (gameState && gameState.mode === 'solo') {
-        appendChatEntry(deviceProfile.deviceId, deviceProfile.nickname, text);
-        return;
-      }
-
-      if (onlineState.isHost) {
-        appendChatEntry(deviceProfile.deviceId, deviceProfile.nickname, text);
-      } else if (onlineState.hostConn && onlineState.hostConn.open) {
-        onlineState.hostConn.send({
-          type: 'CHAT_MSG',
-          senderId: deviceProfile.deviceId,
-          senderName: deviceProfile.nickname,
-          text
-        });
-        triggerPlayerChatBubble(deviceProfile.deviceId, text);
-      }
-    }
-
-    function sendQuickChat(phrase) {
-      SoundFX.click();
-      if (gameState && gameState.mode === 'solo') {
-        appendChatEntry(deviceProfile.deviceId, deviceProfile.nickname, phrase);
-      } else if (onlineState.isHost) {
-        appendChatEntry(deviceProfile.deviceId, deviceProfile.nickname, phrase);
-      } else if (onlineState.hostConn && onlineState.hostConn.open) {
-        onlineState.hostConn.send({
-          type: 'CHAT_MSG',
-          senderId: deviceProfile.deviceId,
-          senderName: deviceProfile.nickname,
-          text: phrase
-        });
-        triggerPlayerChatBubble(deviceProfile.deviceId, phrase);
-      }
-      toggleGameChatDrawer(false);
-    }
-
-    function renderChatMessages(context) {
-      const boxId = context === 'waiting' ? 'waiting-chat-messages' : 'game-chat-messages';
-      const box = document.getElementById(boxId);
-      if (!box) return;
-      if (!onlineState.chatMessages.length) {
-        box.innerHTML = '<div class="text-emerald-500/70 text-[11px] text-center py-2">尚無訊息，發句話打招呼吧！</div>';
-        return;
-      }
-      box.innerHTML = onlineState.chatMessages.map(m => {
-        const isMe = m.senderId === deviceProfile.deviceId;
-        return `
-          <div class="leading-snug">
-            <span class="font-bold ${isMe ? 'text-amber-300' : 'text-emerald-300'}">${escapeHtml(m.senderName)}：</span>
-            <span class="text-white">${escapeHtml(m.text)}</span>
-          </div>
-        `;
-      }).join('');
-      box.scrollTop = box.scrollHeight;
-    }
-
-    function toggleGameChatDrawer(force) {
-      const drawer = document.getElementById('game-chat-drawer');
-      if (!drawer) return;
-      const show = typeof force === 'boolean' ? force : drawer.classList.contains('hidden');
-      drawer.classList.toggle('hidden', !show);
-      if (show) renderChatMessages('game');
-    }
-
     // =========================================================
-    // 4. GAME ENGINE, DECK, MELD VALIDATION & SMART GROUPING
+    // 5. CORE RUMMIKUB DECK, MELD RULES & GAME FLOW
     // =========================================================
-    function buildFullRummikubDeck() {
+    function buildShuffledDeck() {
       const deck = [];
       let uid = 1;
       for (let copy = 0; copy < 2; copy++) {
         for (const color of TILE_COLORS) {
           for (let num = 1; num <= 13; num++) {
-            deck.push({
-              id: `t_${uid++}`,
-              color,
-              number: num,
-              joker: false
-            });
+            deck.push({ id: `t_${uid++}`, color, number: num, joker: false });
           }
         }
+        deck.push({ id: `t_${uid++}`, color: 'joker', number: 0, joker: true });
       }
-      deck.push({ id: `t_${uid++}`, color: 'orange', number: 0, joker: true });
-      deck.push({ id: `t_${uid++}`, color: 'black', number: 0, joker: true });
-
       for (let i = deck.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [deck[i], deck[j]] = [deck[j], deck[i]];
@@ -1653,22 +1856,54 @@
       return deck;
     }
 
+    function getCurrentTurnPlayer() {
+      if (!gameState || !Array.isArray(gameState.players)) return null;
+      return gameState.players[gameState.currentTurnIdx] || null;
+    }
+
+    function getMyPlayer() {
+      if (!gameState || !Array.isArray(gameState.players)) return null;
+      return gameState.players.find(p => p.id === deviceProfile.deviceId) || gameState.players[0] || null;
+    }
+
+    function isMyTurn() {
+      const cur = getCurrentTurnPlayer();
+      return Boolean(cur && cur.id === deviceProfile.deviceId && !gameState?.winnerId);
+    }
+
+    function captureTurnSnapshot() {
+      const me = getMyPlayer();
+      if (!me || !gameState) return;
+      turnSnapshot = {
+        rack: JSON.parse(JSON.stringify(me.rack)),
+        tableMelds: JSON.parse(JSON.stringify(gameState.tableMelds)),
+        hasBrokenIce: Boolean(me.hasBrokenIce)
+      };
+    }
+
+    function isTilePlacedByMeThisTurn(tileId) {
+      if (!turnSnapshot || !tileId) return false;
+      const wasInRack = turnSnapshot.rack.some(t => t.id === tileId);
+      const wasOnTable = turnSnapshot.tableMelds.some(m => m.tiles.some(t => t.id === tileId));
+      return wasInRack && !wasOnTable;
+    }
+
     function evaluateMeld(tiles) {
       if (!Array.isArray(tiles) || tiles.length < 3) {
         return { valid: false, type: null, points: 0 };
       }
 
+      const jokers = tiles.filter(t => t.joker);
       const normals = tiles.filter(t => !t.joker);
       if (normals.length === 0) {
         return { valid: false, type: null, points: 0 };
       }
 
-      // Check SET (same number, distinct colors, 3..4 tiles)
+      // 1. Check Set (3 or 4 tiles, same number, distinct colors)
       if (tiles.length <= 4) {
         const targetNum = normals[0].number;
-        const allSameNum = normals.every(t => t.number === targetNum);
-        const uniqueColors = new Set(normals.map(t => t.color));
-        if (allSameNum && uniqueColors.size === normals.length) {
+        const colors = new Set(normals.map(t => t.color));
+        if (normals.every(t => t.number === targetNum) && colors.size === normals.length) {
           return {
             valid: true,
             type: 'set',
@@ -1677,32 +1912,34 @@
         }
       }
 
-      // Check RUN (same color, strictly consecutive numbers within 1..13, respecting tile order)
-      const targetColor = normals[0].color;
-      if (normals.every(t => t.color === targetColor) && tiles.length <= 13) {
-        let anchorIdx = -1;
-        for (let i = 0; i < tiles.length; i++) {
-          if (!tiles[i].joker) {
-            anchorIdx = i;
-            break;
-          }
-        }
-        const startNum = tiles[anchorIdx].number - anchorIdx;
-        const endNum = startNum + tiles.length - 1;
-
-        if (startNum >= 1 && endNum <= 13) {
-          let matchesOrder = true;
-          let sum = 0;
+      // 2. Check Run (3..13 tiles, same color, strictly consecutive numbers)
+      if (tiles.length <= 13) {
+        const targetColor = normals[0].color;
+        if (normals.every(t => t.color === targetColor)) {
+          // Verify ordered positions with joker placeholders
+          let firstNormalPos = -1;
           for (let i = 0; i < tiles.length; i++) {
-            const expected = startNum + i;
-            if (!tiles[i].joker && tiles[i].number !== expected) {
-              matchesOrder = false;
+            if (!tiles[i].joker) {
+              firstNormalPos = i;
               break;
             }
-            sum += expected;
           }
-          if (matchesOrder) {
-            return { valid: true, type: 'run', points: sum };
+          const inferredStart = tiles[firstNormalPos].number - firstNormalPos;
+          const inferredEnd = inferredStart + tiles.length - 1;
+          if (inferredStart >= 1 && inferredEnd <= 13) {
+            let matches = true;
+            let pts = 0;
+            for (let i = 0; i < tiles.length; i++) {
+              const expectedNum = inferredStart + i;
+              if (!tiles[i].joker && tiles[i].number !== expectedNum) {
+                matches = false;
+                break;
+              }
+              pts += expectedNum;
+            }
+            if (matches) {
+              return { valid: true, type: 'run', points: pts };
+            }
           }
         }
       }
@@ -1712,132 +1949,79 @@
 
     function isStrictlyValidMeldGroup(group) {
       if (!group || !Array.isArray(group.tiles) || group.tiles.length < 3) return false;
-      const seen = new Set();
-      for (const t of group.tiles) {
-        if (!t || !t.id || seen.has(t.id)) return false;
-        seen.add(t.id);
-      }
-      const res = evaluateMeld(group.tiles);
-      return res.valid === true && res.type === group.type;
+      return evaluateMeld(group.tiles).valid;
     }
 
     function extractSmartMeldsFromRack(rackTiles, primaryMode = 'run') {
-      const usedIds = new Set();
-      const verifiedGroups = [];
+      const remaining = [...rackTiles];
+      const groups = [];
 
-      function tryAddVerifiedGroup(type, orderedTiles) {
-        if (!Array.isArray(orderedTiles) || orderedTiles.length < 3) return false;
-        if (type === 'set' && orderedTiles.length > 4) return false;
-        const localIds = new Set();
-        for (const t of orderedTiles) {
-          if (!t || usedIds.has(t.id) || localIds.has(t.id)) return false;
-          localIds.add(t.id);
-        }
-        const check = evaluateMeld(orderedTiles);
-        if (!check.valid || check.type !== type) return false;
-
-        orderedTiles.forEach(t => usedIds.add(t.id));
-        verifiedGroups.push({
-          type,
-          tiles: orderedTiles,
-          points: check.points
-        });
-        return true;
-      }
-
-      function findRuns() {
+      function extractRuns() {
         for (const color of TILE_COLORS) {
-          const sameColor = rackTiles
-            .filter(t => !t.joker && !usedIds.has(t.id) && t.color === color)
-            .sort((a, b) => a.number - b.number);
+          let changed = true;
+          while (changed) {
+            changed = false;
+            const colorTiles = remaining
+              .filter(t => !t.joker && t.color === color)
+              .sort((a, b) => a.number - b.number);
 
-          const byNum = new Map();
-          for (const t of sameColor) {
-            if (!byNum.has(t.number)) byNum.set(t.number, []);
-            byNum.get(t.number).push(t);
-          }
-
-          let progressed = true;
-          while (progressed) {
-            progressed = false;
-            const availNums = Array.from(byNum.keys())
-              .filter(n => byNum.get(n).some(t => !usedIds.has(t.id)))
-              .sort((a, b) => a - b);
+            const byNum = new Map();
+            for (const t of colorTiles) {
+              if (!byNum.has(t.number)) byNum.set(t.number, t);
+            }
+            const uniqueNums = Array.from(byNum.keys()).sort((a, b) => a - b);
 
             let bestSeq = [];
             let curSeq = [];
-            for (const n of availNums) {
-              if (curSeq.length === 0 || n === curSeq[curSeq.length - 1] + 1) {
-                curSeq.push(n);
+            for (let i = 0; i < uniqueNums.length; i++) {
+              if (i === 0 || uniqueNums[i] === uniqueNums[i - 1] + 1) {
+                curSeq.push(byNum.get(uniqueNums[i]));
               } else {
-                if (curSeq.length > bestSeq.length) bestSeq = curSeq;
-                curSeq = [n];
+                if (curSeq.length >= 3 && curSeq.length > bestSeq.length) bestSeq = curSeq;
+                curSeq = [byNum.get(uniqueNums[i])];
               }
             }
-            if (curSeq.length > bestSeq.length) bestSeq = curSeq;
+            if (curSeq.length >= 3 && curSeq.length > bestSeq.length) bestSeq = curSeq;
 
             if (bestSeq.length >= 3) {
-              const tiles = bestSeq.map(n => byNum.get(n).find(t => !usedIds.has(t.id)));
-              if (tryAddVerifiedGroup('run', tiles)) {
-                progressed = true;
-                continue;
-              }
-            }
-
-            const availJokers = rackTiles.filter(t => t.joker && !usedIds.has(t.id));
-            if (availJokers.length > 0 && availNums.length >= 2) {
-              for (let i = 0; i < availNums.length - 1; i++) {
-                const n1 = availNums[i];
-                const n2 = availNums[i + 1];
-                const t1 = byNum.get(n1).find(t => !usedIds.has(t.id));
-                const t2 = byNum.get(n2).find(t => !usedIds.has(t.id));
-                const jk = availJokers[0];
-                if (!t1 || !t2 || !jk) continue;
-
-                if (n2 === n1 + 1) {
-                  const candidate = n2 < 13 ? [t1, t2, jk] : (n1 > 1 ? [jk, t1, t2] : null);
-                  if (candidate && tryAddVerifiedGroup('run', candidate)) {
-                    progressed = true;
-                    break;
-                  }
-                } else if (n2 === n1 + 2) {
-                  if (tryAddVerifiedGroup('run', [t1, jk, t2])) {
-                    progressed = true;
-                    break;
-                  }
+              const evalRes = evaluateMeld(bestSeq);
+              if (evalRes.valid) {
+                groups.push({ type: 'run', tiles: bestSeq, points: evalRes.points });
+                const usedIds = new Set(bestSeq.map(t => t.id));
+                for (let k = remaining.length - 1; k >= 0; k--) {
+                  if (usedIds.has(remaining[k].id)) remaining.splice(k, 1);
                 }
+                changed = true;
               }
             }
           }
         }
       }
 
-      function findSets() {
+      function extractSets() {
         for (let num = 13; num >= 1; num--) {
-          let progressed = true;
-          while (progressed) {
-            progressed = false;
-            const byColor = new Map();
-            for (const t of rackTiles) {
-              if (!t.joker && !usedIds.has(t.id) && t.number === num && !byColor.has(t.color)) {
-                byColor.set(t.color, t);
+          let changed = true;
+          while (changed) {
+            changed = false;
+            const sameNum = remaining.filter(t => !t.joker && t.number === num);
+            const distinctByColor = [];
+            const seenColors = new Set();
+            for (const t of sameNum) {
+              if (!seenColors.has(t.color)) {
+                seenColors.add(t.color);
+                distinctByColor.push(t);
               }
             }
-            const distinctTiles = Array.from(byColor.values()).sort(
-              (a, b) => COLOR_ORDER[a.color] - COLOR_ORDER[b.color]
-            );
-
-            if (distinctTiles.length >= 3) {
-              if (tryAddVerifiedGroup('set', distinctTiles.slice(0, 4))) {
-                progressed = true;
-                continue;
-              }
-            }
-
-            const availJokers = rackTiles.filter(t => t.joker && !usedIds.has(t.id));
-            if (distinctTiles.length === 2 && availJokers.length > 0) {
-              if (tryAddVerifiedGroup('set', [...distinctTiles, availJokers[0]])) {
-                progressed = true;
+            if (distinctByColor.length >= 3) {
+              distinctByColor.sort((a, b) => COLOR_ORDER[a.color] - COLOR_ORDER[b.color]);
+              const evalRes = evaluateMeld(distinctByColor);
+              if (evalRes.valid) {
+                groups.push({ type: 'set', tiles: distinctByColor, points: evalRes.points });
+                const usedIds = new Set(distinctByColor.map(t => t.id));
+                for (let k = remaining.length - 1; k >= 0; k--) {
+                  if (usedIds.has(remaining[k].id)) remaining.splice(k, 1);
+                }
+                changed = true;
               }
             }
           }
@@ -1845,198 +2029,99 @@
       }
 
       if (primaryMode === 'set') {
-        findSets();
-        findRuns();
+        extractSets();
+        extractRuns();
       } else {
-        findRuns();
-        findSets();
+        extractRuns();
+        extractSets();
       }
 
-      const ungroupedTiles = rackTiles.filter(t => !usedIds.has(t.id));
-      return {
-        groups: verifiedGroups.filter(isStrictlyValidMeldGroup),
-        ungroupedTiles
-      };
-    }
-
-    function sortPlayerRack(mode) {
-      const me = getMyPlayer();
-      if (!me || !gameState) return;
-      SoundFX.click();
-      rackSortMode = mode;
-
-      const { groups, ungroupedTiles } = extractSmartMeldsFromRack(me.rack, mode);
-      const groupedIds = new Set();
-      groups.forEach(g => g.tiles.forEach(t => groupedIds.add(t.id)));
-
-      const sortedUngrouped = [...ungroupedTiles].sort((a, b) => {
+      remaining.sort((a, b) => {
         if (a.joker !== b.joker) return a.joker ? 1 : -1;
-        if (mode === 'set') {
+        if (primaryMode === 'set') {
           if (a.number !== b.number) return a.number - b.number;
           return COLOR_ORDER[a.color] - COLOR_ORDER[b.color];
         } else {
-          if (COLOR_ORDER[a.color] !== COLOR_ORDER[b.color]) {
-            return COLOR_ORDER[a.color] - COLOR_ORDER[b.color];
-          }
+          if (a.color !== b.color) return COLOR_ORDER[a.color] - COLOR_ORDER[b.color];
           return a.number - b.number;
         }
       });
 
-      const nextRack = [];
-      groups.forEach(g => g.tiles.forEach(t => nextRack.push(t)));
-      sortedUngrouped.forEach(t => nextRack.push(t));
-      me.rack = nextRack;
+      return { groups, ungroupedTiles: remaining };
+    }
 
+    function sortPlayerRack(mode) {
+      const me = getMyPlayer();
+      if (!me) return;
+      SoundFX.tileTap();
+      rackSortMode = mode;
+      const { groups, ungroupedTiles } = extractSmartMeldsFromRack(me.rack, mode);
+      const flattened = [];
+      groups.forEach(g => flattened.push(...g.tiles));
+      flattened.push(...ungroupedTiles);
+      me.rack = flattened;
       renderPlayerRack();
-      renderTurnControls();
     }
 
     function smartSelectMeldsInRack() {
       const me = getMyPlayer();
-      if (!me || !gameState) return;
-      SoundFX.click();
-
+      if (!me) return;
+      SoundFX.tileTap();
       const mode = rackSortMode === 'set' ? 'set' : 'run';
       const { groups } = extractSmartMeldsFromRack(me.rack, mode);
+      const validGroups = groups.filter(isStrictlyValidMeldGroup);
+      if (!validGroups.length) {
+        showToast('目前手牌尚未湊出 3 張以上的合法牌組', 'info');
+        return;
+      }
       selectedTileIds.clear();
-      groups.forEach(g => g.tiles.forEach(t => selectedTileIds.add(t.id)));
-
+      validGroups.forEach(g => g.tiles.forEach(t => selectedTileIds.add(t.id)));
+      const totalPts = validGroups.reduce((s, g) => s + g.points, 0);
       renderPlayerRack();
       renderTurnControls();
-      if (groups.length > 0) {
-        showToast(`已自動選取 ${groups.length} 組合法牌組，可直接拖曳至牌桌！`, 'success');
-      } else {
-        showToast('目前手牌中尚未湊成完整 3 張以上的合法牌組', 'info');
-      }
+      showToast(`已自動選取 ${validGroups.length} 組牌（共 ${totalPts} 分），往上拖移即可出牌！`, 'success');
     }
 
-    // =========================================================
-    // 5. GAME LIFECYCLE, TURN MANAGEMENT & AI BOT
-    // =========================================================
-    function startSoloGame() {
-      SoundFX.click();
-      if ((deviceProfile.chips ?? 0) < MATCH_ENTRY_FEE) {
-        showToast(`籌碼不足 ${MATCH_ENTRY_FEE}，已自動補足初始籌碼 ${INITIAL_MATCH_CHIPS}`, 'warning');
-        deviceProfile.chips = INITIAL_MATCH_CHIPS;
+    function initializeMatchState(mode, playersList, turnSeconds, botDifficulty, roomLabel) {
+      if (deviceProfile.chips < MATCH_ENTRY_FEE) {
+        SoundFX.error();
+        showToast(`籌碼不足 ${MATCH_ENTRY_FEE}，已自動補充 500 救援籌碼！`, 'warning');
+        deviceProfile.chips += 500;
         saveDeviceProfile();
         syncLobbyChipsDisplay();
       }
 
-      const count = soloConfig.players;
-      const botNames = ['🤖 艾莉絲 AI', '🤖 馬可仕 AI', '🤖 蘇菲亞 AI'];
-      const players = [
-        {
-          id: deviceProfile.deviceId,
-          name: deviceProfile.nickname,
-          isBot: false,
-          online: true,
-          hasBrokenIce: false,
-          chips: Math.max(0, Math.round((deviceProfile.chips ?? INITIAL_MATCH_CHIPS) - MATCH_ENTRY_FEE)),
-          rack: []
-        }
-      ];
-      deviceProfile.chips = players[0].chips;
-      saveDeviceProfile();
-      syncLobbyChipsDisplay();
-
-      for (let i = 1; i < count; i++) {
-        players.push({
-          id: `bot_${i}`,
-          name: botNames[i - 1],
-          isBot: true,
-          online: true,
-          hasBrokenIce: false,
-          chips: Math.max(0, INITIAL_MATCH_CHIPS - MATCH_ENTRY_FEE),
-          rack: []
-        });
-      }
-
-      initializeMatchState('solo', '單機練習', soloConfig.turnSeconds, soloConfig.difficulty, players);
-    }
-
-    function hostStartOnlineGame() {
-      if (!onlineState.isHost) return;
-      SoundFX.click();
-
-      if ((deviceProfile.chips ?? 0) < MATCH_ENTRY_FEE) {
-        showToast(`籌碼不足 ${MATCH_ENTRY_FEE}，已自動補足初始籌碼 ${INITIAL_MATCH_CHIPS}`, 'warning');
-        deviceProfile.chips = INITIAL_MATCH_CHIPS;
-        saveDeviceProfile();
-        syncLobbyChipsDisplay();
-      }
-
-      const fillBots = document.getElementById('fill-bots-checkbox')?.checked !== false;
-      const diffSel = document.getElementById('online-bot-difficulty-select');
-      if (diffSel && ['easy', 'normal', 'hard'].includes(diffSel.value)) {
-        onlineBotDifficulty = diffSel.value;
-      }
-      const players = onlineState.players.map(p => {
-        const baseChips = p.deviceId === deviceProfile.deviceId
-          ? (deviceProfile.chips ?? INITIAL_MATCH_CHIPS)
-          : INITIAL_MATCH_CHIPS;
-        const afterFee = Math.max(0, Math.round(baseChips - MATCH_ENTRY_FEE));
-        if (p.deviceId === deviceProfile.deviceId) {
-          deviceProfile.chips = afterFee;
+      const deck = buildShuffledDeck();
+      const players = playersList.map(p => {
+        const hand = deck.splice(0, 14);
+        const isMe = p.id === deviceProfile.deviceId;
+        const startChips = isMe ? Math.max(0, deviceProfile.chips - MATCH_ENTRY_FEE) : (INITIAL_MATCH_CHIPS - MATCH_ENTRY_FEE);
+        if (isMe) {
+          deviceProfile.chips = startChips;
           saveDeviceProfile();
           syncLobbyChipsDisplay();
         }
         return {
-          id: p.deviceId,
+          id: p.id,
           name: p.name,
-          isBot: false,
+          isBot: Boolean(p.isBot),
           online: p.online !== false,
+          rack: hand,
           hasBrokenIce: false,
-          chips: afterFee,
-          rack: []
+          chips: startChips
         };
-      });
-
-      if (players.length < 2 && !fillBots) {
-        showToast('至少需要 2 位玩家才能開始對戰', 'warning');
-        return;
-      }
-
-      const botNames = ['🤖 機器人 A', '🤖 機器人 B', '🤖 機器人 C'];
-      let botIdx = 0;
-      while (fillBots && players.length < 4) {
-        players.push({
-          id: `bot_${botIdx + 1}`,
-          name: botNames[botIdx++],
-          isBot: true,
-          online: true,
-          hasBrokenIce: false,
-          chips: Math.max(0, INITIAL_MATCH_CHIPS - MATCH_ENTRY_FEE),
-          rack: []
-        });
-      }
-
-      initializeMatchState('online', `房號 ${onlineState.roomCode}`, 60, onlineBotDifficulty, players);
-      syncOnlineGameState();
-    }
-
-    function updateOnlineBotDifficulty(val) {
-      if (!['easy', 'normal', 'hard'].includes(val)) return;
-      onlineBotDifficulty = val;
-      SoundFX.click();
-    }
-
-    function initializeMatchState(mode, roomLabel, turnSeconds, difficulty, players) {
-      const deck = buildFullRummikubDeck();
-      players.forEach(p => {
-        p.rack = deck.splice(0, 14);
-        p.hasBrokenIce = false;
       });
 
       gameState = {
         mode,
         roomLabel,
-        turnSeconds,
-        difficulty,
+        turnSeconds: Number(turnSeconds) || 60,
+        botDifficulty: botDifficulty || 'normal',
         pool: deck,
+        tableMelds: [],
         players,
         currentTurnIdx: 0,
-        turnTimeLeft: turnSeconds,
-        tableMelds: [],
+        turnTimeLeft: Number(turnSeconds) || 60,
         winnerId: null
       };
 
@@ -2045,55 +2130,124 @@
       newlyDrawnTileIds.clear();
       rackSortMode = 'none';
       turnSnapshot = null;
+      remoteOperatorHint = null;
+      onlineState.hasActiveMatch = mode === 'online';
 
+      document.getElementById('gameover-modal')?.classList.add('hidden');
       switchView('game');
       const badge = document.getElementById('game-room-badge');
+      const reconnectBtn = document.getElementById('btn-ingame-reconnect');
       if (badge) badge.textContent = roomLabel;
+      if (reconnectBtn) reconnectBtn.classList.toggle('hidden', mode !== 'online');
 
       startTurnForCurrentPlayer();
     }
 
-    function syncOnlineGameState() {
-      if (gameState && gameState.mode === 'online' && onlineState.isHost) {
-        broadcastToGuests({
-          type: 'GAME_SYNC',
-          gameState
+    function startSoloGame() {
+      SoundFX.click();
+      const botNames = ['阿爾法機器人', '拉密大師 AI', '幸運星電腦'];
+      const list = [{
+        id: deviceProfile.deviceId,
+        name: deviceProfile.nickname,
+        isBot: false,
+        online: true
+      }];
+      for (let i = 1; i < soloConfig.players; i++) {
+        list.push({
+          id: `bot_${i}`,
+          name: botNames[(i - 1) % botNames.length],
+          isBot: true,
+          online: true
         });
+      }
+      initializeMatchState('solo', list, soloConfig.turnSeconds, soloConfig.difficulty, '單機 AI 對戰');
+    }
+
+    function hostStartOnlineGame() {
+      SoundFX.click();
+      if (!onlineState.isHost) return;
+      const fillBots = document.getElementById('fill-bots-checkbox')?.checked !== false;
+      const list = onlineState.players.map(p => ({
+        id: p.deviceId,
+        name: p.name,
+        isBot: Boolean(p.isBot),
+        online: p.online !== false
+      }));
+
+      if (fillBots) {
+        const botNames = ['雲端電腦 A', '雲端電腦 B', '雲端電腦 C'];
+        let bIdx = 0;
+        while (list.length < 4) {
+          list.push({
+            id: `online_bot_${bIdx + 1}`,
+            name: botNames[bIdx % botNames.length],
+            isBot: true,
+            online: true
+          });
+          bIdx++;
+        }
+      }
+
+      if (list.length < 2) {
+        showToast('至少需要 2 位玩家（或勾選自動以 AI 補滿席次）', 'warning');
+        return;
+      }
+
+      initializeMatchState('online', list, 60, onlineBotDifficulty, `房號 ${onlineState.roomCode}`);
+      broadcastWaitingRoomState();
+      syncOnlineGameState();
+    }
+
+    function returnToLobbyFromGameOver() {
+      confirmExitGame();
+    }
+
+    function playAgainFromGameOver() {
+      SoundFX.click();
+      document.getElementById('gameover-modal')?.classList.add('hidden');
+      if (!gameState) return;
+      if (gameState.mode === 'solo') {
+        startSoloGame();
+      } else if (onlineState.isHost) {
+        hostStartOnlineGame();
+      } else {
+        confirmExitGame();
+        showToast('等待房主開啟新一局對戰', 'info');
       }
     }
 
-    function getMyPlayer() {
-      if (!gameState) return null;
-      return gameState.players.find(p => p.id === deviceProfile.deviceId) || gameState.players[0];
+    function confirmExitGame() {
+      SoundFX.click();
+      if (turnTimerInterval) clearInterval(turnTimerInterval);
+      if (botActionTimeout) clearTimeout(botActionTimeout);
+      document.getElementById('gameover-modal')?.classList.add('hidden');
+      const wasOnline = gameState && gameState.mode === 'online';
+      if (!wasOnline) {
+        gameState = null;
+      }
+      turnSnapshot = null;
+      remoteOperatorHint = null;
+      selectedTileIds.clear();
+      selectedTableTileIds.clear();
+      syncLobbyChipsDisplay();
+      switchView('lobby');
+      if (wasOnline && onlineState.roomCode) {
+        switchLobbyTab('online');
+        showWaitingRoomUI(onlineState.roomCode, onlineState.isHost);
+        if (onlineState.isHost) {
+          broadcastWaitingRoomState();
+        }
+      }
     }
 
-    function getCurrentTurnPlayer() {
-      if (!gameState) return null;
-      return gameState.players[gameState.currentTurnIdx] || null;
-    }
-
-    function isMyTurn() {
-      const cur = getCurrentTurnPlayer();
-      return Boolean(cur && cur.id === deviceProfile.deviceId && !gameState.winnerId);
-    }
-
-    function captureTurnSnapshot() {
-      const me = getMyPlayer();
-      if (!me || !gameState) return;
-      turnSnapshot = {
-        rack: JSON.parse(JSON.stringify(me.rack)),
-        tableMelds: JSON.parse(JSON.stringify(gameState.tableMelds)),
-        hasBrokenIce: me.hasBrokenIce
-      };
-    }
-
-    function getSnapshotRackTileIdSet() {
-      if (!turnSnapshot || !Array.isArray(turnSnapshot.rack)) return new Set();
-      return new Set(turnSnapshot.rack.map(t => t.id));
-    }
-
-    function isTilePlacedByMeThisTurn(tileId) {
-      return isMyTurn() && getSnapshotRackTileIdSet().has(tileId);
+    function syncOnlineGameState() {
+      if (gameState && gameState.mode === 'online' && onlineState.isHost) {
+        const sanitized = sanitizeSyncedGameState(gameState);
+        broadcastToGuests({
+          type: 'GAME_SYNC',
+          gameState: sanitized
+        });
+      }
     }
 
     function startTurnForCurrentPlayer() {
@@ -2102,38 +2256,35 @@
       if (botActionTimeout) clearTimeout(botActionTimeout);
 
       gameState.turnTimeLeft = gameState.turnSeconds;
+      remoteOperatorHint = null;
       const cur = getCurrentTurnPlayer();
 
       if (cur && cur.id === deviceProfile.deviceId) {
         captureTurnSnapshot();
-        selectedTileIds.clear();
-        selectedTableTileIds.clear();
       } else {
         turnSnapshot = null;
-        selectedTableTileIds.clear();
       }
 
       renderAll();
       syncOnlineGameState();
 
-      const isController = gameState.mode === 'solo' || onlineState.isHost;
-      if (isController) {
-        turnTimerInterval = setInterval(() => {
-          if (!gameState || gameState.winnerId) {
-            clearInterval(turnTimerInterval);
-            return;
-          }
-          gameState.turnTimeLeft -= 1;
-          updateTimerBadge();
-          if (gameState.turnTimeLeft <= 0) {
-            clearInterval(turnTimerInterval);
-            handleTurnTimeout();
-          }
-        }, 1000);
-
-        if (cur && cur.isBot) {
-          botActionTimeout = setTimeout(() => executeBotTurn(cur), 1100);
+      turnTimerInterval = setInterval(() => {
+        if (!gameState || gameState.winnerId) {
+          clearInterval(turnTimerInterval);
+          return;
         }
+        gameState.turnTimeLeft -= 1;
+        updateTimerBadge();
+        if (gameState.turnTimeLeft <= 0) {
+          clearInterval(turnTimerInterval);
+          handleTurnTimeout();
+        }
+      }, 1000);
+
+      if (cur && cur.isBot && (gameState.mode === 'solo' || onlineState.isHost)) {
+        botActionTimeout = setTimeout(() => {
+          executeBotTurn(cur);
+        }, 1100);
       }
     }
 
@@ -2176,6 +2327,7 @@
       selectedTileIds.clear();
       selectedTableTileIds.clear();
       turnSnapshot = null;
+      remoteOperatorHint = null;
 
       gameState.currentTurnIdx = (gameState.currentTurnIdx + 1) % gameState.players.length;
       startTurnForCurrentPlayer();
@@ -2213,81 +2365,72 @@
       selectedTileIds.clear();
       selectedTableTileIds.clear();
       renderAll();
+      broadcastLiveBoardPreview('已還原本回合桌面');
       showToast('已還原本回合初始牌面與手牌', 'info');
     }
 
     function handleEndOrDrawTurn() {
-      if (!isMyTurn()) {
-        showToast('目前不是你的回合', 'warning');
-        return;
-      }
+      if (!gameState || !isMyTurn()) return;
       const me = getMyPlayer();
       if (!me) return;
-      if (!turnSnapshot) captureTurnSnapshot();
 
-      const playedCount = turnSnapshot.rack.length - me.rack.length;
+      if (!turnSnapshot) captureTurnSnapshot();
+      const playedCount = turnSnapshot ? (turnSnapshot.rack.length - me.rack.length) : 0;
 
       if (playedCount <= 0) {
-        gameState.tableMelds = JSON.parse(JSON.stringify(turnSnapshot.tableMelds));
-        selectedTileIds.clear();
-        selectedTableTileIds.clear();
-        if (gameState.mode === 'online' && !onlineState.isHost) {
-          onlineState.hostConn?.send({
-            type: 'GUEST_ACTION',
-            action: 'DRAW_TILE',
-            playerId: deviceProfile.deviceId
-          });
-          return;
+        // Restore any table rearrangement if no rack tiles were played
+        if (turnSnapshot) {
+          gameState.tableMelds = JSON.parse(JSON.stringify(turnSnapshot.tableMelds));
         }
         drawTileAndAdvance(me);
         return;
       }
 
-      const cleanMelds = gameState.tableMelds.filter(m => m.tiles && m.tiles.length > 0);
-      let newlyPlacedPoints = 0;
-      const snapRackIds = getSnapshotRackTileIdSet();
-
-      for (const meld of cleanMelds) {
+      // Validate all melds on table
+      for (const meld of gameState.tableMelds) {
         const res = evaluateMeld(meld.tiles);
         if (!res.valid) {
           SoundFX.error();
-          showToast('牌桌上有不合法或未滿 3 張的牌組（紅框標示）！', 'error');
+          showToast('桌面尚有不合法的牌組（紅框標示），請修正或按「↺還原」！', 'error');
+          renderTableBoard();
           return;
-        }
-        const isPureTurnMeld = meld.tiles.every(t => snapRackIds.has(t.id));
-        if (isPureTurnMeld) {
-          newlyPlacedPoints += res.points;
         }
       }
 
+      // Ice-breaking check (first time must score >= 30 from own rack)
       if (!me.hasBrokenIce) {
-        if (newlyPlacedPoints < 30) {
+        const snapshotTileIds = new Set();
+        turnSnapshot.tableMelds.forEach(m => m.tiles.forEach(t => snapshotTileIds.add(t.id)));
+        let newPoints = 0;
+        for (const meld of gameState.tableMelds) {
+          const isOldMeld = meld.tiles.every(t => snapshotTileIds.has(t.id));
+          if (!isOldMeld) {
+            newPoints += evaluateMeld(meld.tiles).points;
+          }
+        }
+        if (newPoints < 30) {
           SoundFX.error();
-          showToast(`首次破冰需滿 30 分（目前 ${newlyPlacedPoints} 分）！`, 'error');
+          showToast(`首次破冰需滿 30 分（目前僅 ${newPoints} 分）！`, 'warning');
           return;
         }
         me.hasBrokenIce = true;
-        showToast(`🔥 破冰成功！（${newlyPlacedPoints} 分）`, 'success');
+        showToast(`🔥 破冰成功！（${newPoints} 分）`, 'success');
       }
 
-      gameState.tableMelds = cleanMelds;
       SoundFX.place();
+
+      if (gameState.mode === 'online' && !onlineState.isHost && onlineState.hostConn && onlineState.hostConn.open) {
+        onlineState.hostConn.send({
+          type: 'GUEST_ACTION',
+          playerId: me.id,
+          rack: me.rack,
+          hasBrokenIce: me.hasBrokenIce,
+          tableMelds: gameState.tableMelds
+        });
+      }
 
       if (me.rack.length === 0) {
         finishMatchWithWinner(me);
-        return;
-      }
-
-      if (gameState.mode === 'online' && !onlineState.isHost) {
-        onlineState.hostConn?.send({
-          type: 'GUEST_ACTION',
-          action: 'COMMIT_TURN',
-          playerId: deviceProfile.deviceId,
-          rack: me.rack,
-          tableMelds: gameState.tableMelds,
-          hasBrokenIce: me.hasBrokenIce
-        });
-        turnSnapshot = null;
         return;
       }
 
@@ -2298,19 +2441,16 @@
       if (!gameState || !onlineState.isHost) return;
       const cur = getCurrentTurnPlayer();
       if (!cur || cur.id !== msg.playerId) return;
-
-      if (msg.action === 'DRAW_TILE') {
-        drawTileAndAdvance(cur);
-      } else if (msg.action === 'COMMIT_TURN') {
-        cur.rack = msg.rack || [];
-        gameState.tableMelds = msg.tableMelds || [];
-        cur.hasBrokenIce = Boolean(msg.hasBrokenIce);
-        if (cur.rack.length === 0) {
-          finishMatchWithWinner(cur);
-        } else {
-          advanceToNextPlayer();
-        }
+      cur.rack = Array.isArray(msg.rack) ? msg.rack : cur.rack;
+      cur.hasBrokenIce = Boolean(msg.hasBrokenIce);
+      if (Array.isArray(msg.tableMelds)) {
+        gameState.tableMelds = msg.tableMelds;
       }
+      if (cur.rack.length === 0) {
+        finishMatchWithWinner(cur);
+        return;
+      }
+      advanceToNextPlayer();
     }
 
     function executeBotTurn(bot) {
@@ -2318,17 +2458,12 @@
       const cur = getCurrentTurnPlayer();
       if (!cur || cur.id !== bot.id) return;
 
-      const diff = gameState.difficulty || 'normal';
-      const primaryMode = diff === 'set' ? 'set' : 'run';
-      const { groups } = extractSmartMeldsFromRack(bot.rack, primaryMode);
+      const diff = gameState.botDifficulty || 'normal';
+      const { groups } = extractSmartMeldsFromRack(bot.rack, 'run');
 
       if (!bot.hasBrokenIce) {
-        const totalPts = groups.reduce((acc, g) => acc + g.points, 0);
-        const canBreakIce = diff === 'easy'
-          ? (groups.length > 0 && totalPts >= 36)
-          : (groups.length > 0 && totalPts >= 30);
-
-        if (canBreakIce) {
+        const totalPts = groups.reduce((s, g) => s + g.points, 0);
+        if (groups.length > 0 && totalPts >= 30) {
           const usedIds = new Set();
           groups.forEach(g => {
             g.tiles.forEach(t => usedIds.add(t.id));
@@ -2340,7 +2475,6 @@
           });
           bot.rack = bot.rack.filter(t => !usedIds.has(t.id));
           bot.hasBrokenIce = true;
-          showToast(`${bot.name} 完成破冰（${totalPts} 分）！`, 'info');
           if (bot.rack.length === 0) {
             finishMatchWithWinner(bot);
             return;
@@ -2536,6 +2670,7 @@
         });
         SoundFX.place();
         renderAll();
+        broadcastLiveBoardPreview('已拆組出牌至桌面');
         showToast(`已自動拆分為 ${splitMelds.length} 組合法牌組！`, 'success');
         return true;
       }
@@ -2549,6 +2684,7 @@
 
       SoundFX.place();
       renderAll();
+      broadcastLiveBoardPreview('已將牌組擺上桌面');
       return true;
     }
 
@@ -2845,6 +2981,7 @@
             }
             SoundFX.place();
             renderAll();
+            broadcastLiveBoardPreview('正在調整桌面牌組');
           }
         }
       }
@@ -2906,6 +3043,7 @@
         selectedTableTileIds.clear();
         SoundFX.place();
         renderAll();
+        broadcastLiveBoardPreview('已將桌面牌組自動拆分為多組');
         showToast(`已自動拆分為 ${splitMelds.length} 組合法牌組！`, 'success');
         return;
       }
@@ -2917,6 +3055,7 @@
       selectedTableTileIds.clear();
       SoundFX.place();
       renderAll();
+      broadcastLiveBoardPreview('正在合併調整桌面牌組');
     }
 
     function autoArrangeMeldTiles(tiles) {
@@ -3153,6 +3292,7 @@
         });
         SoundFX.place();
         renderAll();
+        broadcastLiveBoardPreview('已出牌並自動分組');
         return;
       }
 
@@ -3184,6 +3324,7 @@
 
       SoundFX.place();
       renderAll();
+      broadcastLiveBoardPreview('已放置手牌至桌面');
     }
 
     function reorderRackTile(draggedTileId, targetTileId) {
@@ -3234,6 +3375,7 @@
         gameState.tableMelds.splice(targetIdx + 1, 0, ...extraMelds);
         SoundFX.place();
         renderAll();
+        broadcastLiveBoardPreview('已補牌並自動拆分牌組');
         showToast(`已自動拆分為 ${splitMelds.length} 組合法牌組！`, 'success');
         return;
       }
@@ -3243,6 +3385,7 @@
 
       SoundFX.place();
       renderAll();
+      broadcastLiveBoardPreview('已將手牌併入桌面牌組');
     }
 
     function returnTableTileToRack(meldId, tileId) {
@@ -3267,6 +3410,7 @@
 
       SoundFX.tileTap();
       renderAll();
+      broadcastLiveBoardPreview('已收回一張剛放出的牌');
       showToast('已將本回合卡牌收回手牌', 'info');
     }
 
@@ -3302,6 +3446,7 @@
         gameState.tableMelds.splice(targetIdx + 1, 0, ...extraMelds);
         SoundFX.place();
         renderAll();
+        broadcastLiveBoardPreview('正在拆組重排桌面牌組');
         showToast(`已自動拆分為 ${splitMelds.length} 組合法牌組！`, 'success');
         return;
       }
@@ -3311,6 +3456,7 @@
 
       SoundFX.place();
       renderAll();
+      broadcastLiveBoardPreview('正在移動桌面卡牌');
     }
 
     function splitTableTileIntoNewMeld(fromMeldId, tileId) {
@@ -3329,6 +3475,7 @@
 
       SoundFX.place();
       renderAll();
+      broadcastLiveBoardPreview('正在拆出桌面單張牌');
     }
 
     function reorderTableTileWithinMeld(meldId, tileId, dropX) {
@@ -3356,6 +3503,7 @@
       meld.newlyPlaced = true;
       SoundFX.tileTap();
       renderAll();
+      broadcastLiveBoardPreview('正在調整牌組內順序');
     }
 
     // =========================================================
@@ -3385,6 +3533,10 @@
         const active = idx === gameState.currentTurnIdx;
         const isMe = p.id === deviceProfile.deviceId;
         const bubble = activeChatBubbles[p.id];
+        const rackCount = Array.isArray(p.rack) ? p.rack.length : 0;
+        const displayCount = (remoteOperatorHint && remoteOperatorHint.operatorId === p.id && typeof remoteOperatorHint.operatorRackCount === 'number')
+          ? remoteOperatorHint.operatorRackCount
+          : rackCount;
         const iceLabel = p.hasBrokenIce ? '已破冰' : '未破冰';
         const iceClass = p.hasBrokenIce
           ? 'bg-emerald-500/25 text-emerald-300 border-emerald-400/50'
@@ -3404,7 +3556,7 @@
             </div>
             <div class="flex items-center gap-1.5 shrink-0 text-[10px]">
               <span class="px-1.5 py-0.5 rounded border font-bold ${iceClass}">${iceLabel}</span>
-              <span class="px-1.5 py-0.5 rounded bg-emerald-950/90 text-amber-200 font-black tabular-nums">${p.rack.length} 張</span>
+              <span class="px-1.5 py-0.5 rounded bg-emerald-950/90 text-amber-200 font-black tabular-nums">${displayCount} 張</span>
             </div>
             ${bubble ? `<div class="player-chat-bubble">${escapeHtml(bubble.text)}</div>` : ''}
           </div>
@@ -3583,8 +3735,12 @@
 
       if (poolEl) poolEl.textContent = String(gameState.pool.length);
       const myTurn = isMyTurn();
+      const myRackList = Array.isArray(me?.rack) ? me.rack : [];
+      if (myTurn && !turnSnapshot && me) {
+        captureTurnSnapshot();
+      }
       const playedCount = (myTurn && turnSnapshot && me)
-        ? (turnSnapshot.rack.length - me.rack.length)
+        ? (turnSnapshot.rack.length - myRackList.length)
         : 0;
 
       if (statusEl) {
@@ -3597,6 +3753,9 @@
               : '輪到你的回合！可點選或拖曳手牌與桌面牌搭組';
           }
           statusEl.className = 'font-bold text-amber-300 truncate';
+        } else if (remoteOperatorHint && cur && remoteOperatorHint.operatorId === cur.id) {
+          statusEl.textContent = `👀 ${cur.name} ${remoteOperatorHint.hintText}`;
+          statusEl.className = 'font-bold text-sky-300 truncate';
         } else {
           statusEl.textContent = `等待 ${cur ? cur.name : '對手'} 思考與出牌中...`;
           statusEl.className = 'font-bold text-emerald-200 truncate';
@@ -3654,6 +3813,36 @@
         if (gameState) {
           renderTableBoard();
           renderPlayerRack();
+        }
+      });
+
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible' && onlineState.roomCode) {
+          requestScreenWakeLock();
+          if (onlineState.isHost) {
+            if (onlineState.peer && !onlineState.peer.destroyed && onlineState.peer.disconnected) {
+              try { onlineState.peer.reconnect(); } catch (e) {}
+            }
+            if (gameState && gameState.mode === 'online') {
+              syncOnlineGameState();
+            } else {
+              broadcastWaitingRoomState();
+            }
+          } else if (onlineState.hostConn && onlineState.hostConn.open) {
+            onlineState.hostConn.send({
+              type: 'REQUEST_GAME_SYNC',
+              deviceId: deviceProfile.deviceId,
+              name: deviceProfile.nickname
+            });
+          } else {
+            joinOnlineRoom(onlineState.roomCode);
+          }
+        }
+      });
+
+      window.addEventListener('online', () => {
+        if (onlineState.roomCode && !onlineState.isHost) {
+          joinOnlineRoom(onlineState.roomCode);
         }
       });
 
