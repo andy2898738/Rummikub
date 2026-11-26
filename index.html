@@ -174,27 +174,54 @@
       border: 1px solid rgba(255, 224, 178, 0.22);
       box-shadow: inset 0 3px 6px rgba(0, 0, 0, 0.55);
       min-height: 56px;
-      display: flex;
+      display: grid;
+      grid-template-columns: repeat(14, minmax(0, 1fr));
       align-items: center;
-      justify-content: center;
-      padding: 4px 6px;
+      gap: 2px;
+      padding: 4px 5px;
       overflow: hidden;
     }
 
+    .rack-slot {
+      position: relative;
+      height: 50px;
+      border-radius: 7px;
+      background: rgba(34, 17, 4, 0.34);
+      border: 1px dashed rgba(255, 224, 178, 0.14);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background-color 0.12s ease, border-color 0.12s ease;
+    }
+
+    .rack-slot.slot-drop-hover {
+      background: rgba(52, 211, 153, 0.28);
+      border-color: #34d399;
+    }
+
+    .rack-slot.meld-run-slot {
+      background: rgba(16, 185, 129, 0.22);
+      border: 1.5px solid rgba(52, 211, 153, 0.85);
+      box-shadow: 0 0 8px rgba(16, 185, 129, 0.28);
+    }
+
+    .rack-slot.meld-set-slot {
+      background: rgba(245, 158, 11, 0.22);
+      border: 1.5px solid rgba(251, 191, 36, 0.85);
+      box-shadow: 0 0 8px rgba(245, 158, 11, 0.28);
+    }
+
     .rack-tile {
-      width: var(--rack-tile-w, 38px);
-      height: var(--rack-tile-h, 50px);
-      font-size: var(--rack-tile-font, 17px);
-      margin-left: var(--rack-tile-overlap, 0px);
+      width: 100%;
+      max-width: 40px;
+      height: 46px;
+      font-size: clamp(13px, 3.6vw, 17px);
+      margin-left: 0;
       touch-action: none;
     }
 
-    .rack-tile:first-child {
-      margin-left: 0 !important;
-    }
-
     .rack-tile.selected {
-      transform: translateY(-10px);
+      transform: translateY(-9px);
       border-color: #f59e0b;
       box-shadow: 0 8px 16px rgba(245, 158, 11, 0.5), 0 0 0 2px #fbbf24;
       z-index: 20 !important;
@@ -202,29 +229,6 @@
 
     .rack-tile.newly-drawn {
       box-shadow: 0 0 0 2px #34d399, 0 4px 10px rgba(16, 185, 129, 0.45);
-    }
-
-    /* Smart Meld Grouping in Rack (Only Strictly Valid Melds >= 3 Tiles) */
-    .rack-meld-group {
-      position: relative;
-      display: inline-flex;
-      align-items: center;
-      padding: 2px 3px;
-      border-radius: 9px;
-      margin: 0 3px;
-      flex-shrink: 0;
-    }
-
-    .rack-meld-group.meld-run {
-      background: rgba(16, 185, 129, 0.22);
-      border: 1.5px solid rgba(52, 211, 153, 0.85);
-      box-shadow: 0 0 8px rgba(16, 185, 129, 0.28);
-    }
-
-    .rack-meld-group.meld-set {
-      background: rgba(245, 158, 11, 0.22);
-      border: 1.5px solid rgba(251, 191, 36, 0.85);
-      box-shadow: 0 0 8px rgba(245, 158, 11, 0.28);
     }
 
     .rack-meld-badge {
@@ -243,12 +247,12 @@
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
     }
 
-    .rack-meld-group.meld-run .rack-meld-badge {
+    .rack-slot.meld-run-slot .rack-meld-badge {
       background: #059669;
       color: #ecfdf5;
     }
 
-    .rack-meld-group.meld-set .rack-meld-badge {
+    .rack-slot.meld-set-slot .rack-meld-badge {
       background: #d97706;
       color: #fffbeb;
     }
@@ -652,7 +656,7 @@
         </button>
       </div>
 
-      <!-- Two-Row Wooden Tile Rack -->
+      <!-- Two-Row Slotted Wooden Tile Rack (2 x 14 Slots) -->
       <div id="player-rack-wrapper" class="max-w-3xl mx-auto space-y-1.5">
         <div id="rack-row-0" class="rack-ledge"></div>
         <div id="rack-row-1" class="rack-ledge"></div>
@@ -703,10 +707,10 @@
         </ul>
         <p><strong class="text-amber-300">2. 首次破冰規則（30 分）：</strong>每位玩家第一次出牌時，只能使用<strong>自己手牌</strong>湊出總點數 <strong>≥ 30 分</strong> 的牌組；破冰後即可自由拆解並重組桌面上的任何牌組。</p>
         <p><strong class="text-amber-300">3. 籌碼規則：</strong>每場對戰入場費 <strong>100</strong> 籌碼；依最終名次發放獎金：第 1 名 <strong>+200</strong>、第 2 名 <strong>+100</strong>、第 3 名 <strong>+60</strong>、第 4 名 <strong>+40</strong>。</p>
-        <p><strong class="text-amber-300">4. 快捷操作秘訣：</strong></p>
+        <p><strong class="text-amber-300">4. 木架槽位與快捷操作：</strong></p>
         <ul class="list-disc pl-4 space-y-1">
-          <li>點擊 <strong>「🔢順子」</strong> 或 <strong>「🎨同數」</strong> 可自動區隔並以發光外框提示合法牌組。</li>
-          <li><strong>長按發光牌組任一張牌</strong> 即可選取整組並直接往上拖移放入牌桌！</li>
+          <li>木架共有上下兩排 <strong>28 個獨立放置槽</strong>，可將手牌隨意拖入任何空格整理。</li>
+          <li>點擊 <strong>「🔢順子」</strong> 或 <strong>「🎨同數」</strong> 可自動整理並以發光外框提示合法牌組；<strong>長按發光牌組</strong>可直接整組拖移出牌。</li>
           <li>破冰後若放錯牌到桌上，在按下「✅完成」前可<strong>拖回木架或按「↺還原」</strong>恢復本回合初始狀態。</li>
         </ul>
       </div>
@@ -728,12 +732,17 @@
 
   <script>
     // =========================================================
-    // 1. DEVICE PROFILE, AUDIO ENGINE & GLOBAL STATE
+    // 1. CORE GUARD: PROFILE, AUDIO & ENTRY CONTROLS (TOP-LEVEL)
     // =========================================================
     const PROFILE_STORAGE_KEY = 'rummikub_device_profile_v1';
     const SESSION_STORAGE_KEY = 'rummikub_online_session_v1';
+    const CHIP_STORAGE_KEY = 'rummikub_player_chips_v1';
     const TILE_COLORS = ['black', 'red', 'blue', 'orange'];
     const COLOR_ORDER = { red: 0, blue: 1, orange: 2, black: 3, joker: 4 };
+    const RACK_SLOT_COUNT = 28; // 2 rows x 14 fixed slots
+    const INITIAL_MATCH_CHIPS = 1000;
+    const MATCH_ENTRY_FEE = 100;
+    const RANK_REWARDS = [200, 100, 60, 40];
 
     const PEER_CONFIG = {
       debug: 0,
@@ -756,11 +765,6 @@
       chips: 1000
     };
 
-    const INITIAL_MATCH_CHIPS = 1000;
-    const CHIP_STORAGE_KEY = 'rummikub_player_chips_v1';
-    const MATCH_ENTRY_FEE = 100;
-    const RANK_REWARDS = [200, 100, 60, 40];
-
     let soloConfig = {
       players: 4,
       difficulty: 'normal',
@@ -774,8 +778,9 @@
       roomCode: '',
       isHost: false,
       hostConn: null,
-      guestConns: new Map(), // deviceId -> DataConnection
-      players: [], // { deviceId, name, isHost, isBot, online }
+      guestConns: new Map(),
+      guestLastSeen: new Map(),
+      players: [],
       chatMessages: [],
       reconnectTimer: null,
       heartbeatTimer: null,
@@ -793,12 +798,12 @@
     let liveSyncThrottleTimer = null;
     let remoteOperatorHint = null;
     let newlyDrawnTileIds = new Set();
-    let rackSortMode = 'none'; // 'none' | 'run' | 'set'
-    let activeChatBubbles = {}; // playerId -> { text, timerId }
+    let rackSortMode = 'none';
+    let activeChatBubbles = {};
 
     let dragState = {
       active: false,
-      source: null, // 'rack' | 'table'
+      source: null,
       sourceMeldId: null,
       tiles: [],
       startX: 0,
@@ -960,9 +965,6 @@
       });
     }
 
-    // =========================================================
-    // 2. LOGIN & LOBBY NAVIGATION
-    // =========================================================
     function enterGameMenuFromLogin() {
       const input = document.getElementById('nickname-input');
       let nick = (input ? input.value : '').trim();
@@ -1041,7 +1043,7 @@
     }
 
     // =========================================================
-    // 3. ONLINE P2P MULTIPLAYER ROOM & RECONNECTION (PEERJS)
+    // 2. ONLINE P2P MULTIPLAYER ROOM & RECONNECTION (PEERJS)
     // =========================================================
     function generateRoomCode() {
       const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -1066,28 +1068,54 @@
         onlineState.heartbeatTimer = null;
       }
       if (onlineState.hostConn) {
-        try { onlineState.hostConn.close(); } catch (e) {}
+        try {
+          if (onlineState.hostConn.open) {
+            onlineState.hostConn.send({ type: 'PLAYER_LEAVE', deviceId: deviceProfile.deviceId });
+          }
+          onlineState.hostConn.close();
+        } catch (e) {}
         onlineState.hostConn = null;
+      }
+      if (onlineState.isHost) {
+        broadcastToGuests({ type: 'ROOM_CLOSED' });
       }
       onlineState.guestConns.forEach(conn => {
         try { conn.close(); } catch (e) {}
       });
       onlineState.guestConns.clear();
+      onlineState.guestLastSeen.clear();
       if (onlineState.peer) {
         try { onlineState.peer.destroy(); } catch (e) {}
         onlineState.peer = null;
       }
     }
 
-    async function requestScreenWakeLock() {
-      try {
-        if ('wakeLock' in navigator && !onlineState.wakeLock) {
-          onlineState.wakeLock = await navigator.wakeLock.request('screen');
-          onlineState.wakeLock.addEventListener('release', () => {
-            onlineState.wakeLock = null;
-          });
+    function removeOrDisconnectGuestById(devId, notifyToast = true) {
+      if (!devId || devId === deviceProfile.deviceId) return;
+      const existingConn = onlineState.guestConns.get(devId);
+      if (existingConn) {
+        try { existingConn.close(); } catch (e) {}
+        onlineState.guestConns.delete(devId);
+      }
+      onlineState.guestLastSeen.delete(devId);
+
+      const matchOngoing = Boolean(gameState && gameState.mode === 'online' && !gameState.winnerId);
+      const wpIndex = onlineState.players.findIndex(p => p.deviceId === devId);
+      const playerName = wpIndex !== -1 ? onlineState.players[wpIndex].name : '';
+
+      if (matchOngoing) {
+        if (wpIndex !== -1) onlineState.players[wpIndex].online = false;
+        const gp = gameState.players.find(p => p.id === devId);
+        if (gp) gp.online = false;
+        syncOnlineGameState();
+        renderPlayersBar();
+      } else if (wpIndex !== -1) {
+        onlineState.players.splice(wpIndex, 1);
+        broadcastWaitingRoomState();
+        if (notifyToast && playerName) {
+          showToast(`${playerName} 已離開房間`, 'info');
         }
-      } catch (e) {}
+      }
     }
 
     function startConnectionHeartbeat() {
@@ -1103,18 +1131,31 @@
         }
 
         if (onlineState.isHost) {
-          onlineState.guestConns.forEach((conn, devId) => {
-            if (conn && conn.open) {
-              try { conn.send({ type: 'PING', ts: Date.now() }); } catch (e) {}
+          const now = Date.now();
+          const toCheckIds = new Set([
+            ...onlineState.guestConns.keys(),
+            ...onlineState.players.filter(p => !p.isHost && !p.isBot).map(p => p.deviceId)
+          ]);
+
+          toCheckIds.forEach((devId) => {
+            const conn = onlineState.guestConns.get(devId);
+            const lastSeen = onlineState.guestLastSeen.get(devId) || 0;
+            const iceState = conn?.peerConnection?.iceConnectionState;
+            const isDead = !conn || !conn.open || iceState === 'closed' || iceState === 'failed' || (lastSeen > 0 && now - lastSeen > 7500);
+
+            if (isDead) {
+              removeOrDisconnectGuestById(devId, true);
             } else {
-              onlineState.guestConns.delete(devId);
+              try { conn.send({ type: 'PING', ts: now }); } catch (e) {
+                removeOrDisconnectGuestById(devId, true);
+              }
             }
           });
           setWaitingConnLight(onlineState.peer && onlineState.peer.open ? 'ok' : 'warn');
         } else {
           if (onlineState.hostConn && onlineState.hostConn.open) {
             try { onlineState.hostConn.send({ type: 'PING', deviceId: deviceProfile.deviceId, ts: Date.now() }); } catch (e) {}
-            if (Date.now() - onlineState.lastPongAt > 14000) {
+            if (Date.now() - onlineState.lastPongAt > 9000) {
               setWaitingConnLight('warn');
               joinOnlineRoom(onlineState.roomCode);
             }
@@ -1123,7 +1164,18 @@
             joinOnlineRoom(onlineState.roomCode);
           }
         }
-      }, 4000);
+      }, 3000);
+    }
+
+    async function requestScreenWakeLock() {
+      try {
+        if ('wakeLock' in navigator && !onlineState.wakeLock) {
+          onlineState.wakeLock = await navigator.wakeLock.request('screen');
+          onlineState.wakeLock.addEventListener('release', () => {
+            onlineState.wakeLock = null;
+          });
+        }
+      } catch (e) {}
     }
 
     function sanitizeSyncedGameState(incomingState) {
@@ -1140,9 +1192,13 @@
         const validRack = Array.isArray(p.rack)
           ? p.rack
           : (prev && Array.isArray(prev.rack) ? prev.rack : []);
+        const validSlots = p.id === deviceProfile.deviceId && prev && Array.isArray(prev.rackSlots)
+          ? prev.rackSlots
+          : (Array.isArray(p.rackSlots) ? p.rackSlots : buildDefaultRackSlots(validRack));
         return {
           ...p,
           rack: validRack,
+          rackSlots: validSlots,
           online: p.online !== false
         };
       });
@@ -1150,6 +1206,51 @@
       if (!Array.isArray(incomingState.tableMelds)) incomingState.tableMelds = [];
       if (!Array.isArray(incomingState.pool)) incomingState.pool = [];
       return incomingState;
+    }
+
+    function buildDefaultRackSlots(tiles) {
+      const slots = new Array(RACK_SLOT_COUNT).fill(null);
+      if (!Array.isArray(tiles)) return slots;
+      tiles.forEach((t, idx) => {
+        if (t && t.id && idx < RACK_SLOT_COUNT) slots[idx] = t.id;
+      });
+      return slots;
+    }
+
+    function syncPlayerRackSlots(player) {
+      if (!player) return [];
+      const rackList = Array.isArray(player.rack) ? player.rack : [];
+      const validIds = new Set(rackList.map(t => t.id));
+      let slots = Array.isArray(player.rackSlots) ? [...player.rackSlots] : new Array(RACK_SLOT_COUNT).fill(null);
+
+      while (slots.length < RACK_SLOT_COUNT) slots.push(null);
+      if (slots.length > RACK_SLOT_COUNT) slots = slots.slice(0, RACK_SLOT_COUNT);
+
+      const placedIds = new Set();
+      for (let i = 0; i < slots.length; i++) {
+        const tid = slots[i];
+        if (!tid || !validIds.has(tid) || placedIds.has(tid)) {
+          slots[i] = null;
+        } else {
+          placedIds.add(tid);
+        }
+      }
+
+      for (const t of rackList) {
+        if (!placedIds.has(t.id)) {
+          const emptyIdx = slots.indexOf(null);
+          if (emptyIdx !== -1) {
+            slots[emptyIdx] = t.id;
+            placedIds.add(t.id);
+          } else {
+            slots.push(t.id);
+            placedIds.add(t.id);
+          }
+        }
+      }
+
+      player.rackSlots = slots;
+      return slots;
     }
 
     function rejoinActiveMatch() {
@@ -1359,9 +1460,23 @@
     function setupHostIncomingConnection(conn) {
       conn.on('data', (msg) => {
         if (!msg || typeof msg !== 'object') return;
+        const senderDevId = msg.deviceId || conn._deviceId;
+        if (senderDevId) {
+          onlineState.guestLastSeen.set(senderDevId, Date.now());
+        }
 
         if (msg.type === 'PING') {
           try { conn.send({ type: 'PONG', ts: msg.ts || Date.now() }); } catch (e) {}
+          return;
+        }
+
+        if (msg.type === 'PONG') {
+          return;
+        }
+
+        if (msg.type === 'PLAYER_LEAVE') {
+          const leaveId = msg.deviceId || conn._deviceId;
+          removeOrDisconnectGuestById(leaveId, true);
           return;
         }
 
@@ -1369,6 +1484,7 @@
           const devId = msg.deviceId || conn.peer;
           const pName = (msg.name || '好友玩家').slice(0, 14);
           onlineState.guestConns.set(devId, conn);
+          onlineState.guestLastSeen.set(devId, Date.now());
           conn._deviceId = devId;
 
           const existing = onlineState.players.find(p => p.deviceId === devId);
@@ -1429,20 +1545,26 @@
         }
       });
 
+      if (conn.peerConnection) {
+        conn.peerConnection.oniceconnectionstatechange = () => {
+          const st = conn.peerConnection?.iceConnectionState;
+          if ((st === 'disconnected' || st === 'failed' || st === 'closed') && conn._deviceId) {
+            removeOrDisconnectGuestById(conn._deviceId, true);
+          }
+        };
+      }
+
       conn.on('close', () => {
         const devId = conn._deviceId;
         if (devId) {
-          onlineState.guestConns.delete(devId);
-          const wp = onlineState.players.find(p => p.deviceId === devId);
-          if (wp) wp.online = false;
-          if (gameState && gameState.mode === 'online') {
-            const gp = gameState.players.find(p => p.id === devId);
-            if (gp) gp.online = false;
-            syncOnlineGameState();
-            renderPlayersBar();
-          } else {
-            broadcastWaitingRoomState();
-          }
+          removeOrDisconnectGuestById(devId, true);
+        }
+      });
+
+      conn.on('error', () => {
+        const devId = conn._deviceId;
+        if (devId) {
+          removeOrDisconnectGuestById(devId, true);
         }
       });
     }
@@ -1586,9 +1708,15 @@
 
             if (msg.type === 'PONG' || msg.type === 'PING') {
               if (msg.type === 'PING') {
-                try { conn.send({ type: 'PONG', ts: msg.ts || Date.now() }); } catch (e) {}
+                try { conn.send({ type: 'PONG', deviceId: deviceProfile.deviceId, ts: msg.ts || Date.now() }); } catch (e) {}
               }
               setWaitingConnLight('ok');
+              return;
+            }
+
+            if (msg.type === 'ROOM_CLOSED') {
+              showToast('房主已關閉房間', 'warning');
+              leaveOnlineRoom();
               return;
             }
 
@@ -1737,6 +1865,11 @@
       onlineState.players = [];
       onlineState.chatMessages = [];
       onlineState.hasActiveMatch = false;
+      if (gameState && gameState.mode === 'online') {
+        gameState = null;
+      }
+      turnSnapshot = null;
+      remoteOperatorHint = null;
 
       const entryBox = document.getElementById('online-entry-box');
       const waitBox = document.getElementById('online-waiting-box');
@@ -1747,7 +1880,7 @@
     }
 
     // =========================================================
-    // 4. CHAT & PLAYER STATUS BUBBLES
+    // 3. CHAT & PLAYER STATUS BUBBLES
     // =========================================================
     function toggleGameChatDrawer(forceState) {
       const drawer = document.getElementById('game-chat-drawer');
@@ -1836,24 +1969,71 @@
     }
 
     // =========================================================
-    // 5. CORE RUMMIKUB DECK, MELD RULES & GAME FLOW
+    // 4. CORE RUMMIKUB DECK, MELD RULES & GAME FLOW
     // =========================================================
+    let fallbackEntropySeed = (Date.now() ^ Math.floor(Math.random() * 0x7fffffff)) >>> 0;
+
+    function getSecureRandom() {
+      fallbackEntropySeed = (Math.imul(fallbackEntropySeed ^ (Date.now() & 0xffff), 1664525) + 1013904223) >>> 0;
+      const mathPart = Math.random();
+      if (window.crypto && typeof window.crypto.getRandomValues === 'function') {
+        try {
+          const buf = new Uint32Array(2);
+          window.crypto.getRandomValues(buf);
+          const cryptoPart = ((buf[0] ^ fallbackEntropySeed) >>> 0) / 4294967296;
+          return (cryptoPart + mathPart) % 1;
+        } catch (e) {}
+      }
+      return (((fallbackEntropySeed >>> 0) / 4294967296) + mathPart) % 1;
+    }
+
+    function shuffleArrayInPlace(arr) {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(getSecureRandom() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
     function buildShuffledDeck() {
       const deck = [];
       let uid = 1;
+      // 104 number tiles: 4 colors x 1..13 x 2 sets
       for (let copy = 0; copy < 2; copy++) {
         for (const color of TILE_COLORS) {
           for (let num = 1; num <= 13; num++) {
             deck.push({ id: `t_${uid++}`, color, number: num, joker: false });
           }
         }
+      }
+      // + 2 joker tiles = 106 tiles total
+      for (let j = 0; j < 2; j++) {
         deck.push({ id: `t_${uid++}`, color: 'joker', number: 0, joker: true });
       }
-      for (let i = deck.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [deck[i], deck[j]] = [deck[j], deck[i]];
+      // 5-pass Fisher-Yates shuffle + random cut so two duplicate sets are thoroughly separated
+      for (let pass = 0; pass < 5; pass++) {
+        shuffleArrayInPlace(deck);
+        const cutPos = Math.floor(getSecureRandom() * deck.length);
+        if (cutPos > 0 && cutPos < deck.length) {
+          const tail = deck.splice(cutPos);
+          deck.unshift(...tail);
+        }
       }
       return deck;
+    }
+
+    function drawRandomTilesFromDeck(deck, count) {
+      const hand = [];
+      for (let i = 0; i < count && deck.length > 0; i++) {
+        const randIdx = Math.floor(getSecureRandom() * deck.length);
+        const [picked] = deck.splice(randIdx, 1);
+        if (picked) hand.push(picked);
+      }
+      return hand;
+    }
+
+    function isStrictlyValidMeldGroup(group) {
+      return Boolean(group && Array.isArray(group.tiles) && group.tiles.length >= 3 && evaluateMeld(group.tiles).valid);
     }
 
     function getCurrentTurnPlayer() {
@@ -1874,8 +2054,10 @@
     function captureTurnSnapshot() {
       const me = getMyPlayer();
       if (!me || !gameState) return;
+      syncPlayerRackSlots(me);
       turnSnapshot = {
         rack: JSON.parse(JSON.stringify(me.rack)),
+        rackSlots: [...me.rackSlots],
         tableMelds: JSON.parse(JSON.stringify(gameState.tableMelds)),
         hasBrokenIce: Boolean(me.hasBrokenIce)
       };
@@ -1893,7 +2075,6 @@
         return { valid: false, type: null, points: 0 };
       }
 
-      const jokers = tiles.filter(t => t.joker);
       const normals = tiles.filter(t => !t.joker);
       if (normals.length === 0) {
         return { valid: false, type: null, points: 0 };
@@ -1916,7 +2097,6 @@
       if (tiles.length <= 13) {
         const targetColor = normals[0].color;
         if (normals.every(t => t.color === targetColor)) {
-          // Verify ordered positions with joker placeholders
           let firstNormalPos = -1;
           for (let i = 0; i < tiles.length; i++) {
             if (!tiles[i].joker) {
@@ -1947,17 +2127,13 @@
       return { valid: false, type: null, points: 0 };
     }
 
-    function isStrictlyValidMeldGroup(group) {
-      if (!group || !Array.isArray(group.tiles) || group.tiles.length < 3) return false;
-      return evaluateMeld(group.tiles).valid;
-    }
-
-    function extractSmartMeldsFromRack(rackTiles, primaryMode = 'run') {
+    function extractSmartMeldsFromRack(rackTiles, primaryMode = 'run', randomizeOrder = false) {
       const remaining = [...rackTiles];
       const groups = [];
+      const colorScanOrder = randomizeOrder ? shuffleArrayInPlace([...TILE_COLORS]) : TILE_COLORS;
 
       function extractRuns() {
-        for (const color of TILE_COLORS) {
+        for (const color of colorScanOrder) {
           let changed = true;
           while (changed) {
             changed = false;
@@ -1999,11 +2175,15 @@
       }
 
       function extractSets() {
-        for (let num = 13; num >= 1; num--) {
+        const numsToScan = Array.from({ length: 13 }, (_, idx) => 13 - idx);
+        if (randomizeOrder) shuffleArrayInPlace(numsToScan);
+
+        for (const num of numsToScan) {
           let changed = true;
           while (changed) {
             changed = false;
             const sameNum = remaining.filter(t => !t.joker && t.number === num);
+            if (randomizeOrder && sameNum.length > 1) shuffleArrayInPlace(sameNum);
             const distinctByColor = [];
             const seenColors = new Set();
             for (const t of sameNum) {
@@ -2060,6 +2240,24 @@
       groups.forEach(g => flattened.push(...g.tiles));
       flattened.push(...ungroupedTiles);
       me.rack = flattened;
+
+      const newSlots = new Array(RACK_SLOT_COUNT).fill(null);
+      let cursor = 0;
+      groups.forEach(g => {
+        if (cursor < 14 && cursor + g.tiles.length > 14) {
+          cursor = 14;
+        }
+        g.tiles.forEach(t => {
+          if (cursor < RACK_SLOT_COUNT) newSlots[cursor++] = t.id;
+        });
+        if (cursor < RACK_SLOT_COUNT && cursor !== 14) cursor++;
+      });
+      ungroupedTiles.forEach(t => {
+        while (cursor < RACK_SLOT_COUNT && newSlots[cursor] !== null) cursor++;
+        if (cursor < RACK_SLOT_COUNT) newSlots[cursor++] = t.id;
+      });
+      me.rackSlots = newSlots;
+      syncPlayerRackSlots(me);
       renderPlayerRack();
     }
 
@@ -2092,8 +2290,15 @@
       }
 
       const deck = buildShuffledDeck();
-      const players = playersList.map(p => {
-        const hand = deck.splice(0, 14);
+      const dealOrderIndices = shuffleArrayInPlace(playersList.map((_, idx) => idx));
+      const dealtHandsMap = new Map();
+      dealOrderIndices.forEach(idx => {
+        dealtHandsMap.set(idx, drawRandomTilesFromDeck(deck, 14));
+      });
+
+      const botStyles = shuffleArrayInPlace(['run_first', 'set_first', 'joker_hunter', 'balanced']);
+      const players = playersList.map((p, idx) => {
+        const hand = dealtHandsMap.get(idx) || drawRandomTilesFromDeck(deck, 14);
         const isMe = p.id === deviceProfile.deviceId;
         const startChips = isMe ? Math.max(0, deviceProfile.chips - MATCH_ENTRY_FEE) : (INITIAL_MATCH_CHIPS - MATCH_ENTRY_FEE);
         if (isMe) {
@@ -2105,8 +2310,10 @@
           id: p.id,
           name: p.name,
           isBot: Boolean(p.isBot),
+          botStyle: botStyles[idx % botStyles.length],
           online: p.online !== false,
           rack: hand,
+          rackSlots: buildDefaultRackSlots(hand),
           hasBrokenIce: false,
           chips: startChips
         };
@@ -2221,10 +2428,9 @@
       if (turnTimerInterval) clearInterval(turnTimerInterval);
       if (botActionTimeout) clearTimeout(botActionTimeout);
       document.getElementById('gameover-modal')?.classList.add('hidden');
-      const wasOnline = gameState && gameState.mode === 'online';
-      if (!wasOnline) {
-        gameState = null;
-      }
+      const wasOnline = Boolean(gameState && gameState.mode === 'online');
+      gameState = null;
+      onlineState.hasActiveMatch = false;
       turnSnapshot = null;
       remoteOperatorHint = null;
       selectedTileIds.clear();
@@ -2295,6 +2501,9 @@
         if (turnSnapshot) {
           const me = getMyPlayer();
           me.rack = JSON.parse(JSON.stringify(turnSnapshot.rack));
+          me.rackSlots = Array.isArray(turnSnapshot.rackSlots)
+            ? [...turnSnapshot.rackSlots]
+            : buildDefaultRackSlots(me.rack);
           gameState.tableMelds = JSON.parse(JSON.stringify(turnSnapshot.tableMelds));
           turnSnapshot = null;
         }
@@ -2308,8 +2517,10 @@
     function drawTileAndAdvance(player) {
       if (!gameState) return;
       if (gameState.pool.length > 0) {
-        const drawn = gameState.pool.pop();
+        const randIdx = Math.floor(getSecureRandom() * gameState.pool.length);
+        const [drawn] = gameState.pool.splice(randIdx, 1);
         player.rack.push(drawn);
+        syncPlayerRackSlots(player);
         if (player.id === deviceProfile.deviceId) {
           newlyDrawnTileIds.clear();
           newlyDrawnTileIds.add(drawn.id);
@@ -2360,6 +2571,9 @@
 
       SoundFX.click();
       me.rack = JSON.parse(JSON.stringify(turnSnapshot.rack));
+      me.rackSlots = Array.isArray(turnSnapshot.rackSlots)
+        ? [...turnSnapshot.rackSlots]
+        : buildDefaultRackSlots(me.rack);
       gameState.tableMelds = JSON.parse(JSON.stringify(turnSnapshot.tableMelds));
       me.hasBrokenIce = turnSnapshot.hasBrokenIce;
       selectedTileIds.clear();
@@ -2378,7 +2592,6 @@
       const playedCount = turnSnapshot ? (turnSnapshot.rack.length - me.rack.length) : 0;
 
       if (playedCount <= 0) {
-        // Restore any table rearrangement if no rack tiles were played
         if (turnSnapshot) {
           gameState.tableMelds = JSON.parse(JSON.stringify(turnSnapshot.tableMelds));
         }
@@ -2386,7 +2599,6 @@
         return;
       }
 
-      // Validate all melds on table
       for (const meld of gameState.tableMelds) {
         const res = evaluateMeld(meld.tiles);
         if (!res.valid) {
@@ -2397,7 +2609,6 @@
         }
       }
 
-      // Ice-breaking check (first time must score >= 30 from own rack)
       if (!me.hasBrokenIce) {
         const snapshotTileIds = new Set();
         turnSnapshot.tableMelds.forEach(m => m.tiles.forEach(t => snapshotTileIds.add(t.id)));
@@ -2459,13 +2670,114 @@
       if (!cur || cur.id !== bot.id) return;
 
       const diff = gameState.botDifficulty || 'normal';
-      const { groups } = extractSmartMeldsFromRack(bot.rack, 'run');
+      const initialRackCount = bot.rack.length;
+
+      // Track recent table meld patterns (e.g. "run:10-11-12" or "set:13") so different AIs avoid echoing identical shapes
+      const existingMeldSignatures = new Set(
+        gameState.tableMelds.map(m => {
+          const ev = evaluateMeld(m.tiles);
+          const nums = m.tiles.filter(t => !t.joker).map(t => t.number).sort((a, b) => a - b).join('-');
+          return `${ev.type || 'unknown'}:${nums}`;
+        })
+      );
+
+      const getMeldSignature = (tiles) => {
+        const ev = evaluateMeld(tiles);
+        const nums = tiles.filter(t => !t.joker).map(t => t.number).sort((a, b) => a - b).join('-');
+        return `${ev.type || 'unknown'}:${nums}`;
+      };
+
+      // Use each AI's distinct playstyle + per-turn randomization so different AIs never play identical patterns
+      let preferredMode = getSecureRandom() < 0.5 ? 'run' : 'set';
+      if (bot.botStyle === 'run_first') preferredMode = getSecureRandom() < 0.78 ? 'run' : 'set';
+      else if (bot.botStyle === 'set_first') preferredMode = getSecureRandom() < 0.78 ? 'set' : 'run';
+
+      const { groups } = extractSmartMeldsFromRack(bot.rack, preferredMode, true);
+      if (groups.length > 1) {
+        shuffleArrayInPlace(groups);
+        // Deprioritize groups that mirror a number pattern already sitting on the table
+        groups.sort((a, b) => {
+          const dupA = existingMeldSignatures.has(getMeldSignature(a.tiles)) ? 1 : 0;
+          const dupB = existingMeldSignatures.has(getMeldSignature(b.tiles)) ? 1 : 0;
+          return dupA - dupB;
+        });
+      }
+
+      // Helper to also try forming a 3-tile meld using 1 Joker if normal melds aren't enough
+      function findJokerAssistedMeld(rackTiles) {
+        const jokers = rackTiles.filter(t => t.joker);
+        if (jokers.length === 0) return null;
+        const joker = jokers[0];
+        const normals = rackTiles.filter(t => !t.joker);
+        const candidates = [];
+
+        // Try 2-tile same-number + 1 joker
+        for (let num = 1; num <= 13; num++) {
+          const sameNum = normals.filter(t => t.number === num);
+          shuffleArrayInPlace(sameNum);
+          const distinct = [];
+          const seenC = new Set();
+          for (const t of sameNum) {
+            if (!seenC.has(t.color)) {
+              seenC.add(t.color);
+              distinct.push(t);
+            }
+          }
+          if (distinct.length >= 2) {
+            const cand = autoArrangeMeldTiles([distinct[0], distinct[1], joker]);
+            const ev = evaluateMeld(cand);
+            if (ev.valid) candidates.push({ type: 'set', tiles: cand, points: ev.points });
+          }
+        }
+
+        // Try 2-tile near-consecutive same-color + 1 joker
+        for (const color of shuffleArrayInPlace([...TILE_COLORS])) {
+          const sameCol = normals.filter(t => t.color === color).sort((a, b) => a.number - b.number);
+          for (let i = 0; i < sameCol.length - 1; i++) {
+            const gap = sameCol[i + 1].number - sameCol[i].number;
+            if (gap === 1 || gap === 2) {
+              const cand = autoArrangeMeldTiles([sameCol[i], sameCol[i + 1], joker]);
+              const ev = evaluateMeld(cand);
+              if (ev.valid) candidates.push({ type: 'run', tiles: cand, points: ev.points });
+            }
+          }
+        }
+        if (candidates.length === 0) return null;
+        return candidates[Math.floor(getSecureRandom() * candidates.length)];
+      }
 
       if (!bot.hasBrokenIce) {
-        const totalPts = groups.reduce((s, g) => s + g.points, 0);
-        if (groups.length > 0 && totalPts >= 30) {
+        const candidateGroups = [...groups];
+        let totalPts = candidateGroups.reduce((s, g) => s + g.points, 0);
+
+        if ((totalPts < 30 || bot.botStyle === 'joker_hunter') && diff !== 'easy') {
+          const usedTemp = new Set(candidateGroups.flatMap(g => g.tiles.map(t => t.id)));
+          const leftover = bot.rack.filter(t => !usedTemp.has(t.id));
+          const jokerGroup = findJokerAssistedMeld(leftover);
+          if (jokerGroup) {
+            candidateGroups.push(jokerGroup);
+            totalPts += jokerGroup.points;
+          }
+        }
+
+        if (candidateGroups.length > 0 && totalPts >= 30) {
+          // Prefer novel number patterns over patterns already on the table, while keeping randomness
+          shuffleArrayInPlace(candidateGroups);
+          candidateGroups.sort((a, b) => {
+            const dupA = existingMeldSignatures.has(getMeldSignature(a.tiles)) ? 1 : 0;
+            const dupB = existingMeldSignatures.has(getMeldSignature(b.tiles)) ? 1 : 0;
+            return dupA - dupB;
+          });
+          const chosenBreakGroups = [];
+          let accPts = 0;
+          for (const g of candidateGroups) {
+            chosenBreakGroups.push(g);
+            accPts += g.points;
+            if (accPts >= 30 && (diff === 'easy' || getSecureRandom() < 0.65)) break;
+          }
+
           const usedIds = new Set();
-          groups.forEach(g => {
+          chosenBreakGroups.forEach(g => {
             g.tiles.forEach(t => usedIds.add(t.id));
             gameState.tableMelds.push({
               id: `meld_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
@@ -2484,8 +2796,14 @@
         }
       } else {
         let playedAny = false;
-        if (groups.length > 0) {
-          const groupsToPlay = diff === 'easy' ? groups.slice(0, 1) : groups;
+        const preferAttachFirst = diff !== 'easy' && gameState.tableMelds.length > 0 && getSecureRandom() < 0.45;
+
+        const playHandGroups = () => {
+          if (groups.length === 0) return;
+          const maxPlayCount = diff === 'easy'
+            ? 1
+            : (diff === 'normal' ? Math.max(1, Math.ceil(groups.length * (0.45 + getSecureRandom() * 0.55))) : groups.length);
+          const groupsToPlay = groups.slice(0, maxPlayCount);
           const usedIds = new Set();
           groupsToPlay.forEach(g => {
             g.tiles.forEach(t => usedIds.add(t.id));
@@ -2497,19 +2815,30 @@
           });
           bot.rack = bot.rack.filter(t => !usedIds.has(t.id));
           playedAny = true;
+        };
+
+        if (!preferAttachFirst) {
+          playHandGroups();
         }
 
+        // Attach single tiles onto existing valid table melds in randomized order
         if (diff !== 'easy') {
-          for (let i = bot.rack.length - 1; i >= 0; i--) {
-            const tile = bot.rack[i];
+          const rackIndices = Array.from({ length: bot.rack.length }, (_, idx) => idx);
+          shuffleArrayInPlace(rackIndices);
+
+          for (const rIdx of rackIndices) {
+            const tile = bot.rack[rIdx];
+            if (!tile) continue;
+            if (tile.joker && bot.rack.length > 3) continue;
             let placedTile = false;
 
-            for (const meld of gameState.tableMelds) {
+            const meldOrder = shuffleArrayInPlace([...gameState.tableMelds]);
+            for (const meld of meldOrder) {
               const tryAppend = [...meld.tiles, tile];
               if (evaluateMeld(tryAppend).valid) {
                 meld.tiles = tryAppend;
                 meld.newlyPlaced = true;
-                bot.rack.splice(i, 1);
+                bot.rack[rIdx] = null;
                 playedAny = true;
                 placedTile = true;
                 break;
@@ -2518,16 +2847,20 @@
               if (evaluateMeld(tryPrepend).valid) {
                 meld.tiles = tryPrepend;
                 meld.newlyPlaced = true;
-                bot.rack.splice(i, 1);
+                bot.rack[rIdx] = null;
                 playedAny = true;
                 placedTile = true;
                 break;
               }
             }
 
+            // Hard AI can split an existing table meld into 2 valid melds with 1 hand tile
             if (!placedTile && diff === 'hard') {
-              for (let mIdx = 0; mIdx < gameState.tableMelds.length; mIdx++) {
+              const meldIndices = Array.from({ length: gameState.tableMelds.length }, (_, idx) => idx);
+              shuffleArrayInPlace(meldIndices);
+              for (const mIdx of meldIndices) {
                 const meld = gameState.tableMelds[mIdx];
+                if (!meld || meld.tiles.length < 5) continue;
                 const splitResult = findExactValidMeldPartition([...meld.tiles, tile], 2);
                 if (splitResult && splitResult.length >= 2) {
                   meld.tiles = splitResult[0];
@@ -2538,16 +2871,27 @@
                     newlyPlaced: true
                   }));
                   gameState.tableMelds.splice(mIdx + 1, 0, ...extraMelds);
-                  bot.rack.splice(i, 1);
+                  bot.rack[rIdx] = null;
                   playedAny = true;
                   break;
                 }
               }
             }
           }
+          bot.rack = bot.rack.filter(Boolean);
         }
 
-        if (playedAny) {
+        if (preferAttachFirst) {
+          const { groups: remainingGroups } = extractSmartMeldsFromRack(bot.rack, preferredMode, true);
+          if (remainingGroups.length > 0) {
+            groups.length = 0;
+            groups.push(...remainingGroups);
+            playHandGroups();
+          }
+        }
+
+        // Ensure AI actually reduced its rack before advancing turn
+        if (playedAny && bot.rack.length < initialRackCount) {
           if (bot.rack.length === 0) {
             finishMatchWithWinner(bot);
             return;
@@ -2613,7 +2957,7 @@
     }
 
     // =========================================================
-    // 6. DRAG & DROP, MELD SPLITTING & RACK / TABLE SELECTION
+    // 5. DRAG & DROP, MELD SPLITTING & RACK SLOT PLACEMENT
     // =========================================================
     function combineSelectedRackAndTableToNewMeld() {
       if (!isMyTurn() || !gameState) return false;
@@ -2646,6 +2990,7 @@
       if (rackTiles.length > 0) {
         const rackMoveIds = new Set(rackTiles.map(t => t.id));
         me.rack = me.rack.filter(t => !rackMoveIds.has(t.id));
+        syncPlayerRackSlots(me);
       }
       if (tableTiles.length > 0) {
         for (const meld of gameState.tableMelds) {
@@ -2725,6 +3070,9 @@
       document.querySelectorAll('.table-meld-group.drop-target-hover').forEach(el => {
         el.classList.remove('drop-target-hover');
       });
+      document.querySelectorAll('.rack-slot.slot-drop-hover').forEach(el => {
+        el.classList.remove('slot-drop-hover');
+      });
       document.querySelector('.wooden-rack')?.classList.remove('rack-return-hover');
     }
 
@@ -2738,7 +3086,7 @@
       let initialDragTiles = [clickedTile];
       if (selectedTileIds.has(tileId) && selectedTileIds.size > 1) {
         initialDragTiles = me.rack.filter(t => selectedTileIds.has(t.id));
-      } else if (Array.isArray(smartGroupTileIds) && smartGroupTileIds.length >= 3) {
+      } else if (Array.isArray(smartGroupTileIds) && smartGroupTileIds.length >= 3 && !selectedTileIds.has(tileId)) {
         initialDragTiles = smartGroupTileIds
           .map(id => me.rack.find(t => t.id === id))
           .filter(Boolean);
@@ -2819,12 +3167,10 @@
     }
 
     window.addEventListener('pointermove', (e) => {
-      if (!dragState.source) return;
+      if (!dragState.source || !dragState.tiles.length) return;
       const dx = e.clientX - dragState.startX;
       const dy = e.clientY - dragState.startY;
-      const dist = Math.hypot(dx, dy);
-
-      if (!dragState.active && dist > 8) {
+      if (!dragState.active && Math.hypot(dx, dy) > 8) {
         if (dragState.longPressTimer) {
           clearTimeout(dragState.longPressTimer);
           dragState.longPressTimer = null;
@@ -2839,12 +3185,23 @@
         document.querySelectorAll('.table-meld-group.drop-target-hover').forEach(el => {
           el.classList.remove('drop-target-hover');
         });
+        document.querySelectorAll('.rack-slot.slot-drop-hover').forEach(el => {
+          el.classList.remove('slot-drop-hover');
+        });
         const rackEl = document.querySelector('.wooden-rack');
         if (rackEl) rackEl.classList.remove('rack-return-hover');
 
-        const targetEl = document.elementFromPoint(e.clientX, e.clientY)?.closest('.table-meld-group');
+        const hoveredEl = document.elementFromPoint(e.clientX, e.clientY);
+        const targetEl = hoveredEl?.closest('.table-meld-group');
+        const targetSlotEl = hoveredEl?.closest('.rack-slot');
         if (targetEl) {
           targetEl.classList.add('drop-target-hover');
+        } else if (
+          targetSlotEl &&
+          (dragState.source === 'rack' ||
+            (dragState.source === 'table' && dragState.tiles.length === 1 && isTilePlacedByMeThisTurn(dragState.tiles[0].id)))
+        ) {
+          targetSlotEl.classList.add('slot-drop-hover');
         } else if (
           dragState.source === 'table' &&
           dragState.tiles.length === 1 &&
@@ -2892,11 +3249,12 @@
 
       if (!wasActive) {
         if (wasLongPress) return;
-        if (src === 'rack' && draggedTiles.length === 1) {
-          toggleRackTileSelection(draggedTiles[0].id);
+        if (src === 'rack' && draggedTiles.length >= 1) {
+          const clickedRackTileId = e.target?.closest?.('.rack-tile')?.dataset?.tileId || draggedTiles[0].id;
+          toggleRackTileSelection(clickedRackTileId);
         } else if (src === 'table' && draggedTiles.length >= 1) {
-          const clickedTile = draggedTiles[0];
-          toggleTableTileSelection(srcMeldId, clickedTile.id);
+          const clickedTableTileId = e.target?.closest?.('.table-tile')?.dataset?.tileId || draggedTiles[0].id;
+          toggleTableTileSelection(srcMeldId, clickedTableTileId);
         }
         return;
       }
@@ -2907,6 +3265,14 @@
       const targetMeldEl = dropEl?.closest('.table-meld-group');
 
       if (src === 'rack') {
+        const targetSlotEl = dropEl?.closest('.rack-slot');
+        if (targetSlotEl && e.clientY >= rackTop - 6) {
+          const targetSlotIdx = parseInt(targetSlotEl.dataset.slotIdx, 10);
+          if (Number.isFinite(targetSlotIdx)) {
+            moveRackTilesToSlot(draggedTiles.map(t => t.id), targetSlotIdx);
+          }
+          return;
+        }
         if (!isMyTurn()) {
           showToast('目前不是你的回合，無法出牌', 'warning');
           return;
@@ -2921,11 +3287,6 @@
           } else {
             placeRackTilesAsNewTableMeld(draggedTiles);
           }
-        } else {
-          const targetRackTileEl = dropEl?.closest('.rack-tile');
-          if (targetRackTileEl && draggedTiles.length === 1) {
-            reorderRackTile(draggedTiles[0].id, targetRackTileEl.dataset.tileId);
-          }
         }
       } else if (src === 'table' && draggedTiles.length >= 1) {
         if (draggedTiles.length === 1) {
@@ -2933,7 +3294,9 @@
           if (e.clientY >= rackTop - 10) {
             if (isTilePlacedByMeThisTurn(movedTile.id)) {
               selectedTableTileIds.delete(movedTile.id);
-              returnTableTileToRack(srcMeldId, movedTile.id);
+              const targetSlotEl = dropEl?.closest('.rack-slot');
+              const preferredSlotIdx = targetSlotEl ? parseInt(targetSlotEl.dataset.slotIdx, 10) : null;
+              returnTableTileToRack(srcMeldId, movedTile.id, Number.isFinite(preferredSlotIdx) ? preferredSlotIdx : null);
             } else {
               SoundFX.error();
               showToast('原本就在牌桌上的舊牌不能收回手牌！', 'error');
@@ -3009,6 +3372,48 @@
       }
       renderTableBoard();
       renderTurnControls();
+    }
+
+    function moveRackTilesToSlot(tileIds, targetSlotIdx) {
+      const me = getMyPlayer();
+      if (!me || !Array.isArray(tileIds) || !tileIds.length) return;
+      const slots = syncPlayerRackSlots(me);
+      const totalSlots = slots.length;
+      if (targetSlotIdx < 0 || targetSlotIdx >= totalSlots) return;
+
+      if (tileIds.length === 1) {
+        const draggedId = tileIds[0];
+        const fromIdx = slots.indexOf(draggedId);
+        if (fromIdx === -1 || fromIdx === targetSlotIdx) return;
+
+        const occupantId = slots[targetSlotIdx];
+        slots[targetSlotIdx] = draggedId;
+        slots[fromIdx] = occupantId || null;
+      } else {
+        const movingSet = new Set(tileIds);
+        const stripped = slots.map(id => (id && movingSet.has(id) ? null : id));
+        const displaced = [];
+        for (let i = 0; i < tileIds.length; i++) {
+          const pos = (targetSlotIdx + i) % totalSlots;
+          if (stripped[pos] !== null) displaced.push(stripped[pos]);
+          stripped[pos] = tileIds[i];
+        }
+        for (const dId of displaced) {
+          const emptyPos = stripped.indexOf(null);
+          if (emptyPos !== -1) stripped[emptyPos] = dId;
+        }
+        me.rackSlots = stripped;
+      }
+
+      const tileMap = new Map(me.rack.map(t => [t.id, t]));
+      const orderedRack = [];
+      me.rackSlots.forEach(id => {
+        if (id && tileMap.has(id)) orderedRack.push(tileMap.get(id));
+      });
+      me.rack = orderedRack;
+      rackSortMode = 'none';
+      SoundFX.tileTap();
+      renderPlayerRack();
     }
 
     function mergeMultiTableTilesIntoMeld(movedTiles, targetMeldId, dropX) {
@@ -3279,6 +3684,7 @@
 
       const moveIds = new Set(tiles.map(t => t.id));
       me.rack = me.rack.filter(t => !moveIds.has(t.id));
+      syncPlayerRackSlots(me);
       moveIds.forEach(id => selectedTileIds.delete(id));
 
       const exactMultiSplit = findExactValidMeldPartition(tiles, 2);
@@ -3327,20 +3733,6 @@
       broadcastLiveBoardPreview('已放置手牌至桌面');
     }
 
-    function reorderRackTile(draggedTileId, targetTileId) {
-      const me = getMyPlayer();
-      if (!me || !draggedTileId || !targetTileId || draggedTileId === targetTileId) return;
-      const fromIdx = me.rack.findIndex(t => t.id === draggedTileId);
-      const toIdx = me.rack.findIndex(t => t.id === targetTileId);
-      if (fromIdx === -1 || toIdx === -1) return;
-
-      const [moved] = me.rack.splice(fromIdx, 1);
-      me.rack.splice(toIdx, 0, moved);
-      rackSortMode = 'none';
-      SoundFX.tileTap();
-      renderPlayerRack();
-    }
-
     function mergeRackTilesIntoTableMeld(tiles, targetMeldId, dropX) {
       const me = getMyPlayer();
       const targetMeld = gameState?.tableMelds.find(m => m.id === targetMeldId);
@@ -3354,6 +3746,7 @@
 
       const moveIds = new Set(tiles.map(t => t.id));
       me.rack = me.rack.filter(t => !moveIds.has(t.id));
+      syncPlayerRackSlots(me);
       moveIds.forEach(id => selectedTileIds.delete(id));
 
       const meldEl = document.querySelector(`.table-meld-group[data-meld-id="${targetMeldId}"]`);
@@ -3388,7 +3781,7 @@
       broadcastLiveBoardPreview('已將手牌併入桌面牌組');
     }
 
-    function returnTableTileToRack(meldId, tileId) {
+    function returnTableTileToRack(meldId, tileId, preferredSlotIdx = null) {
       const me = getMyPlayer();
       const meld = gameState?.tableMelds.find(m => m.id === meldId);
       if (!me || !meld) return;
@@ -3403,6 +3796,16 @@
       if (idx === -1) return;
       const [tile] = meld.tiles.splice(idx, 1);
       me.rack.push(tile);
+
+      const slots = syncPlayerRackSlots(me);
+      if (preferredSlotIdx !== null && preferredSlotIdx >= 0 && preferredSlotIdx < slots.length) {
+        const curSlot = slots.indexOf(tile.id);
+        if (curSlot !== -1 && curSlot !== preferredSlotIdx) {
+          const occupant = slots[preferredSlotIdx];
+          slots[preferredSlotIdx] = tile.id;
+          slots[curSlot] = occupant || null;
+        }
+      }
 
       if (meld.tiles.length === 0) {
         gameState.tableMelds = gameState.tableMelds.filter(m => m.id !== meldId);
@@ -3507,7 +3910,7 @@
     }
 
     // =========================================================
-    // 7. UI RENDERING (PLAYERS BAR, SINGLE-PAGE TABLE & 2-ROW RACK)
+    // 6. UI RENDERING (PLAYERS BAR, SINGLE-PAGE TABLE & SLOTTED RACK)
     // =========================================================
     function createTileHtml(tile, extraClass = '', extraAttrs = '') {
       const colorClass = tile.joker ? 'joker-tile tile-orange' : `tile-${tile.color}`;
@@ -3533,64 +3936,81 @@
         const active = idx === gameState.currentTurnIdx;
         const isMe = p.id === deviceProfile.deviceId;
         const bubble = activeChatBubbles[p.id];
-        const rackCount = Array.isArray(p.rack) ? p.rack.length : 0;
-        const displayCount = (remoteOperatorHint && remoteOperatorHint.operatorId === p.id && typeof remoteOperatorHint.operatorRackCount === 'number')
+        const bubbleHtml = bubble
+          ? `<div class="player-chat-bubble">${escapeHtml(bubble.text)}</div>`
+          : '';
+        const liveCount = (remoteOperatorHint && remoteOperatorHint.operatorId === p.id && typeof remoteOperatorHint.operatorRackCount === 'number')
           ? remoteOperatorHint.operatorRackCount
-          : rackCount;
-        const iceLabel = p.hasBrokenIce ? '已破冰' : '未破冰';
-        const iceClass = p.hasBrokenIce
-          ? 'bg-emerald-500/25 text-emerald-300 border-emerald-400/50'
-          : 'bg-sky-500/20 text-sky-200 border-sky-400/40';
+          : (Array.isArray(p.rack) ? p.rack.length : 0);
 
         return `
-          <div class="player-pill px-2.5 py-1.5 rounded-xl border transition-all ${
+          <div class="player-pill px-2.5 py-1.5 rounded-xl border text-xs flex items-center justify-between gap-2 ${
             active
-              ? 'bg-amber-500/25 border-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.28)]'
-              : 'bg-emerald-900/70 border-emerald-800'
+              ? 'bg-amber-500/20 border-amber-400 text-amber-200 shadow-md'
+              : 'bg-emerald-900/75 border-emerald-800 text-emerald-100'
           }">
             <div class="flex items-center gap-1.5 min-w-0">
-              <span class="w-2 h-2 rounded-full shrink-0 ${active ? 'bg-amber-400 animate-ping' : (p.online !== false ? 'bg-emerald-400' : 'bg-rose-500')}"></span>
-              <span class="text-xs font-black truncate ${active ? 'text-amber-300' : 'text-white'}">
-                ${escapeHtml(p.name)}${isMe ? ' (我)' : ''}
-              </span>
+              <span class="w-2 h-2 rounded-full ${active ? 'bg-amber-400 animate-ping' : (p.online === false ? 'bg-rose-500' : 'bg-emerald-400')} shrink-0"></span>
+              <span class="font-black truncate">${escapeHtml(p.name)}${isMe ? ' (我)' : ''}</span>
+              ${p.hasBrokenIce ? '<span class="text-[10px] px-1 rounded bg-emerald-500/25 text-emerald-300 shrink-0">破冰</span>' : ''}
             </div>
-            <div class="flex items-center gap-1.5 shrink-0 text-[10px]">
-              <span class="px-1.5 py-0.5 rounded border font-bold ${iceClass}">${iceLabel}</span>
-              <span class="px-1.5 py-0.5 rounded bg-emerald-950/90 text-amber-200 font-black tabular-nums">${displayCount} 張</span>
+            <div class="flex items-center gap-1.5 shrink-0 font-bold tabular-nums">
+              <span class="px-1.5 py-0.2 rounded bg-emerald-950/90 text-amber-300">${liveCount} 張</span>
             </div>
-            ${bubble ? `<div class="player-chat-bubble">${escapeHtml(bubble.text)}</div>` : ''}
+            ${bubbleHtml}
           </div>
         `;
       }).join('');
     }
 
+    function setTableScaleVariables(scale) {
+      const s = Math.max(0.46, Math.min(1, scale));
+      const root = document.documentElement.style;
+      root.setProperty('--table-tile-w', `${Math.round(34 * s)}px`);
+      root.setProperty('--table-tile-h', `${Math.round(46 * s)}px`);
+      root.setProperty('--table-tile-font', `${Math.max(10, Math.round(16 * s))}px`);
+      root.setProperty('--table-tile-border', `${Math.max(2, Math.round(3 * s))}px`);
+      root.setProperty('--table-dot-size', `${Math.max(3, Math.round(5 * s))}px`);
+      root.setProperty('--table-tile-gap', `${Math.max(1, Math.round(2 * s))}px`);
+      root.setProperty('--table-group-pad-x', `${Math.max(3, Math.round(6 * s))}px`);
+      root.setProperty('--table-group-pad-y', `${Math.max(2, Math.round(4 * s))}px`);
+      root.setProperty('--table-container-gap', `${Math.max(4, Math.round(8 * s))}px`);
+    }
+
     function fitTableMeldsToViewport() {
       const container = document.getElementById('table-melds-container');
-      if (!container || !gameState) return;
+      if (!container || !gameState || gameState.tableMelds.length === 0) {
+        setTableScaleVariables(1);
+        return;
+      }
 
-      const scales = [1, 0.9, 0.82, 0.74, 0.66, 0.58, 0.5];
-      for (const s of scales) {
-        container.style.setProperty('--table-tile-w', `${Math.round(34 * s)}px`);
-        container.style.setProperty('--table-tile-h', `${Math.round(46 * s)}px`);
-        container.style.setProperty('--table-tile-font', `${Math.max(10, Math.round(16 * s))}px`);
-        container.style.setProperty('--table-tile-border', `${Math.max(2, Math.round(3 * s))}px`);
-        container.style.setProperty('--table-dot-size', `${Math.max(3, Math.round(5 * s))}px`);
-        container.style.setProperty('--table-tile-gap', `${Math.max(1, Math.round(2 * s))}px`);
-        container.style.setProperty('--table-group-pad-x', `${Math.max(3, Math.round(6 * s))}px`);
-        container.style.setProperty('--table-group-pad-y', `${Math.max(2, Math.round(4 * s))}px`);
-        container.style.setProperty('--table-container-gap', `${Math.max(4, Math.round(8 * s))}px`);
+      let low = 0.46;
+      let high = 1.0;
+      setTableScaleVariables(1.0);
+      if (container.scrollHeight <= container.clientHeight + 1) {
+        return;
+      }
 
-        if (container.scrollHeight <= container.clientHeight + 2) {
-          break;
+      let best = low;
+      for (let iter = 0; iter < 7; iter++) {
+        const mid = (low + high) / 2;
+        setTableScaleVariables(mid);
+        if (container.scrollHeight <= container.clientHeight + 1) {
+          best = mid;
+          low = mid;
+        } else {
+          high = mid;
         }
       }
+      setTableScaleVariables(best);
     }
 
     function renderTableBoard() {
       const container = document.getElementById('table-melds-container');
       if (!container || !gameState) return;
 
-      if (!gameState.tableMelds.length) {
+      if (gameState.tableMelds.length === 0) {
+        setTableScaleVariables(1);
         container.innerHTML = `
           <div id="table-empty-hint" class="w-full h-full flex flex-col items-center justify-center text-center text-emerald-300/55 text-xs pointer-events-none">
             <span class="text-2xl mb-1">🃏</span>
@@ -3628,99 +4048,64 @@
       const me = getMyPlayer();
       if (!row0 || !row1 || !me) return;
 
-      let groups = [];
-      let ungroupedTiles = [...me.rack];
+      const slots = syncPlayerRackSlots(me);
+      const tileMap = new Map(me.rack.map(t => [t.id, t]));
+
+      const slotHighlightMap = new Map();
       if (rackSortMode === 'run' || rackSortMode === 'set') {
         const extracted = extractSmartMeldsFromRack(me.rack, rackSortMode);
-        groups = extracted.groups.filter(isStrictlyValidMeldGroup);
-        ungroupedTiles = extracted.ungroupedTiles;
+        const validGroups = extracted.groups.filter(isStrictlyValidMeldGroup);
+        validGroups.forEach(g => {
+          const groupIds = g.tiles.map(t => t.id);
+          g.tiles.forEach((t, idx) => {
+            slotHighlightMap.set(t.id, {
+              type: g.type,
+              points: g.points,
+              isFirst: idx === 0,
+              groupIds
+            });
+          });
+        });
       }
 
-      const units = [];
-      groups.forEach(g => {
-        units.push({
-          kind: 'group',
-          group: g,
-          tileCount: g.tiles.length
-        });
-      });
-      ungroupedTiles.forEach(t => {
-        units.push({
-          kind: 'single',
-          tile: t,
-          tileCount: 1
-        });
-      });
+      const perRow = Math.max(14, Math.ceil(slots.length / 2));
+      row0.style.gridTemplateColumns = `repeat(${perRow}, minmax(0, 1fr))`;
+      row1.style.gridTemplateColumns = `repeat(${perRow}, minmax(0, 1fr))`;
 
-      const ledgeWidth = Math.max(260, (row0.clientWidth || window.innerWidth - 24) - 16);
-      const totalTiles = me.rack.length;
-      const tileW = totalTiles > 20 ? 32 : 36;
-      const tileH = totalTiles > 20 ? 44 : 48;
-      const tileFont = totalTiles > 20 ? 15 : 17;
-
-      document.documentElement.style.setProperty('--rack-tile-w', `${tileW}px`);
-      document.documentElement.style.setProperty('--rack-tile-h', `${tileH}px`);
-      document.documentElement.style.setProperty('--rack-tile-font', `${tileFont}px`);
-
-      const maxTilesRow0 = Math.max(6, Math.floor(ledgeWidth / (tileW + 2)));
-
-      const row0Units = [];
-      const row1Units = [];
-      let row0TileCount = 0;
-
-      for (const u of units) {
-        if (row1Units.length === 0 && row0TileCount + u.tileCount <= maxTilesRow0) {
-          row0Units.push(u);
-          row0TileCount += u.tileCount;
-        } else {
-          row1Units.push(u);
-        }
-      }
-
-      function renderUnitsHtml(unitList) {
-        if (!unitList.length) return '';
-        const count = unitList.reduce((acc, u) => acc + u.tileCount, 0);
-        const rawNeed = count * (tileW + 2) + unitList.filter(u => u.kind === 'group').length * 10;
-        const overlap = rawNeed > ledgeWidth && count > 1
-          ? Math.max(-14, Math.floor((ledgeWidth - rawNeed) / (count - 1)))
-          : 0;
-
-        return unitList.map(u => {
-          if (u.kind === 'group' && isStrictlyValidMeldGroup(u.group)) {
-            const g = u.group;
-            const groupIdsJson = escapeHtml(JSON.stringify(g.tiles.map(t => t.id)));
-            const badgeText = `${g.type === 'run' ? '順' : '同'}${g.points}`;
-            const innerTiles = g.tiles.map(t => {
-              const sel = selectedTileIds.has(t.id) ? 'selected' : '';
-              const drawn = newlyDrawnTileIds.has(t.id) ? 'newly-drawn' : '';
-              return createTileHtml(
-                t,
-                `rack-tile ${sel} ${drawn}`,
-                `style="--rack-tile-overlap:${overlap}px" onpointerdown='onRackTilePointerDown(event, "${t.id}", ${groupIdsJson})'`
-              );
-            }).join('');
-
-            return `
-              <div class="rack-meld-group ${g.type === 'run' ? 'meld-run' : 'meld-set'}">
-                <span class="rack-meld-badge">${badgeText}</span>
-                ${innerTiles}
-              </div>
-            `;
-          } else {
-            const t = u.kind === 'single' ? u.tile : u.group.tiles[0];
-            const sel = selectedTileIds.has(t.id) ? 'selected' : '';
-            const drawn = newlyDrawnTileIds.has(t.id) ? 'newly-drawn' : '';
-            return createTileHtml(
-              t,
-              `rack-tile ${sel} ${drawn}`,
-              `style="--rack-tile-overlap:${overlap}px" onpointerdown="onRackTilePointerDown(event, '${t.id}', null)"`
-            );
+      function renderRowSlots(startIdx, endIdx) {
+        let html = '';
+        for (let i = startIdx; i < endIdx; i++) {
+          const tid = slots[i];
+          const tile = tid ? tileMap.get(tid) : null;
+          if (!tile) {
+            html += `<div class="rack-slot" data-slot-idx="${i}"></div>`;
+            continue;
           }
-        }).join('');
+
+          const hl = slotHighlightMap.get(tile.id);
+          const slotClass = hl
+            ? (hl.type === 'run' ? 'rack-slot meld-run-slot' : 'rack-slot meld-set-slot')
+            : 'rack-slot';
+          const badgeHtml = (hl && hl.isFirst)
+            ? `<span class="rack-meld-badge">${hl.type === 'run' ? '順' : '同'}${hl.points}</span>`
+            : '';
+          const groupIdsJson = hl ? escapeHtml(JSON.stringify(hl.groupIds)) : 'null';
+          const sel = selectedTileIds.has(tile.id) ? 'selected' : '';
+          const drawn = newlyDrawnTileIds.has(tile.id) ? 'newly-drawn' : '';
+
+          const tileHtml = createTileHtml(
+            tile,
+            `rack-tile ${sel} ${drawn}`,
+            `onpointerdown='onRackTilePointerDown(event, "${tile.id}", ${groupIdsJson})'`
+          );
+
+          html += `<div class="${slotClass}" data-slot-idx="${i}">${badgeHtml}${tileHtml}</div>`;
+        }
+        return html;
       }
 
-      row0.innerHTML = renderUnitsHtml(row0Units);
-      row1.innerHTML = renderUnitsHtml(row1Units);
+      row0.innerHTML = renderRowSlots(0, perRow);
+      row1.innerHTML = renderRowSlots(perRow, perRow * 2);
     }
 
     function renderTurnControls() {
@@ -3795,7 +4180,7 @@
     }
 
     // =========================================================
-    // 8. INITIALIZATION
+    // 7. INITIALIZATION
     // =========================================================
     function initApp() {
       loadDeviceProfile();
@@ -3846,22 +4231,18 @@
         }
       });
 
-      try {
-        const rawSess = sessionStorage.getItem(SESSION_STORAGE_KEY);
-        if (rawSess && deviceProfile.nickname) {
-          const sess = JSON.parse(rawSess);
-          if (sess && sess.roomCode && sess.deviceId === deviceProfile.deviceId) {
-            enterGameMenuFromLogin();
-            switchLobbyTab('online');
-            if (sess.isHost) {
-              createOnlineRoom(sess.roomCode);
-            } else {
-              joinOnlineRoom(sess.roomCode);
-            }
-            return;
-          }
+      const handlePageUnloadLeave = () => {
+        if (!onlineState.roomCode) return;
+        if (onlineState.isHost) {
+          broadcastToGuests({ type: 'ROOM_CLOSED' });
+        } else if (onlineState.hostConn && onlineState.hostConn.open) {
+          try {
+            onlineState.hostConn.send({ type: 'PLAYER_LEAVE', deviceId: deviceProfile.deviceId });
+          } catch (e) {}
         }
-      } catch (e) {}
+      };
+      window.addEventListener('pagehide', handlePageUnloadLeave);
+      window.addEventListener('beforeunload', handlePageUnloadLeave);
     }
 
     if (document.readyState === 'loading') {
