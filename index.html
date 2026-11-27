@@ -85,6 +85,8 @@
       align-items: center;
       justify-content: center;
       position: relative;
+      font-size: 18px;
+      line-height: 1;
       transition: transform 0.15s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.15s ease, border-color 0.15s ease;
       cursor: pointer;
       flex-shrink: 0;
@@ -106,6 +108,7 @@
         width: 40px;
         height: 54px;
         border-radius: 12px;
+        font-size: 22px;
       }
       .rummi-tile::before {
         bottom: 4px;
@@ -130,57 +133,52 @@
       z-index: 10;
     }
 
-    .rummi-tile.newly-drawn::after {
-      content: "NEW";
-      position: absolute;
-      top: -5px;
-      right: -4px;
-      background: linear-gradient(135deg, #ec4899, #f43f5e);
-      color: #fff;
-      font-size: 7px;
-      font-weight: 800;
-      letter-spacing: 0.03em;
-      padding: 1px 4px;
-      border-radius: 999px;
-      box-shadow: 0 2px 6px rgba(244, 63, 94, 0.55);
+    .rummi-tile.newly-drawn {
+      border: 2px solid #f43f5e;
+      box-shadow:
+        0 0 0 2px rgba(244, 63, 94, 0.65),
+        0 4px 10px rgba(2, 6, 23, 0.45),
+        inset 0 1px 0 #ffffff;
+    }
+
+    .rummi-tile.newly-drawn.selected {
+      transform: translateY(-6px);
+      border-color: #38bdf8;
+      box-shadow:
+        0 0 0 2.5px #38bdf8,
+        0 0 0 4.5px rgba(244, 63, 94, 0.65),
+        0 10px 20px rgba(56, 189, 248, 0.42);
+    }
+
+    #table-melds-container {
+      --tbl-scale: 1;
+      gap: calc(8px * var(--tbl-scale));
     }
 
     .rummi-tile.table-tile {
-      width: 27px;
-      height: 37px;
-      border-radius: 8px;
+      width: calc(34px * var(--tbl-scale));
+      height: calc(46px * var(--tbl-scale));
+      border-radius: calc(9px * var(--tbl-scale));
+      font-size: calc(18px * var(--tbl-scale));
+    }
+
+    .rummi-tile.table-tile::before {
+      bottom: max(1.5px, calc(3px * var(--tbl-scale)));
+      width: max(6px, calc(12px * var(--tbl-scale)));
+      height: max(1.5px, calc(2.5px * var(--tbl-scale)));
     }
 
     @media (min-width: 640px) {
       .rummi-tile.table-tile {
-        width: 33px;
-        height: 45px;
-        border-radius: 9px;
+        width: calc(42px * var(--tbl-scale));
+        height: calc(56px * var(--tbl-scale));
+        border-radius: calc(11px * var(--tbl-scale));
+        font-size: calc(22px * var(--tbl-scale));
       }
-    }
-
-    #table-melds-container.dense-board .rummi-tile.table-tile {
-      width: 23px;
-      height: 32px;
-      border-radius: 7px;
-      font-size: 11px;
-    }
-
-    #table-melds-container.ultra-dense-board .rummi-tile.table-tile {
-      width: 20px;
-      height: 28px;
-      border-radius: 6px;
-      font-size: 10px;
-    }
-
-    @media (min-width: 640px) {
-      #table-melds-container.dense-board .rummi-tile.table-tile {
-        width: 28px;
-        height: 38px;
-      }
-      #table-melds-container.ultra-dense-board .rummi-tile.table-tile {
-        width: 24px;
-        height: 33px;
+      .rummi-tile.table-tile::before {
+        bottom: max(2px, calc(4px * var(--tbl-scale)));
+        width: max(7px, calc(14px * var(--tbl-scale)));
+        height: max(1.5px, calc(3px * var(--tbl-scale)));
       }
     }
 
@@ -236,10 +234,11 @@
       border-radius: 14px;
       padding: 4px;
       display: grid;
-      grid-template-columns: repeat(14, minmax(0, 1fr));
+      grid-template-columns: repeat(var(--cols, 10), minmax(0, 1fr));
       gap: 3px;
       align-items: center;
       min-height: 46px;
+      width: 100%;
     }
 
     @media (min-width: 640px) {
@@ -252,6 +251,7 @@
 
     .rack-slot {
       width: 100%;
+      min-width: 0;
       height: 38px;
       border-radius: 8px;
       border: 1px dashed rgba(148, 163, 184, 0.16);
@@ -280,39 +280,32 @@
 
     .rack-slot .rummi-tile {
       width: 100%;
+      min-width: 0;
       max-width: 38px;
       height: 38px;
+      font-size: clamp(13px, 4.2vw, 19px);
     }
 
     @media (min-width: 640px) {
-      .rack-slot .rummi-tile { height: 48px; }
+      .rack-slot .rummi-tile {
+        height: 48px;
+        font-size: clamp(16px, 2.8vw, 23px);
+      }
     }
 
     .meld-group {
       background: rgba(30, 41, 59, 0.65);
       backdrop-filter: blur(8px);
       border: 1px solid rgba(148, 163, 184, 0.22);
-      border-radius: 12px;
-      padding: 4px 5px;
+      border-radius: calc(13px * var(--tbl-scale, 1));
+      padding: calc(5px * var(--tbl-scale, 1)) calc(6px * var(--tbl-scale, 1));
       display: inline-flex;
       align-items: center;
-      gap: 3px;
+      gap: calc(3.5px * var(--tbl-scale, 1));
       max-width: 100%;
       flex-wrap: wrap;
       box-shadow: 0 4px 12px rgba(2, 6, 23, 0.35);
       transition: border-color 0.15s ease, box-shadow 0.15s ease;
-    }
-
-    #table-melds-container.dense-board .meld-group {
-      padding: 3px 4px;
-      gap: 2px;
-      border-radius: 10px;
-    }
-
-    #table-melds-container.ultra-dense-board .meld-group {
-      padding: 2px 3px;
-      gap: 1.5px;
-      border-radius: 8px;
     }
 
     .meld-group.invalid-meld {
@@ -379,31 +372,31 @@
               <span>RUMMIKUB LIVE · 即時多人數字策略對戰</span>
             </div>
             <h1 class="text-xl sm:text-2xl font-black text-white tracking-tight">線上拉密好友對戰</h1>
-            <p class="text-xs text-slate-400 mt-1">6 碼房號秒速建房，支援全手勢觸碰移牌、單張收回手牌與自動補同步</p>
+            <p class="text-xs text-slate-400 mt-1">6 碼數字房號秒速建房，支援全手勢觸碰移牌、單張收回手牌與自動補同步</p>
           </div>
           <div class="flex gap-1.5 shrink-0 pt-1">
-            <div class="rummi-tile table-tile tile-red font-black text-xs">7</div>
-            <div class="rummi-tile table-tile tile-blue font-black text-xs">8</div>
-            <div class="rummi-tile table-tile tile-orange font-black text-xs">9</div>
+            <div class="rummi-tile table-tile tile-red font-black">7</div>
+            <div class="rummi-tile table-tile tile-blue font-black">8</div>
+            <div class="rummi-tile table-tile tile-orange font-black">9</div>
           </div>
         </div>
 
         <button type="button" id="btn-create-room" onclick="createOnlineRoom()"
           class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-500 hover:from-indigo-500 hover:to-cyan-400 text-white font-black text-sm sm:text-base shadow-lg shadow-indigo-500/25 active:scale-[0.99] transition cursor-pointer">
-          🏠 建立專屬對戰房間（產生 6 碼房號）
+          🏠 建立專屬對戰房間（產生 6 碼數字房號）
         </button>
 
         <div class="relative flex items-center py-0.5">
           <div class="flex-grow border-t border-slate-800"></div>
-          <span class="shrink mx-3 text-[11px] text-slate-400 font-semibold">或輸入好友房號加入對局</span>
+          <span class="shrink mx-3 text-[11px] text-slate-400 font-semibold">或輸入好友 6 位數字房號加入對局</span>
           <div class="flex-grow border-t border-slate-800"></div>
         </div>
 
         <div class="flex flex-wrap gap-2">
-          <input id="join-room-code-input" type="text" maxlength="6" placeholder="輸入 6 碼房號"
-            oninput="this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '')"
+          <input id="join-room-code-input" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="輸入 6 位數字房號"
+            oninput="this.value = this.value.replace(/[^0-9]/g, '')"
             onkeydown="if(event.key === 'Enter') joinOnlineRoom()"
-            class="flex-1 min-w-[140px] uppercase font-mono tracking-widest text-center rounded-2xl bg-slate-800/90 border border-slate-700 px-3 py-2.5 text-base font-black text-cyan-300 placeholder-slate-500 focus:outline-none focus:border-cyan-400 transition" />
+            class="flex-1 min-w-[140px] font-mono tracking-widest text-center rounded-2xl bg-slate-800/90 border border-slate-700 px-3 py-2.5 text-base font-black text-cyan-300 placeholder-slate-500 focus:outline-none focus:border-cyan-400 transition" />
           <button type="button" id="btn-join-room" onclick="joinOnlineRoom()"
             class="px-5 py-2.5 rounded-2xl bg-slate-100 hover:bg-white text-slate-900 font-black text-sm whitespace-nowrap shrink-0 cursor-pointer shadow transition">
             加入房間
@@ -457,9 +450,8 @@
 
           <div class="flex flex-wrap items-center gap-2">
             <select id="online-turn-seconds" class="rounded-xl bg-slate-800 border border-slate-700 px-3 py-2 font-bold text-xs text-white focus:outline-none shrink-0">
-              <option value="30">30s</option>
+              <option value="45">45s</option>
               <option value="60" selected>60s</option>
-              <option value="90">90s</option>
             </select>
             <button type="button" id="btn-host-start-online" onclick="hostStartOnlineGame()"
               class="flex-1 min-w-[180px] py-2.5 px-3 rounded-xl bg-gradient-to-r from-indigo-600 to-cyan-500 hover:from-indigo-500 hover:to-cyan-400 text-white font-black text-xs sm:text-sm shadow-lg shadow-cyan-500/20 whitespace-nowrap cursor-pointer transition">
@@ -505,9 +497,9 @@
         <div id="turn-timer-badge" class="flex-1 min-w-[58px] px-2 py-1 rounded-lg bg-cyan-500/15 border border-cyan-400/40 text-cyan-300 font-mono font-black text-xs text-center tabular-nums whitespace-nowrap">
           ⏱ 60s
         </div>
-        <button type="button" onclick="toggleIngameChat()" class="relative flex-[0.75] min-w-[38px] px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-100 font-bold text-xs text-center whitespace-nowrap cursor-pointer transition" title="聊天與快捷表情">
-          💬
-          <span id="ingame-chat-dot" class="hidden absolute -top-1 -right-1 w-2 h-2 rounded-full bg-rose-500"></span>
+        <button type="button" onclick="toggleIngameChat()" class="relative flex-[0.85] min-w-[44px] px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-100 font-bold text-xs text-center whitespace-nowrap cursor-pointer transition inline-flex items-center justify-center gap-1" title="聊天與快捷表情">
+          <span>💬</span>
+          <span id="ingame-chat-unread-badge" class="hidden px-1.5 py-0.2 rounded-full bg-rose-500 text-white font-black text-[10px] leading-tight tabular-nums shadow">0</span>
         </button>
       </div>
 
@@ -519,8 +511,8 @@
       <div id="last-play-banner" class="text-slate-400 text-right">牌局準備就緒</div>
     </div>
 
-    <div id="table-board-scroll" onclick="onTableBoardTap(event)" ondragover="onTableBoardDragOver(event)" ondrop="onTableBoardDrop(event)" class="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-2 py-2 flex flex-col justify-start relative cursor-pointer">
-      <div id="table-melds-container" class="flex flex-wrap gap-1.5 items-start content-start justify-center w-full my-auto"></div>
+    <div id="table-board-scroll" onclick="onTableBoardTap(event)" ondragover="onTableBoardDragOver(event)" ondrop="onTableBoardDrop(event)" class="flex-1 min-h-0 overflow-hidden px-2 py-1.5 flex flex-col justify-center items-center relative cursor-pointer">
+      <div id="table-melds-container" class="flex flex-wrap items-center content-center justify-center w-full max-h-full"></div>
 
       <div id="table-empty-hint" class="my-auto flex flex-col items-center justify-center text-center text-slate-400/80 text-xs pointer-events-none">
         <div class="w-11 h-11 rounded-2xl bg-slate-800/80 border border-slate-700/70 flex items-center justify-center text-lg font-black text-cyan-400 mb-2 shadow-inner">30+</div>
@@ -617,8 +609,8 @@
           <p class="mt-0.5 text-slate-300">• <strong>順子（Run）</strong>：同色連續數字（1 與 13 不相連）。<br>• <strong>群組（Set）</strong>：同數字不同色（3～4 張）。</p>
         </div>
         <div class="bg-slate-800/80 border border-slate-700/60 p-2.5 rounded-2xl">
-          <strong class="text-cyan-300">3. 自由放牌上桌與自動拆組</strong>
-          <p class="mt-0.5 text-slate-300">首次出牌須滿 <strong>30 分</strong> 破冰。可自由將手牌放入桌面牌組或從長牌組移出中間牌張（系統自動拆成兩組合法牌組），放錯也可隨時單張拖回手牌庫。</p>
+          <strong class="text-cyan-300">3. 自由放牌上桌與智能拆組</strong>
+          <p class="mt-0.5 text-slate-300">首次出牌須滿 <strong>30 分</strong> 破冰。可自由將手牌放入桌面牌組或從桌面牌組移出牌張（若剩餘牌張可組合成合法牌組將自動智能拆分，否則維持在同一組供你繼續調整），放錯也可隨時單張拖回手牌庫。</p>
         </div>
         <div class="bg-slate-800/80 border border-slate-700/60 p-2.5 rounded-2xl">
           <strong class="text-cyan-300">4. 106 張守恆與斷線保護</strong>
@@ -671,6 +663,7 @@
       guestLastSeen: new Map(),
       players: [],
       chatHistory: [],
+      unreadChatCount: 0,
       heartbeatTimer: null,
       reconnectTimer: null,
       reconnectAttempts: 0,
@@ -683,6 +676,35 @@
     };
 
     let audioCtx = null;
+
+    // =========================================================
+    // MOBILE BACK-BUTTON GUARD DURING ACTIVE MATCH
+    // =========================================================
+    let isBackGuardArmed = false;
+
+    function enableInGameBackGuard() {
+      try {
+        if (!isBackGuardArmed) {
+          window.history.pushState({ rummiInGameGuard: true }, '', window.location.href);
+          isBackGuardArmed = true;
+        }
+      } catch (e) {}
+    }
+
+    function disableInGameBackGuard() {
+      isBackGuardArmed = false;
+    }
+
+    window.addEventListener('popstate', () => {
+      if (gameState && !gameState.winnerId) {
+        try {
+          window.history.pushState({ rummiInGameGuard: true }, '', window.location.href);
+        } catch (e) {}
+        showToast('🛡️ 對局進行中已攔截返回鍵，若要退出請點左上角「← 離開」', 'warning');
+      } else {
+        isBackGuardArmed = false;
+      }
+    });
 
     function playTileSound(type = 'tap') {
       if (deviceProfile.muted) return;
@@ -844,9 +866,10 @@
     }
 
     function generateRoomCode() {
-      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
       let code = '';
-      for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+      for (let i = 0; i < 6; i++) {
+        code += Math.floor(Math.random() * 10).toString();
+      }
       return code;
     }
 
@@ -1009,6 +1032,19 @@
       });
     }
 
+    function updateUnreadChatBadge() {
+      const badge = document.getElementById('ingame-chat-unread-badge');
+      if (!badge) return;
+      const count = Math.max(0, Number(onlineState.unreadChatCount) || 0);
+      if (count > 0) {
+        badge.textContent = count > 99 ? '99+' : String(count);
+        badge.classList.remove('hidden');
+      } else {
+        badge.textContent = '0';
+        badge.classList.add('hidden');
+      }
+    }
+
     async function requestScreenWakeLock() {
       try {
         if ('wakeLock' in navigator && !onlineState.wakeLock) {
@@ -1021,6 +1057,7 @@
     }
 
     function cleanupOnlineSession() {
+      disableInGameBackGuard();
       if (onlineState.heartbeatTimer) {
         clearInterval(onlineState.heartbeatTimer);
         onlineState.heartbeatTimer = null;
@@ -1049,10 +1086,12 @@
       onlineState.transportMode = 'auto';
       onlineState.players = [];
       onlineState.chatHistory = [];
+      onlineState.unreadChatCount = 0;
       onlineState.pingMs = null;
       onlineState.reconnectAttempts = 0;
       onlineState.isConnecting = false;
       onlineState.hasActiveMatch = false;
+      updateUnreadChatBadge();
       updateNetworkPingBadges(null, 'ok');
     }
 
@@ -1137,8 +1176,8 @@
         connected: true
       }];
       const modeTip = isSandboxMode
-        ? `房間 ${code} 已建立！同瀏覽器開新分頁輸入房號即可直連，或直接勾選陪打人員開局。`
-        : `房間 ${code} 已建立，分享 6 碼房號給好友即可直連開戰！`;
+        ? `房間 ${code} 已建立！同瀏覽器開新分頁輸入 6 位數字房號即可直連，或直接勾選陪打人員開局。`
+        : `房間 ${code} 已建立，分享 6 位數字房號給好友即可直連開戰！`;
       onlineState.chatHistory = [{
         sender: '系統',
         text: modeTip,
@@ -1352,6 +1391,11 @@
 
       if (msg.type === 'CHAT') {
         appendChatHistory(msg.sender || '玩家', msg.text || '', false);
+        const chatPanel = document.getElementById('ingame-chat-panel');
+        if (gameState && gameState.mode === 'online' && chatPanel && chatPanel.classList.contains('hidden')) {
+          onlineState.unreadChatCount = (Number(onlineState.unreadChatCount) || 0) + 1;
+          updateUnreadChatBadge();
+        }
         broadcastRoomState();
         renderWaitingRoom();
         renderIngameChat();
@@ -1410,8 +1454,21 @@
         const codeEl = document.getElementById('waiting-room-code');
         if (codeEl) codeEl.textContent = code;
 
+        const incomingChat = Array.isArray(msg.chatHistory) ? msg.chatHistory : [];
+        const prevLastTs = onlineState.chatHistory.length > 0
+          ? (onlineState.chatHistory[onlineState.chatHistory.length - 1].ts || 0)
+          : 0;
+        const newlyAdded = incomingChat.filter(c => !c.isSystem && (c.ts || 0) > prevLastTs && c.sender !== deviceProfile.nickname);
+
         onlineState.players = Array.isArray(msg.players) ? msg.players : [];
-        onlineState.chatHistory = Array.isArray(msg.chatHistory) ? msg.chatHistory : [];
+        onlineState.chatHistory = incomingChat;
+
+        const chatPanel = document.getElementById('ingame-chat-panel');
+        if (gameState && gameState.mode === 'online' && newlyAdded.length > 0 && chatPanel && chatPanel.classList.contains('hidden')) {
+          onlineState.unreadChatCount = (Number(onlineState.unreadChatCount) || 0) + newlyAdded.length;
+          updateUnreadChatBadge();
+        }
+
         renderWaitingRoom();
         renderIngameChat();
         return;
@@ -1457,6 +1514,9 @@
             deviceProfile.chips -= 100;
             saveProfile();
           }
+          onlineState.unreadChatCount = 0;
+          updateUnreadChatBadge();
+          enableInGameBackGuard();
           switchView('game');
           const badge = document.getElementById('game-room-badge');
           if (badge) badge.textContent = `房號 ${code}`;
@@ -1479,9 +1539,9 @@
 
     function joinOnlineRoom(overrideCode = '', isAutoRetry = false) {
       const input = document.getElementById('join-room-code-input');
-      const code = (overrideCode || (input ? input.value : '')).trim().toUpperCase();
+      const code = (overrideCode || (input ? input.value : '')).trim().replace(/[^0-9]/g, '');
       if (code.length !== 6) {
-        showToast('請輸入 6 碼房號', 'warning');
+        showToast('請輸入 6 位數字房號', 'warning');
         return;
       }
       if (onlineState.isConnecting) return;
@@ -1858,7 +1918,8 @@
       if (!panel) return;
       panel.classList.toggle('hidden');
       if (!panel.classList.contains('hidden')) {
-        document.getElementById('ingame-chat-dot')?.classList.add('hidden');
+        onlineState.unreadChatCount = 0;
+        updateUnreadChatBadge();
         renderIngameChat();
       }
     }
@@ -1941,13 +2002,39 @@
     // 3. RUMMIKUB CORE ENGINE & 106-CARD CONSERVATION GUARD
     // =========================================================
     let gameState = null;
-    let rackSlots = new Array(28).fill(null);
+    let rackSlots = new Array(20).fill(null);
     let selectedRackTileIds = new Set();
     let selectedTableTileIds = new Set();
     let turnSnapshot = null;
     let gameLoopTimer = null;
     let botActionTimer = null;
     let masterDeckCatalog = new Map();
+
+    function getTargetRackSlotCount(tileCount) {
+      const baseCount = Math.max(20, Number(tileCount) || 0);
+      return baseCount % 2 === 0 ? baseCount : baseCount + 1;
+    }
+
+    function ensureRackSlotsCapacity(minCount = 20) {
+      const targetLen = getTargetRackSlotCount(minCount);
+      if (rackSlots.length < targetLen) {
+        while (rackSlots.length < targetLen) rackSlots.push(null);
+      } else if (rackSlots.length > targetLen) {
+        const tiles = rackSlots.filter(t => t !== null);
+        const next = new Array(targetLen).fill(null);
+        for (let i = 0; i < rackSlots.length && i < targetLen; i++) {
+          if (rackSlots[i] !== null) next[i] = rackSlots[i];
+        }
+        const placedIds = new Set(next.filter(Boolean).map(t => t.id));
+        for (const t of tiles) {
+          if (!placedIds.has(t.id)) {
+            const idx = next.findIndex(s => s === null);
+            if (idx !== -1) next[idx] = t;
+          }
+        }
+        rackSlots = next;
+      }
+    }
 
     function createFullDeck106() {
       const deck = [];
@@ -2274,7 +2361,7 @@
                 break;
               }
             }
-            if (ok && candidate.length >= 3) {
+            if (ok && candidate.length >= 3 && candidate.some(t => !t.isJoker)) {
               const rem = pool.filter(t => !candidate.some(c => c.id === t.id));
               if (rem.length === 0 || (rem.length >= 3 && partitionTilesIntoValidMelds(rem))) {
                 return candidate;
@@ -2295,7 +2382,7 @@
           }
         }
         for (const targetLen of [3, 4]) {
-          if (byColor.length + jokers.length >= targetLen) {
+          if (byColor.length + jokers.length >= targetLen && byColor.length >= 1) {
             const candidate = [...byColor.slice(0, targetLen)];
             let jIdx = 0;
             while (candidate.length < targetLen && jIdx < jokers.length) {
@@ -2313,10 +2400,223 @@
       return null;
     }
 
-    function findAllValidMeldsInRack(rack, persona = 'balanced_pro') {
-      const pool = [...(rack || [])];
-      const melds = [];
+    // =========================================================
+    // ENHANCED JOKER-AWARE MELD ENUMERATION & MULTI-STRATEGY SOLVER
+    // =========================================================
+    function enumerateCandidateMelds(tiles) {
+      const candidates = [];
+      const seenKeys = new Set();
+      const jokers = tiles.filter(t => t.isJoker);
+      const nonJokers = tiles.filter(t => !t.isJoker);
 
+      const addCandidate = (meldTiles, jokerSlots = 0) => {
+        if (!Array.isArray(meldTiles) || meldTiles.length < 3) return;
+        const nonJ = meldTiles.filter(t => !t.isJoker);
+        if (nonJ.length === 0) return;
+        const key = meldTiles.map(t => t.id).sort().join('|');
+        if (seenKeys.has(key)) return;
+        seenKeys.add(key);
+        const ordered = sortMeldTilesForDisplay(meldTiles);
+        candidates.push({
+          tiles: ordered,
+          ids: ordered.map(t => t.id),
+          points: calculateMeldPoints(ordered),
+          size: ordered.length,
+          jokerUsed: ordered.filter(t => t.isJoker).length,
+          jokerSlots
+        });
+      };
+
+      for (const color of COLORS) {
+        const cTiles = nonJokers.filter(t => t.color === color).sort((a, b) => a.number - b.number);
+        if (cTiles.length === 0) continue;
+
+        const byNum = new Map();
+        for (const t of cTiles) {
+          if (!byNum.has(t.number)) byNum.set(t.number, t);
+        }
+
+        for (let start = 1; start <= 11; start++) {
+          for (let len = 3; len <= Math.min(13, 14 - start); len++) {
+            const picked = [];
+            let jUsed = 0;
+            let realCount = 0;
+            let possible = true;
+            for (let n = start; n < start + len; n++) {
+              const realTile = byNum.get(n);
+              if (realTile) {
+                picked.push(realTile);
+                realCount++;
+              } else if (jUsed < jokers.length) {
+                picked.push(jokers[jUsed++]);
+              } else {
+                possible = false;
+                break;
+              }
+            }
+            if (possible && realCount >= 1 && picked.length === len) {
+              addCandidate(picked, jUsed);
+            }
+          }
+        }
+      }
+
+      for (let num = 1; num <= 13; num++) {
+        const nTiles = nonJokers.filter(t => t.number === num);
+        if (nTiles.length === 0) continue;
+
+        const distinctByColor = [];
+        const usedColors = new Set();
+        for (const t of nTiles) {
+          if (!usedColors.has(t.color)) {
+            usedColors.add(t.color);
+            distinctByColor.push(t);
+          }
+        }
+
+        for (let targetLen = 3; targetLen <= 4; targetLen++) {
+          if (distinctByColor.length + jokers.length < targetLen) continue;
+          const minReal = Math.max(1, targetLen - jokers.length);
+          const maxReal = Math.min(distinctByColor.length, targetLen);
+
+          for (let rCount = minReal; rCount <= maxReal; rCount++) {
+            const needJokers = targetLen - rCount;
+            if (needJokers > jokers.length) continue;
+
+            if (rCount === distinctByColor.length) {
+              addCandidate([...distinctByColor, ...jokers.slice(0, needJokers)], needJokers);
+            } else if (rCount === 3 && distinctByColor.length === 4) {
+              for (let skip = 0; skip < 4; skip++) {
+                const sub = distinctByColor.filter((_, idx) => idx !== skip);
+                addCandidate([...sub, ...jokers.slice(0, needJokers)], needJokers);
+              }
+            } else if (rCount === 2 && distinctByColor.length >= 3) {
+              for (let i = 0; i < distinctByColor.length; i++) {
+                for (let j = i + 1; j < distinctByColor.length; j++) {
+                  addCandidate([distinctByColor[i], distinctByColor[j], ...jokers.slice(0, needJokers)], needJokers);
+                }
+              }
+            } else if (rCount === 1) {
+              for (let i = 0; i < distinctByColor.length; i++) {
+                addCandidate([distinctByColor[i], ...jokers.slice(0, needJokers)], needJokers);
+              }
+            }
+          }
+        }
+      }
+
+      return candidates;
+    }
+
+    function solveMaxTilePlayCombination(tiles, requiredIds = new Set(), persona = 'balanced_pro', minRequiredPoints = 0) {
+      if (!Array.isArray(tiles) || tiles.length < 3) return null;
+      const baseCandidates = enumerateCandidateMelds(tiles);
+      if (baseCandidates.length === 0) return null;
+
+      const tileById = new Map(tiles.map(t => [t.id, t]));
+      const reqArray = Array.from(requiredIds);
+
+      const strategies = [
+        (a, b) => {
+          const reqA = a.ids.filter(id => requiredIds.has(id)).length;
+          const reqB = b.ids.filter(id => requiredIds.has(id)).length;
+          if (reqB !== reqA) return reqB - reqA;
+          if (persona === 'set_master') {
+            const isSetA = a.size <= 4 && new Set(a.tiles.filter(t => !t.isJoker).map(t => t.number)).size === 1 ? 1 : 0;
+            const isSetB = b.size <= 4 && new Set(b.tiles.filter(t => !t.isJoker).map(t => t.number)).size === 1 ? 1 : 0;
+            if (isSetB !== isSetA) return isSetB - isSetA;
+          }
+          if (b.size !== a.size) return b.size - a.size;
+          return b.points - a.points;
+        },
+        (a, b) => {
+          if (b.points !== a.points) return b.points - a.points;
+          return b.size - a.size;
+        },
+        (a, b) => {
+          if (a.size !== b.size) return a.size - b.size;
+          return b.points - a.points;
+        }
+      ];
+
+      let bestSolution = null;
+      let bestScore = -1;
+
+      for (const sortFn of strategies) {
+        const candidates = [...baseCandidates].sort(sortFn).slice(0, 120);
+        const usedIds = new Set();
+        const chosen = [];
+        let steps = 0;
+        const maxSteps = 2200;
+
+        const evaluateCurrent = (curChosen, curUsed, curPoints) => {
+          for (const rid of reqArray) {
+            if (!curUsed.has(rid)) return;
+          }
+          if (minRequiredPoints > 0 && curPoints < minRequiredPoints) return;
+
+          const newTilesPlayed = curUsed.size - reqArray.length;
+          if (requiredIds.size === 0 && newTilesPlayed < 3) return;
+          if (requiredIds.size > 0 && newTilesPlayed <= 0) return;
+
+          const score = newTilesPlayed * 10000 + curChosen.length * 180 + curPoints;
+          if (score > bestScore) {
+            bestScore = score;
+            bestSolution = {
+              melds: curChosen.map(c => c.tiles),
+              usedIds: new Set(curUsed),
+              newTilesPlayed,
+              totalPoints: curPoints
+            };
+          }
+        };
+
+        const backtrack = (startIdx, curPoints) => {
+          steps++;
+          if (steps > maxSteps) return;
+          evaluateCurrent(chosen, usedIds, curPoints);
+
+          for (let i = startIdx; i < candidates.length; i++) {
+            const cand = candidates[i];
+            let conflict = false;
+            for (const id of cand.ids) {
+              if (usedIds.has(id)) {
+                conflict = true;
+                break;
+              }
+            }
+            if (conflict) continue;
+
+            for (const id of cand.ids) usedIds.add(id);
+            chosen.push(cand);
+
+            backtrack(i + 1, curPoints + cand.points);
+
+            chosen.pop();
+            for (const id of cand.ids) usedIds.delete(id);
+          }
+        };
+
+        backtrack(0, 0);
+      }
+
+      if (bestSolution && requiredIds.size > 0) {
+        const unusedReq = reqArray.filter(id => !bestSolution.usedIds.has(id)).map(id => tileById.get(id)).filter(Boolean);
+        if (unusedReq.length > 0) return null;
+      }
+
+      return bestSolution;
+    }
+
+    function findAllValidMeldsInRack(rack, persona = 'balanced_pro', minPoints = 0) {
+      if (!Array.isArray(rack) || rack.length < 3) return [];
+      const solved = solveMaxTilePlayCombination(rack, new Set(), persona, minPoints);
+      if (solved && solved.melds && solved.melds.length > 0) {
+        return solved.melds;
+      }
+
+      const pool = [...rack];
+      const melds = [];
       const extractRuns = () => {
         for (const color of COLORS) {
           let changed = true;
@@ -2336,15 +2636,10 @@
               for (let i = 0; i < unique.length; i++) {
                 const run = [unique[i]];
                 for (let j = i + 1; j < unique.length; j++) {
-                  if (unique[j].number === run[run.length - 1].number + 1) {
-                    run.push(unique[j]);
-                  } else {
-                    break;
-                  }
+                  if (unique[j].number === run[run.length - 1].number + 1) run.push(unique[j]);
+                  else break;
                 }
-                if (run.length >= 3 && (!bestRun || run.length > bestRun.length)) {
-                  bestRun = run;
-                }
+                if (run.length >= 3 && (!bestRun || run.length > bestRun.length)) bestRun = run;
               }
               if (bestRun) {
                 melds.push(bestRun);
@@ -2397,12 +2692,164 @@
       const jokers = pool.filter(t => t.isJoker);
       if (jokers.length > 0 && pool.length >= 3) {
         const subset = findSingleValidSubset(pool);
-        if (subset) {
-          melds.push(sortMeldTilesForDisplay(subset));
+        if (subset) melds.push(sortMeldTilesForDisplay(subset));
+      }
+      return melds;
+    }
+
+    function extractFreeJokersFromTableMelds(tableMelds, handTiles) {
+      const clonedMelds = JSON.parse(JSON.stringify(tableMelds || []));
+      const hand = [...(handTiles || [])];
+      let swappedCount = 0;
+
+      let passSwapped = true;
+      while (passSwapped) {
+        passSwapped = false;
+        for (const meld of clonedMelds) {
+          const tiles = meld.tiles || [];
+          const jokerIdx = tiles.findIndex(t => t.isJoker);
+          if (jokerIdx === -1) continue;
+
+          const nonJokers = tiles.filter(t => !t.isJoker);
+          if (nonJokers.length === 0) continue;
+
+          if (tiles.length >= 4) {
+            const withoutJoker = tiles.filter((_, idx) => idx !== jokerIdx);
+            if (isValidMeld(withoutJoker)) {
+              const freedJoker = tiles[jokerIdx];
+              meld.tiles = sortMeldTilesForDisplay(withoutJoker);
+              meld.isNewThisTurn = true;
+              hand.push(freedJoker);
+              swappedCount++;
+              passSwapped = true;
+              break;
+            }
+          }
+
+          const sameNum = nonJokers.every(t => t.number === nonJokers[0].number);
+          if (sameNum && tiles.length <= 4) {
+            const targetNum = nonJokers[0].number;
+            const existingColors = new Set(nonJokers.map(t => t.color));
+            const matchIdx = hand.findIndex(t => !t.isJoker && t.number === targetNum && !existingColors.has(t.color));
+            if (matchIdx !== -1) {
+              const replacement = hand.splice(matchIdx, 1)[0];
+              const freedJoker = tiles[jokerIdx];
+              tiles[jokerIdx] = replacement;
+              meld.tiles = sortMeldTilesForDisplay(tiles);
+              meld.isNewThisTurn = true;
+              hand.push(freedJoker);
+              swappedCount++;
+              passSwapped = true;
+              break;
+            }
+          }
+
+          const sameColor = nonJokers.every(t => t.color === nonJokers[0].color);
+          if (sameColor && tiles.length >= 3) {
+            const targetColor = nonJokers[0].color;
+            for (let hIdx = 0; hIdx < hand.length; hIdx++) {
+              const cand = hand[hIdx];
+              if (cand.isJoker || cand.color !== targetColor) continue;
+              const testTiles = [...tiles];
+              testTiles[jokerIdx] = cand;
+              if (isValidMeld(testTiles)) {
+                hand.splice(hIdx, 1);
+                const freedJoker = tiles[jokerIdx];
+                meld.tiles = sortMeldTilesForDisplay(testTiles);
+                meld.isNewThisTurn = true;
+                hand.push(freedJoker);
+                swappedCount++;
+                passSwapped = true;
+                break;
+              }
+            }
+            if (passSwapped) break;
+          }
         }
       }
 
-      return melds;
+      return { melds: clonedMelds, hand, swappedCount };
+    }
+
+    function planBestAiBoardReorganization(botRack, tableMelds, persona = 'balanced_pro') {
+      const existingTableTiles = (tableMelds || []).flatMap(m => m.tiles || []);
+      const { melds: jokerSwappedMelds, hand: handAfterJokerSwap, swappedCount } = extractFreeJokersFromTableMelds(tableMelds, botRack);
+
+      const combinedTiles = [...existingTableTiles, ...botRack];
+      const requiredTableIds = new Set(existingTableTiles.map(t => t.id));
+      const fullBoardPlan = solveMaxTilePlayCombination(combinedTiles, requiredTableIds, persona, 0);
+
+      let bestTableMelds = null;
+      let bestRemainingRack = null;
+      let bestPlayedCount = 0;
+      let bestMeldCount = 0;
+
+      if (fullBoardPlan && fullBoardPlan.newTilesPlayed > 0) {
+        const usedIds = fullBoardPlan.usedIds;
+        if (existingTableTiles.every(t => usedIds.has(t.id))) {
+          const nextMelds = fullBoardPlan.melds.map(mTiles => ({
+            id: `M_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`,
+            tiles: sortMeldTilesForDisplay(mTiles),
+            isNewThisTurn: true
+          }));
+          const remRack = botRack.filter(t => !usedIds.has(t.id));
+          bestTableMelds = nextMelds;
+          bestRemainingRack = remRack;
+          bestPlayedCount = fullBoardPlan.newTilesPlayed;
+          bestMeldCount = nextMelds.length;
+        }
+      }
+
+      const workingMelds = JSON.parse(JSON.stringify(jokerSwappedMelds));
+      let workingHand = [...handAfterJokerSwap];
+      const handPlan = solveMaxTilePlayCombination(workingHand, new Set(), persona, 0);
+
+      if (handPlan && handPlan.melds.length > 0) {
+        const usedHandIds = handPlan.usedIds;
+        workingHand = workingHand.filter(t => !usedHandIds.has(t.id));
+        handPlan.melds.forEach(mTiles => {
+          workingMelds.push({
+            id: `M_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`,
+            tiles: sortMeldTilesForDisplay(mTiles),
+            isNewThisTurn: true
+          });
+        });
+      }
+
+      let attached = true;
+      while (attached && workingHand.length > 0) {
+        attached = false;
+        for (let i = 0; i < workingHand.length; i++) {
+          const tile = workingHand[i];
+          const target = workingMelds.find(m => isValidMeld([...m.tiles, tile]));
+          if (target) {
+            workingHand.splice(i, 1);
+            target.tiles = sortMeldTilesForDisplay([...target.tiles, tile]);
+            target.isNewThisTurn = true;
+            attached = true;
+            break;
+          }
+        }
+      }
+
+      const heuristicPlayedCount = botRack.length - workingHand.length;
+      if (heuristicPlayedCount > bestPlayedCount || (heuristicPlayedCount === bestPlayedCount && workingMelds.length > bestMeldCount)) {
+        bestTableMelds = workingMelds;
+        bestRemainingRack = workingHand;
+        bestPlayedCount = heuristicPlayedCount;
+        bestMeldCount = workingMelds.length;
+      }
+
+      if (bestPlayedCount > 0 && bestTableMelds && bestTableMelds.every(m => isValidMeld(m.tiles))) {
+        return {
+          tableMelds: bestTableMelds,
+          remainingRack: bestRemainingRack,
+          playedCount: bestPlayedCount,
+          meldCount: bestMeldCount,
+          usedJokerSwap: swappedCount > 0
+        };
+      }
+      return null;
     }
 
     // =========================================================
@@ -2472,10 +2919,11 @@
       if (!me) return;
       const myTiles = me.rack || [];
       const myMap = new Map(myTiles.map(t => [t.id, t]));
-      const nextSlots = new Array(28).fill(null);
+      const targetSlotCount = getTargetRackSlotCount(myTiles.length);
+      const nextSlots = new Array(targetSlotCount).fill(null);
       const placedIds = new Set();
 
-      for (let i = 0; i < 28; i++) {
+      for (let i = 0; i < rackSlots.length && i < targetSlotCount; i++) {
         const existing = rackSlots[i];
         if (existing && myMap.has(existing.id)) {
           nextSlots[i] = myMap.get(existing.id);
@@ -2499,6 +2947,7 @@
       const me = getMyPlayer();
       if (!me) return;
       me.rack = rackSlots.filter(t => t !== null);
+      ensureRackSlotsCapacity(me.rack.length);
     }
 
     function syncOnlineGameState() {
@@ -2562,12 +3011,15 @@
       };
 
       onlineState.hasActiveMatch = true;
-      rackSlots = new Array(28).fill(null);
+      onlineState.unreadChatCount = 0;
+      updateUnreadChatBadge();
+      rackSlots = new Array(20).fill(null);
       selectedRackTileIds.clear();
       selectedTableTileIds.clear();
       syncMyRackSlotsFromGameState();
       turnSnapshot = createTurnSnapshot();
 
+      enableInGameBackGuard();
       switchView('game');
       const badge = document.getElementById('game-room-badge');
       if (badge) badge.textContent = `房號 ${onlineState.roomCode}`;
@@ -2624,10 +3076,11 @@
       if (!cur || cur.id !== bot.id) return;
 
       const prevCount = bot.rack.length;
-      const candidateMelds = findAllValidMeldsInRack(bot.rack, bot.persona || 'balanced_pro');
+      const persona = bot.persona || 'balanced_pro';
       let playedAny = false;
 
       if (!bot.hasIcebroken) {
+        const candidateMelds = findAllValidMeldsInRack(bot.rack, persona, 30);
         const totalPts = candidateMelds.reduce((s, m) => s + calculateMeldPoints(m), 0);
         if (totalPts >= 30 && candidateMelds.length > 0) {
           bot.hasIcebroken = true;
@@ -2641,37 +3094,18 @@
             });
           });
           playedAny = true;
-          gameState.lastPlaySummary = `🔥 ${bot.name} 以 ${totalPts} 分破冰出牌！`;
+          gameState.lastPlaySummary = `🔥 ${bot.name} 以 ${totalPts} 分（${candidateMelds.length} 組）破冰出牌！`;
           bot.lastActionText = `${prevCount}→${bot.rack.length}張 · 🔥破冰`;
         }
       } else {
-        if (candidateMelds.length > 0) {
-          const usedIds = new Set(candidateMelds.flat().map(t => t.id));
-          bot.rack = bot.rack.filter(t => !usedIds.has(t.id));
-          candidateMelds.forEach(m => {
-            gameState.tableMelds.push({
-              id: `M_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`,
-              tiles: sortMeldTilesForDisplay(m),
-              isNewThisTurn: true
-            });
-          });
+        const reorgPlan = planBestAiBoardReorganization(bot.rack, gameState.tableMelds, persona);
+        if (reorgPlan && reorgPlan.playedCount > 0) {
+          gameState.tableMelds = reorgPlan.tableMelds;
+          bot.rack = reorgPlan.remainingRack;
           playedAny = true;
-          gameState.lastPlaySummary = `${bot.name} 打出 ${candidateMelds.length} 組牌`;
-          bot.lastActionText = `${prevCount}→${bot.rack.length}張 · 出牌`;
-        } else {
-          for (let i = 0; i < bot.rack.length; i++) {
-            const t = bot.rack[i];
-            const targetMeld = gameState.tableMelds.find(m => isValidMeld([...m.tiles, t]));
-            if (targetMeld) {
-              bot.rack.splice(i, 1);
-              targetMeld.tiles = sortMeldTilesForDisplay([...targetMeld.tiles, t]);
-              targetMeld.isNewThisTurn = true;
-              playedAny = true;
-              gameState.lastPlaySummary = `${bot.name} 貼出 1 張牌`;
-              bot.lastActionText = `${prevCount}→${bot.rack.length}張 · 貼牌`;
-              break;
-            }
-          }
+          const jokerTag = reorgPlan.usedJokerSwap ? '（含百搭抽換）' : '';
+          gameState.lastPlaySummary = `${bot.name} 重組牌面打出 ${reorgPlan.playedCount} 張牌${jokerTag}`;
+          bot.lastActionText = `${prevCount}→${bot.rack.length}張 · 出${reorgPlan.playedCount}張`;
         }
       }
 
@@ -2924,6 +3358,7 @@
       if (gameLoopTimer) { clearInterval(gameLoopTimer); gameLoopTimer = null; }
       if (botActionTimer) { clearTimeout(botActionTimer); botActionTimer = null; }
       onlineState.hasActiveMatch = false;
+      disableInGameBackGuard();
 
       const scored = gameState.players.map(p => {
         const penalty = p.id === gameState.winnerId
@@ -2977,8 +3412,11 @@
     function returnToLobbyAfterGame() {
       document.getElementById('gameover-modal')?.classList.add('hidden');
       gameState = null;
+      disableInGameBackGuard();
       selectedRackTileIds.clear();
       selectedTableTileIds.clear();
+      onlineState.unreadChatCount = 0;
+      updateUnreadChatBadge();
       switchView('lobby');
       if (onlineState.roomCode) {
         document.getElementById('online-entry-card')?.classList.add('hidden');
@@ -2992,11 +3430,12 @@
       if (gameLoopTimer) { clearInterval(gameLoopTimer); gameLoopTimer = null; }
       if (botActionTimer) { clearTimeout(botActionTimer); botActionTimer = null; }
       gameState = null;
+      disableInGameBackGuard();
       leaveOnlineRoom();
     }
 
     // =========================================================
-    // 5. FREE BOARD MANIPULATION, MERGE & AUTO-SPLIT ENGINE
+    // 5. FREE BOARD MANIPULATION, MERGE & SMART-SPLIT ENGINE
     // =========================================================
     function placeRackTilesOntoTable(tileIds, targetMeldId = null) {
       if (!isMyTurn() || !gameState) {
@@ -3005,7 +3444,7 @@
       }
       const idSet = new Set(tileIds);
       const tilesToMove = [];
-      for (let i = 0; i < 28; i++) {
+      for (let i = 0; i < rackSlots.length; i++) {
         if (rackSlots[i] && idSet.has(rackSlots[i].id)) {
           tilesToMove.push(rackSlots[i]);
           rackSlots[i] = null;
@@ -3086,36 +3525,23 @@
 
     function splitRemainingMeldAfterRemoval(tiles, removedIdSet) {
       if (!Array.isArray(tiles) || tiles.length === 0) return [];
-      const segments = [];
-      let current = [];
-      for (const t of tiles) {
-        if (removedIdSet.has(t.id)) {
-          if (current.length > 0) {
-            segments.push(current);
-            current = [];
-          }
-        } else {
-          current.push(t);
-        }
-      }
-      if (current.length > 0) segments.push(current);
+      const remaining = tiles.filter(t => !removedIdSet.has(t.id));
+      if (remaining.length === 0) return [];
 
-      if (segments.length >= 2) {
-        return segments.map(seg => (isValidMeld(seg) ? sortMeldTilesForDisplay(seg) : seg));
+      // 若剩餘牌張可完整組合成一組或多組合法牌組，由系統智能拆分並整理
+      const partitioned = partitionTilesIntoValidMelds(remaining);
+      if (partitioned && partitioned.length > 0) {
+        return partitioned;
       }
-      if (segments.length === 1) {
-        const only = segments[0];
-        const partitioned = partitionTilesIntoValidMelds(only);
-        if (partitioned && partitioned.length >= 2) return partitioned;
-        return [isValidMeld(only) ? sortMeldTilesForDisplay(only) : only];
-      }
-      return [];
+
+      // 若暫時無法組成合法牌組，則維持在同一組內供玩家繼續自由調整
+      return [remaining];
     }
 
     function removeTableTilesAndAutoSplit(removedIdSet) {
       if (!gameState) return;
       const nextMelds = [];
-      let splitHappened = false;
+      let smartSplitCount = 0;
 
       for (const meld of (gameState.tableMelds || [])) {
         const hasRemoved = (meld.tiles || []).some(t => removedIdSet.has(t.id));
@@ -3123,14 +3549,14 @@
           nextMelds.push(meld);
           continue;
         }
-        const splitPieces = splitRemainingMeldAfterRemoval(meld.tiles, removedIdSet);
-        if (splitPieces.length >= 2) {
-          splitHappened = true;
+        const remainingPieces = splitRemainingMeldAfterRemoval(meld.tiles, removedIdSet);
+        if (remainingPieces.length >= 2) {
+          smartSplitCount = remainingPieces.length;
         }
-        splitPieces.forEach(pieceTiles => {
+        remainingPieces.forEach((pieceTiles, idx) => {
           if (pieceTiles.length > 0) {
             nextMelds.push({
-              id: `M_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`,
+              id: idx === 0 && meld.id ? meld.id : `M_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`,
               tiles: pieceTiles,
               isNewThisTurn: true
             });
@@ -3138,8 +3564,8 @@
         });
       }
       gameState.tableMelds = nextMelds;
-      if (splitHappened) {
-        showToast('✨ 牌組已自動調整為多組獨立牌組！', 'info');
+      if (smartSplitCount >= 2) {
+        showToast(`✨ 剩餘牌張已智能拆分為 ${smartSplitCount} 組合法牌組！`, 'success');
       }
     }
 
@@ -3165,8 +3591,11 @@
       reclaimableIds.forEach(id => ownedSet.delete(id));
       gameState.turnOwnedTableTileIds = Array.from(ownedSet);
 
+      const currentCount = rackSlots.filter(t => t !== null).length;
+      ensureRackSlotsCapacity(currentCount + reclaimedTiles.length);
+
       reclaimedTiles.forEach((tile, idx) => {
-        if (idx === 0 && preferredSlotIdx >= 0 && preferredSlotIdx < 28 && rackSlots[preferredSlotIdx] === null) {
+        if (idx === 0 && preferredSlotIdx >= 0 && preferredSlotIdx < rackSlots.length && rackSlots[preferredSlotIdx] === null) {
           rackSlots[preferredSlotIdx] = tile;
         } else {
           const emptyIdx = rackSlots.findIndex(s => s === null);
@@ -3182,7 +3611,7 @@
     }
 
     // =========================================================
-    // 6. RACK SORTING, SMART SELECT & TURN UNDO
+    // 6. RACK SORTING, JOKER-AWARE SMART SELECT & TURN UNDO
     // =========================================================
     function sortRackBy(mode) {
       const tiles = rackSlots.filter(t => t !== null);
@@ -3198,8 +3627,9 @@
           return COLOR_ORDER[a.color] - COLOR_ORDER[b.color];
         });
       }
-      rackSlots = new Array(28).fill(null);
-      tiles.forEach((t, i) => { if (i < 28) rackSlots[i] = t; });
+      const targetLen = getTargetRackSlotCount(tiles.length);
+      rackSlots = new Array(targetLen).fill(null);
+      tiles.forEach((t, i) => { if (i < targetLen) rackSlots[i] = t; });
       syncMeRackFromSlots();
       playTileSound('tap');
       renderRack();
@@ -3208,18 +3638,19 @@
     function autoSelectSuggestedMeld() {
       const me = getMyPlayer();
       if (!me) return;
-      const melds = findAllValidMeldsInRack(me.rack, 'balanced_pro');
+      const melds = findAllValidMeldsInRack(me.rack, 'balanced_pro', 0);
       if (melds.length === 0) {
-        showToast('目前手牌尚未發現可直接組成的 3 張牌組', 'info');
+        showToast('目前手牌尚未發現可直接組成的 3 張牌組（含百搭牌）', 'info');
         return;
       }
       selectedRackTileIds.clear();
       melds.flat().forEach(t => selectedRackTileIds.add(t.id));
       const totalPts = melds.reduce((s, m) => s + calculateMeldPoints(m), 0);
+      const hasJoker = melds.flat().some(t => t.isJoker);
       playTileSound('tap');
       renderRack();
       updateSelectedPointsBadge();
-      showToast(`已為你選取 ${melds.length} 組牌（共 ${totalPts} 分），點擊或拖移至牌桌即可上桌！`, 'success');
+      showToast(`已為你選取 ${melds.length} 組牌${hasJoker ? '（含百搭萬用牌）' : ''}（共 ${totalPts} 分），點擊或拖移至牌桌即可上桌！`, 'success');
     }
 
     function undoCurrentTurnMoves() {
@@ -3309,7 +3740,7 @@
 
       if (dragPayload.source === 'rack') {
         const fromIdx = dragPayload.slotIdx;
-        if (fromIdx !== targetSlotIdx) {
+        if (fromIdx !== targetSlotIdx && targetSlotIdx >= 0 && targetSlotIdx < rackSlots.length) {
           const temp = rackSlots[targetSlotIdx];
           rackSlots[targetSlotIdx] = rackSlots[fromIdx];
           rackSlots[fromIdx] = temp;
@@ -3425,7 +3856,7 @@
       removeTouchGhost();
       const ghost = document.createElement('div');
       const colorClass = tile.isJoker ? 'tile-red' : `tile-${tile.color}`;
-      ghost.className = `touch-drag-ghost rummi-tile ${colorClass} font-black text-sm fixed pointer-events-none z-50 opacity-95 scale-110 shadow-2xl`;
+      ghost.className = `touch-drag-ghost rummi-tile ${colorClass} font-black fixed pointer-events-none z-50 opacity-95 scale-110 shadow-2xl`;
       ghost.style.transition = 'none';
       ghost.textContent = tile.isJoker ? '😊' : tile.number;
       document.body.appendChild(ghost);
@@ -3480,6 +3911,7 @@
       touchDragState = null;
 
       if (!state.moved) {
+        if (e.cancelable) e.preventDefault();
         toggleSelectRackTile(tileId);
         return;
       }
@@ -3492,7 +3924,7 @@
       const targetSlot = targetEl.closest('[data-rack-slot]');
       if (targetSlot) {
         const targetIdx = Number(targetSlot.getAttribute('data-rack-slot'));
-        if (Number.isFinite(targetIdx) && targetIdx !== state.slotIdx) {
+        if (Number.isFinite(targetIdx) && targetIdx !== state.slotIdx && targetIdx >= 0 && targetIdx < rackSlots.length) {
           const temp = rackSlots[targetIdx];
           rackSlots[targetIdx] = rackSlots[state.slotIdx];
           rackSlots[state.slotIdx] = temp;
@@ -3564,6 +3996,7 @@
       touchDragState = null;
 
       if (!state.moved) {
+        if (e.cancelable) e.preventDefault();
         toggleSelectTableTile(tileId);
         return;
       }
@@ -3658,7 +4091,7 @@
       if (selectedRackTileIds.size === 1) {
         const [onlyId] = Array.from(selectedRackTileIds);
         const fromIdx = rackSlots.findIndex(t => t && t.id === onlyId);
-        if (fromIdx !== -1 && fromIdx !== slotIdx) {
+        if (fromIdx !== -1 && fromIdx !== slotIdx && slotIdx >= 0 && slotIdx < rackSlots.length) {
           rackSlots[slotIdx] = rackSlots[fromIdx];
           rackSlots[fromIdx] = null;
           selectedRackTileIds.clear();
@@ -3793,6 +4226,34 @@
       }
     }
 
+    function adjustTableBoardScaleToFitOnePage() {
+      const board = document.getElementById('table-board-scroll');
+      const container = document.getElementById('table-melds-container');
+      if (!board || !container || !gameState || !(gameState.tableMelds || []).length) return;
+
+      const availH = Math.max(80, board.clientHeight - 10);
+      const availW = Math.max(200, board.clientWidth - 12);
+
+      let scale = 1.0;
+      container.style.setProperty('--tbl-scale', '1');
+
+      if (container.scrollHeight > availH || container.scrollWidth > availW) {
+        let low = 0.36;
+        let high = 1.0;
+        for (let step = 0; step < 10; step++) {
+          const mid = (low + high) / 2;
+          container.style.setProperty('--tbl-scale', mid.toFixed(3));
+          if (container.scrollHeight <= availH && container.scrollWidth <= availW) {
+            low = mid;
+          } else {
+            high = mid;
+          }
+        }
+        scale = Math.max(0.36, Number(low.toFixed(3)));
+        container.style.setProperty('--tbl-scale', String(scale));
+      }
+    }
+
     function renderTableBoard() {
       const container = document.getElementById('table-melds-container');
       const emptyHint = document.getElementById('table-empty-hint');
@@ -3801,14 +4262,11 @@
       const melds = gameState.tableMelds || [];
       if (melds.length === 0) {
         container.innerHTML = '';
+        container.style.setProperty('--tbl-scale', '1');
         emptyHint?.classList.remove('hidden');
         return;
       }
       emptyHint?.classList.add('hidden');
-
-      const totalBoardTiles = melds.reduce((acc, m) => acc + (m.tiles || []).length, 0);
-      container.classList.toggle('dense-board', totalBoardTiles >= 24 && totalBoardTiles < 45);
-      container.classList.toggle('ultra-dense-board', totalBoardTiles >= 45);
 
       const ownedSet = new Set(gameState.turnOwnedTableTileIds || []);
 
@@ -3827,7 +4285,7 @@
               ontouchend="onTableTileTouchEnd(event, '${meld.id}', '${tile.id}')"
               ontouchcancel="onTileDragEnd()"
               onclick="event.stopPropagation(); toggleSelectTableTile('${tile.id}')"
-              class="rummi-tile table-tile ${colorClass} ${isSelected ? 'selected' : ''} ${isTurnOwned ? 'turn-owned' : ''} font-black text-xs sm:text-sm">
+              class="rummi-tile table-tile ${colorClass} ${isSelected ? 'selected' : ''} ${isTurnOwned ? 'turn-owned' : ''} font-black">
               ${tile.isJoker ? '😊' : tile.number}
             </div>
           `;
@@ -3843,6 +4301,8 @@
           </div>
         `;
       }).join('');
+
+      adjustTableBoardScaleToFitOnePage();
     }
 
     function renderRack() {
@@ -3851,7 +4311,15 @@
       if (!row0 || !row1) return;
 
       const me = getMyPlayer();
-      const readyMelds = me ? findAllValidMeldsInRack(me.rack, 'balanced_pro') : [];
+      const tileCount = me ? (me.rack || []).length : rackSlots.filter(t => t !== null).length;
+      ensureRackSlotsCapacity(tileCount);
+
+      const totalSlots = rackSlots.length;
+      const colsPerRow = Math.max(10, Math.ceil(totalSlots / 2));
+      row0.style.setProperty('--cols', String(colsPerRow));
+      row1.style.setProperty('--cols', String(colsPerRow));
+
+      const readyMelds = me ? findAllValidMeldsInRack(me.rack, 'balanced_pro', 0) : [];
       const readyIds = new Set(readyMelds.flat().map(t => t.id));
 
       const buildRowHtml = (startIdx, endIdx) => {
@@ -3876,7 +4344,7 @@
                   ontouchend="onSlotTouchEnd(event, ${i}, '${tile.id}')"
                   ontouchcancel="onTileDragEnd()"
                   onclick="event.stopPropagation(); toggleSelectRackTile('${tile.id}')"
-                  class="rummi-tile ${colorClass} ${isSelected ? 'selected' : ''} ${tile.isNewlyDrawn ? 'newly-drawn' : ''} ${isReady ? 'meld-ready' : ''} font-black text-xs sm:text-sm">
+                  class="rummi-tile ${colorClass} ${isSelected ? 'selected' : ''} ${tile.isNewlyDrawn ? 'newly-drawn' : ''} ${isReady ? 'meld-ready' : ''} font-black">
                   ${tile.isJoker ? '😊' : tile.number}
                 </div>
               </div>
@@ -3896,8 +4364,8 @@
         return html.join('');
       };
 
-      row0.innerHTML = buildRowHtml(0, 14);
-      row1.innerHTML = buildRowHtml(14, 28);
+      row0.innerHTML = buildRowHtml(0, colsPerRow);
+      row1.innerHTML = buildRowHtml(colsPerRow, colsPerRow * 2);
     }
 
     function updateTimerBadge() {
@@ -3987,6 +4455,7 @@
       renderLobbyHeader();
       updateFullscreenButtons();
       switchView('lobby');
+      window.addEventListener('resize', adjustTableBoardScaleToFitOnePage);
       window.addEventListener('dragend', clearAllDragVisuals);
       window.addEventListener('touchcancel', () => {
         touchDragState = null;
