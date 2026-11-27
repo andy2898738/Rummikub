@@ -540,7 +540,7 @@
         <button type="button" onclick="autoSelectSuggestedMeld()" class="flex-1 min-w-[82px] px-3 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/40 text-cyan-200 font-bold text-xs text-center whitespace-nowrap cursor-pointer transition">
           ✨ 選牌
         </button>
-        <button type="button" onclick="undoCurrentTurnMoves()" class="flex-1 min-w-[82px] px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs text-center whitespace-nowrap cursor-pointer transition">
+        <button type="button" id="btn-undo-turn" onclick="undoCurrentTurnMoves()" class="flex-1 min-w-[82px] px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs text-center whitespace-nowrap cursor-pointer transition disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none">
           ↩ 還原
         </button>
         <button type="button" id="btn-end-turn-or-draw" onclick="handleEndTurnOrDraw()" class="flex-[1.5] min-w-[116px] px-3 py-1.5 rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-500 hover:from-indigo-400 hover:to-cyan-400 text-white font-black text-xs text-center whitespace-nowrap cursor-pointer shadow-md transition">
@@ -709,6 +709,142 @@
     let turnTimerInterval = null;
     let botActionTimeout = null;
     let audioCtx = null;
+    let masterDeckCatalog = new Map();
+
+    function registerTilesInMasterCatalog(tiles) {
+      if (!Array.isArray(tiles)) return;
+      tiles.forEach(t => {
+        if (t && t.id) {
+          masterDeckCatalog.set(t.id, {
+            id: t.id,
+            color: t.color,
+            number: Number(t.number) || 0,
+            isJoker: Boolean(t.isJoker)
+          });
+        }
+      });
+    }
+
+    function ensureMasterCatalogInitialized(state) {
+      if (!state) return;
+      if (Array.isArray(state.pool)) registerTilesInMasterCatalog(state.pool);
+      if (Array.isArray(state.tableMelds)) {
+        state.tableMelds.forEach(m => {
+          if (m && Array.isArray(m.tiles)) registerTilesInMasterCatalog(m.tiles);
+        });
+      }
+      if (Array.isArray(state.players)) {
+        state.players.forEach(p => {
+          if (p && Array.isArray(p.rack)) registerTilesInMasterCatalog(p.rack);
+        });
+      }
+      if (turnSnapshot) {
+        if (Array.isArray(turnSnapshot.myRack)) registerTilesInMasterCatalog(turnSnapshot.myRack);
+        if (Array.isArray(turnSnapshot.tableMelds)) {
+          turnSnapshot.tableMelds.forEach(m => {
+            if (m && Array.isArray(m.tiles)) registerTilesInMasterCatalog(m.tiles);
+          });
+        }
+      }
+      if (Array.isArray(rackSlots)) {
+        registerTilesInMasterCatalog(rackSlots.filter(Boolean));
+      }
+    }
+
+    // =========================================================
+    // 106-CARD CONSERVATION & ANTI-LOSS RECOVERY ENGINE
+    // =========================================================
+    function verifyAndEnforce106CardConservation(contextLabel = '') {
+      if (!gameState) return;
+      ensureMasterCatalogInitialized(gameState);
+
+      const seenIds = new Set();
+
+      // 1. Deduplicate and verify table melds first so placed tiles stay on table
+      if (Array.isArray(gameState.tableMelds)) {
+        gameState.tableMelds = gameState.tableMelds
+          .map(m => {
+            const cleanTiles = [];
+            (Array.isArray(m.tiles) ? m.tiles : []).forEach(t => {
+              if (t && t.id && !seenIds.has(t.id)) {
+                seenIds.add(t.id);
+                cleanTiles.push(t);
+              }
+            });
+            return { ...m, tiles: cleanTiles };
+          })
+          .filter(m => m.tiles.length > 0);
+      } else {
+        gameState.tableMelds = [];
+      }
+
+      // 2. Deduplicate each player's rack
+      if (Array.isArray(gameState.players)) {
+        gameState.players.forEach(p => {
+          const cleanRack = [];
+          (Array.isArray(p.rack) ? p.rack : []).forEach(t => {
+            if (t && t.id && !seenIds.has(t.id)) {
+              seenIds.add(t.id);
+              cleanRack.push(t);
+            }
+          });
+          p.rack = cleanRack;
+          p.rackCount = cleanRack.length;
+        });
+      }
+
+      // 3. Deduplicate draw pool
+      const cleanPool = [];
+      (Array.isArray(gameState.pool) ? gameState.pool : []).forEach(t => {
+        if (t && t.id && !seenIds.has(t.id)) {
+          seenIds.add(t.id);
+          cleanPool.push(t);
+        }
+      });
+      gameState.pool = cleanPool;
+
+      // 4. Recover any missing card out of the 106-card master deck catalog
+      if (masterDeckCatalog.size === 106 && seenIds.size < 106) {
+        const missingTiles = [];
+        masterDeckCatalog.forEach((tileObj, id) => {
+          if (!seenIds.has(id)) {
+            missingTiles.push({ ...tileObj });
+            seenIds.add(id);
+          }
+        });
+
+        if (missingTiles.length > 0) {
+          const me = getMyPlayer();
+          const rescuedToTable = [];
+          const rescuedToPool = [];
+
+          missingTiles.forEach(mt => {
+            if (isMyTurn() && isTileOwnedByMeThisTurn(mt.id)) {
+              rescuedToTable.push(mt);
+            } else {
+              rescuedToPool.push(mt);
+            }
+          });
+
+          if (rescuedToTable.length > 0) {
+            gameState.tableMelds.push({
+              id: `meld_rescued_${Date.now()}_${Math.floor(getSecureRandom() * 100000)}`,
+              tiles: rescuedToTable,
+              newlyPlaced: true
+            });
+          }
+
+          if (rescuedToPool.length > 0) {
+            gameState.pool.push(...rescuedToPool);
+          }
+
+          if (me) {
+            syncMyRackSlotsFromGameState();
+          }
+          console.warn(`[106-Card Guard] Rescued ${missingTiles.length} tile(s) during ${contextLabel}`);
+        }
+      }
+    }
 
     function playTileSound(type = 'tap') {
       if (deviceProfile.muted) return;
@@ -1405,6 +1541,7 @@
         cur.rack = cleanRack;
         cur.rackCount = cleanRack.length;
         cur.hasIcebroken = Boolean(msg.hasIcebroken || cur.hasIcebroken);
+        verifyAndEnforce106CardConservation('HOST_COMMIT_PLAY');
         const diff = Math.max(0, beforeCount - cur.rackCount);
         const autoPrefix = msg.autoSettled ? '⏱ 超時自動出牌：' : '';
         cur.lastActionText = `🃏 出 ${diff} 張 (${beforeCount}→${cur.rackCount}張)`;
@@ -1958,7 +2095,9 @@
     }
 
     function initializeOnlineMatchState(roomLabel, rawParticipants, turnSeconds) {
+      masterDeckCatalog.clear();
       const deck = buildShuffledDeck();
+      registerTilesInMasterCatalog(deck);
       const dealOrderIndices = shuffleArraySecure(rawParticipants.map((_, i) => i));
       const dealtHandsMap = new Map();
 
@@ -2019,12 +2158,14 @@
       if (badge) badge.textContent = roomLabel;
       updateNetworkPingBadges(onlineState.pingMs, 'ok');
 
+      verifyAndEnforce106CardConservation('INIT_MATCH');
       syncMyRackSlotsFromGameState();
       startTurnForCurrentPlayer();
     }
 
     function syncOnlineGameState() {
       if (gameState && gameState.mode === 'online' && onlineState.isHost) {
+        verifyAndEnforce106CardConservation('SYNC_BROADCAST');
         gameState.stateVersion = (Number(gameState.stateVersion) || 0) + 1;
         gameState.players.forEach(p => {
           if (Array.isArray(p.rack)) {
@@ -2622,6 +2763,7 @@
           }
 
           if (playedAny && bot.rack.length < beforeCount) {
+            verifyAndEnforce106CardConservation('BOT_PLAY');
             bot.rackCount = bot.rack.length;
             bot.lastActionText = `🃏 出 ${addedTilesCount} 張 (${beforeCount}→${bot.rackCount}張)`;
             gameState.lastPlayAnnouncement = `🃏 ${bot.name} 打出 ${addedTilesCount} 張牌（剩 ${bot.rackCount} 張）`;
@@ -2647,6 +2789,7 @@
 
     function drawTileForPlayerAndAdvance(player) {
       if (!gameState) return;
+      verifyAndEnforce106CardConservation('BEFORE_DRAW');
       const beforeCount = player.rack.length;
       if (gameState.pool.length > 0) {
         const [drawn] = drawRandomTilesFromDeck(gameState.pool, 1);
@@ -2665,6 +2808,7 @@
         gameState.lastPlayAnnouncement = `⏭ 牌庫已空，${player.name} 跳過回合`;
       }
 
+      verifyAndEnforce106CardConservation('AFTER_DRAW');
       playTileSound('tap');
       if (player.id === deviceProfile.deviceId) {
         syncMyRackSlotsFromGameState();
@@ -2679,6 +2823,47 @@
     // =========================================================
     // 8. HUMAN ACTIONS: INDIVIDUAL TABLE-TO-RACK RECLAIM & DRAG
     // =========================================================
+    function mergeOrSplitTilesIntoTargetMeld(targetMeldId, incomingTiles) {
+      if (!gameState || !Array.isArray(incomingTiles) || incomingTiles.length === 0) return;
+
+      const targetMeld = gameState.tableMelds.find(m => m.id === targetMeldId);
+      const baseTiles = targetMeld ? [...targetMeld.tiles] : [];
+      const incomingIds = new Set(incomingTiles.map(t => t.id));
+      const preservedBase = baseTiles.filter(t => !incomingIds.has(t.id));
+      const combinedTiles = [...preservedBase, ...incomingTiles];
+
+      let splitMelds = null;
+      if (!validateMeldTiles(combinedTiles).valid && combinedTiles.length >= 6) {
+        const partitioned = partitionTilesIntoValidMelds(combinedTiles);
+        if (partitioned && partitioned.length > 1) {
+          splitMelds = partitioned;
+        }
+      }
+
+      if (splitMelds) {
+        gameState.tableMelds = gameState.tableMelds.filter(m => m.id !== targetMeldId);
+        splitMelds.forEach((grp, idx) => {
+          gameState.tableMelds.push({
+            id: `meld_${Date.now()}_${idx}_${Math.floor(getSecureRandom() * 100000)}`,
+            tiles: autoArrangeMeldTiles(grp),
+            newlyPlaced: true
+          });
+        });
+        showToast(`已自動拆分成 ${splitMelds.length} 組合法牌組！`, 'success');
+      } else if (targetMeld) {
+        targetMeld.tiles = validateMeldTiles(combinedTiles).valid
+          ? autoArrangeMeldTiles(combinedTiles)
+          : combinedTiles;
+        targetMeld.newlyPlaced = true;
+      } else {
+        gameState.tableMelds.push({
+          id: `meld_${Date.now()}_${Math.floor(getSecureRandom() * 100000)}`,
+          tiles: validateMeldTiles(combinedTiles).valid ? autoArrangeMeldTiles(combinedTiles) : combinedTiles,
+          newlyPlaced: true
+        });
+      }
+    }
+
     function syncMyRackSlotsFromGameState() {
       const me = getMyPlayer();
       if (!me) {
@@ -2760,6 +2945,7 @@
       }
 
       selectedTableTileIds.delete(tileId);
+      verifyAndEnforce106CardConservation('RECLAIM_SINGLE_TILE');
       playTileSound('tap');
       renderAllGameUI();
       return true;
@@ -2779,12 +2965,6 @@
     function toggleSelectTableTile(tileId) {
       if (!isMyTurn()) {
         showToast('目前不是你的回合', 'warning');
-        return;
-      }
-      const me = getMyPlayer();
-      const isMyTurnTile = isTileOwnedByMeThisTurn(tileId);
-      if ((!me || !me.hasIcebroken) && !isMyTurnTile) {
-        showToast('尚未破冰前僅可選取本回合剛放上桌的牌', 'warning');
         return;
       }
       playTileSound('tap');
@@ -2935,10 +3115,6 @@
       if (!isMyTurn()) return;
       const me = getMyPlayer();
       if (!me) return;
-      if (!me.hasIcebroken && !isTileOwnedByMeThisTurn(tileId)) {
-        showToast('尚未破冰前，只能移動本回合剛放上桌的牌', 'warning');
-        return;
-      }
       let targetTile = null;
       gameState.tableMelds = gameState.tableMelds
         .map(m => {
@@ -2958,6 +3134,7 @@
         newlyPlaced: true
       });
       selectedTableTileIds.delete(tileId);
+      verifyAndEnforce106CardConservation('MOVE_SINGLE_TABLE_TILE');
       playTileSound('tap');
       renderTableBoard();
     }
@@ -2985,28 +3162,16 @@
       if (targetMeldId) {
         const destMeld = gameState.tableMelds.find(m => m.id === targetMeldId);
         if (destMeld) {
-          if (!me.hasIcebroken && !destMeld.newlyPlaced) {
-            showToast('尚未破冰前，只能操作本回合自己放上桌的牌組', 'warning');
-            return;
-          }
+          const incomingIds = new Set([...tableChosen, ...handChosen].map(t => t.id));
           if (tableChosen.length > 0) {
             gameState.tableMelds = gameState.tableMelds
-              .map(m => ({ ...m, tiles: m.tiles.filter(t => !selectedTableTileIds.has(t.id)) }))
+              .map(m => m.id === targetMeldId ? m : ({ ...m, tiles: m.tiles.filter(t => !incomingIds.has(t.id)) }))
               .filter(m => m.tiles.length > 0);
           }
-          const refetchedDest = gameState.tableMelds.find(m => m.id === targetMeldId);
-          if (refetchedDest) {
-            refetchedDest.tiles = autoArrangeMeldTiles([...refetchedDest.tiles, ...tableChosen, ...handChosen]);
-            refetchedDest.newlyPlaced = true;
-          } else {
-            gameState.tableMelds.push({
-              id: `meld_${Date.now()}_${Math.floor(getSecureRandom() * 100000)}`,
-              tiles: autoArrangeMeldTiles([...tableChosen, ...handChosen]),
-              newlyPlaced: true
-            });
-          }
+          mergeOrSplitTilesIntoTargetMeld(targetMeldId, [...tableChosen, ...handChosen]);
           removeChosenTilesFromMyRack();
           selectedTableTileIds.clear();
+          verifyAndEnforce106CardConservation('DRAG_INTO_TARGET_MELD');
           playTileSound('place');
           renderAllGameUI();
           return;
@@ -3014,13 +3179,6 @@
       }
 
       if (tableChosen.length > 0) {
-        if (!me.hasIcebroken) {
-          const allTurnOwned = tableChosen.every(t => isTileOwnedByMeThisTurn(t.id));
-          if (!allTurnOwned) {
-            showToast('尚未破冰前，只能重組本回合剛放上桌的牌', 'warning');
-            return;
-          }
-        }
         gameState.tableMelds = gameState.tableMelds
           .map(m => ({ ...m, tiles: m.tiles.filter(t => !selectedTableTileIds.has(t.id)) }))
           .filter(m => m.tiles.length > 0);
@@ -3032,6 +3190,7 @@
         });
         removeChosenTilesFromMyRack();
         selectedTableTileIds.clear();
+        verifyAndEnforce106CardConservation('DRAG_COMBINED_TO_BOARD');
         playTileSound('place');
         renderAllGameUI();
         return;
@@ -3052,6 +3211,7 @@
           newlyPlaced: true
         });
         removeChosenTilesFromMyRack();
+        verifyAndEnforce106CardConservation('DRAG_HAND_TO_BOARD');
         playTileSound('place');
         renderAllGameUI();
         if (!validateMeldTiles(handChosen).valid) {
@@ -3090,13 +3250,6 @@
       if (handChosen.length === 0 && tableChosen.length === 0) return;
 
       if (tableChosen.length > 0) {
-        if (!me.hasIcebroken) {
-          const allTurnOwned = tableChosen.every(t => isTileOwnedByMeThisTurn(t.id));
-          if (!allTurnOwned) {
-            showToast('尚未破冰前，只能重組本回合剛放上桌的牌', 'warning');
-            return;
-          }
-        }
         gameState.tableMelds = gameState.tableMelds
           .map(m => ({ ...m, tiles: m.tiles.filter(t => !selectedTableTileIds.has(t.id)) }))
           .filter(m => m.tiles.length > 0);
@@ -3108,6 +3261,7 @@
         });
         removeChosenTilesFromMyRack();
         selectedTableTileIds.clear();
+        verifyAndEnforce106CardConservation('TAP_BOARD_TABLE_CHOSEN');
         playTileSound('place');
         renderAllGameUI();
         return;
@@ -3127,6 +3281,7 @@
         newlyPlaced: true
       });
       removeChosenTilesFromMyRack();
+      verifyAndEnforce106CardConservation('TAP_BOARD_HAND_CHOSEN');
       playTileSound('place');
       renderAllGameUI();
     }
@@ -3153,30 +3308,17 @@
       const destMeld = gameState.tableMelds.find(m => m.id === targetMeldId);
       if (!destMeld) return;
 
-      if (!me.hasIcebroken && !destMeld.newlyPlaced) {
-        showToast('尚未破冰前，只能將牌併入本回合自己放上桌的牌組', 'warning');
-        return;
-      }
-
+      const incomingIds = new Set([...tableChosen, ...handChosen].map(t => t.id));
       if (tableChosen.length > 0) {
         gameState.tableMelds = gameState.tableMelds
-          .map(m => ({ ...m, tiles: m.tiles.filter(t => !selectedTableTileIds.has(t.id)) }))
+          .map(m => m.id === targetMeldId ? m : ({ ...m, tiles: m.tiles.filter(t => !incomingIds.has(t.id)) }))
           .filter(m => m.tiles.length > 0);
       }
 
-      const refetchedDest = gameState.tableMelds.find(m => m.id === targetMeldId);
-      if (refetchedDest) {
-        refetchedDest.tiles = autoArrangeMeldTiles([...refetchedDest.tiles, ...tableChosen, ...handChosen]);
-        refetchedDest.newlyPlaced = true;
-      } else {
-        gameState.tableMelds.push({
-          id: `meld_${Date.now()}_${Math.floor(getSecureRandom() * 100000)}`,
-          tiles: autoArrangeMeldTiles([...tableChosen, ...handChosen]),
-          newlyPlaced: true
-        });
-      }
+      mergeOrSplitTilesIntoTargetMeld(targetMeldId, [...tableChosen, ...handChosen]);
       removeChosenTilesFromMyRack();
       selectedTableTileIds.clear();
+      verifyAndEnforce106CardConservation('TABLE_MELD_TAP');
       playTileSound('place');
       renderAllGameUI();
     }
@@ -3203,13 +3345,12 @@
         const me = getMyPlayer();
         const destMeld = gameState.tableMelds.find(m => m.id === targetMeldId);
         if (!me || !destMeld) return;
-        if (!me.hasIcebroken && (!destMeld.newlyPlaced || !isTileOwnedByMeThisTurn(tId))) {
-          showToast('尚未破冰前，只能操作本回合自己放上桌的牌組', 'warning');
-          return;
-        }
+        if (destMeld.tiles.some(t => t.id === tId)) return;
+
         let movedTile = null;
         gameState.tableMelds = gameState.tableMelds
           .map(m => {
+            if (m.id === targetMeldId) return m;
             const rest = [];
             for (const t of m.tiles) {
               if (t.id === tId) movedTile = t;
@@ -3220,18 +3361,9 @@
           .filter(m => m.tiles.length > 0);
 
         if (!movedTile) return;
-        const updatedDest = gameState.tableMelds.find(m => m.id === targetMeldId);
-        if (updatedDest) {
-          updatedDest.tiles = autoArrangeMeldTiles([...updatedDest.tiles, movedTile]);
-          updatedDest.newlyPlaced = true;
-        } else {
-          gameState.tableMelds.push({
-            id: `meld_${Date.now()}_${Math.floor(getSecureRandom() * 100000)}`,
-            tiles: [movedTile],
-            newlyPlaced: true
-          });
-        }
+        mergeOrSplitTilesIntoTargetMeld(targetMeldId, [movedTile]);
         selectedTableTileIds.delete(tId);
+        verifyAndEnforce106CardConservation('TABLE_TILE_DROP_MELD');
         playTileSound('place');
         renderTableBoard();
         return;
@@ -3243,15 +3375,18 @@
       if (!tile) return;
 
       handleTouchOrDragCardToTable(tile.id, targetMeldId);
+      verifyAndEnforce106CardConservation('TABLE_MELD_DROP');
     }
 
     function onSlotTouchStart(event, slotIndex) {
+      if (!event.touches || event.touches.length !== 1) return;
       const tile = rackSlots[slotIndex];
-      if (!tile || !event.touches || event.touches.length !== 1) return;
+      if (!tile) return;
       const touch = event.touches[0];
       touchDragState = {
         fromSlotIdx: slotIndex,
         tileId: tile.id,
+        tile,
         startX: touch.clientX,
         startY: touch.clientY,
         isDragging: false,
@@ -3267,17 +3402,15 @@
 
       if (!touchDragState.isDragging && Math.hypot(dx, dy) > 8) {
         touchDragState.isDragging = true;
-        const tile = rackSlots[touchDragState.fromSlotIdx];
-        if (tile) {
-          const ghost = document.createElement('div');
-          const colorClass = tile.isJoker ? 'tile-orange' : `tile-${tile.color}`;
-          ghost.className = `rummi-tile ${colorClass} selected fixed pointer-events-none z-50 opacity-90`;
-          ghost.style.left = `${touch.clientX - 18}px`;
-          ghost.style.top = `${touch.clientY - 24}px`;
-          ghost.innerHTML = `<span class="font-black text-sm leading-none">${tile.isJoker ? '😊' : tile.number}</span>`;
-          document.body.appendChild(ghost);
-          touchDragState.ghostEl = ghost;
-        }
+        const tile = touchDragState.tile;
+        const ghost = document.createElement('div');
+        const colorClass = tile.isJoker ? 'tile-orange' : `tile-${tile.color}`;
+        ghost.className = `rummi-tile ${colorClass} selected fixed pointer-events-none z-50 opacity-90`;
+        ghost.style.left = `${touch.clientX - 18}px`;
+        ghost.style.top = `${touch.clientY - 24}px`;
+        ghost.innerHTML = `<span class="font-black text-sm leading-none">${tile.isJoker ? '😊' : tile.number}</span>`;
+        document.body.appendChild(ghost);
+        touchDragState.ghostEl = ghost;
       }
 
       if (touchDragState.isDragging) {
@@ -3425,10 +3558,11 @@
         const targetMeldId = targetMeldEl.getAttribute('data-meld-id');
         const me = getMyPlayer();
         const destMeld = gameState.tableMelds.find(m => m.id === targetMeldId);
-        if (me && destMeld && (me.hasIcebroken || (destMeld.newlyPlaced && isTileOwnedByMeThisTurn(state.tileId)))) {
+        if (me && destMeld && !destMeld.tiles.some(t => t.id === state.tileId)) {
           let movedTile = null;
           gameState.tableMelds = gameState.tableMelds
             .map(m => {
+              if (m.id === targetMeldId) return m;
               const rest = [];
               for (const t of m.tiles) {
                 if (t.id === state.tileId) movedTile = t;
@@ -3438,18 +3572,9 @@
             })
             .filter(m => m.tiles.length > 0);
           if (movedTile) {
-            const updatedDest = gameState.tableMelds.find(m => m.id === targetMeldId);
-            if (updatedDest) {
-              updatedDest.tiles = autoArrangeMeldTiles([...updatedDest.tiles, movedTile]);
-              updatedDest.newlyPlaced = true;
-            } else {
-              gameState.tableMelds.push({
-                id: `meld_${Date.now()}_${Math.floor(getSecureRandom() * 100000)}`,
-                tiles: [movedTile],
-                newlyPlaced: true
-              });
-            }
+            mergeOrSplitTilesIntoTargetMeld(targetMeldId, [movedTile]);
             selectedTableTileIds.delete(state.tileId);
+            verifyAndEnforce106CardConservation('TOUCH_TABLE_TILE_TO_MELD');
             playTileSound('place');
             renderTableBoard();
           }
@@ -3568,6 +3693,7 @@
       }
       selectedTileIds.clear();
       playTileSound('place');
+      verifyAndEnforce106CardConservation('NEW_MELD_PLAYED');
       renderAllGameUI();
       showToast(
         meldGroups.length > 1
@@ -3578,6 +3704,10 @@
     }
 
     function undoCurrentTurnMoves(silent = false) {
+      if (!isMyTurn()) {
+        if (!silent) showToast('只能在自己的出牌階段使用還原功能', 'warning');
+        return;
+      }
       if (!turnSnapshot || !gameState) return;
       const me = getMyPlayer();
       gameState.tableMelds = JSON.parse(JSON.stringify(turnSnapshot.tableMelds));
@@ -3589,6 +3719,7 @@
       rackSlots = JSON.parse(JSON.stringify(turnSnapshot.rackSlots));
       selectedTileIds.clear();
       selectedTableTileIds.clear();
+      verifyAndEnforce106CardConservation('UNDO_TURN');
       playTileSound('tap');
       renderAllGameUI();
       if (!silent) showToast('已還原本回合所有操作', 'info');
@@ -3686,6 +3817,7 @@
     // =========================================================
     function renderAllGameUI() {
       if (!gameState) return;
+      verifyAndEnforce106CardConservation('RENDER_ALL');
       const poolEl = document.getElementById('pool-count-display');
       if (poolEl) poolEl.textContent = String(gameState.pool.length);
 
@@ -3859,7 +3991,12 @@
 
     function updateEndTurnButtonLabel() {
       const btn = document.getElementById('btn-end-turn-or-draw');
+      const undoBtn = document.getElementById('btn-undo-turn');
       const me = getMyPlayer();
+      const myTurnNow = isMyTurn();
+      if (undoBtn) {
+        undoBtn.disabled = !myTurnNow;
+      }
       if (!btn || !me || !turnSnapshot) return;
       const playedCount = turnSnapshot.myRack.length - me.rack.length;
       if (playedCount > 0) {
@@ -4008,10 +4145,10 @@
     }
 
     if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', initApp);
-    } else {
-      initApp();
-    }
+    document.addEventListener('DOMContentLoaded', initApp);
+  } else {
+    initApp();
+  }
   </script>
 </body>
 </html>
