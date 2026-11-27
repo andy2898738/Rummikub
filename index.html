@@ -1474,6 +1474,16 @@
         return;
       }
 
+      if (msg.type === 'FORCE_TIMEOUT_RESOLVE') {
+        if (gameState && gameState.mode === 'online' && !gameState.winnerId) {
+          const cur = gameState.players?.[gameState.currentTurnIdx];
+          if (cur && cur.id === deviceProfile.deviceId && (!msg.targetDeviceId || msg.targetDeviceId === deviceProfile.deviceId)) {
+            handleTurnTimeout();
+          }
+        }
+        return;
+      }
+
       if (msg.type === 'TIMER_SYNC') {
         if (gameState && gameState.mode === 'online' && !gameState.winnerId) {
           gameState.turnTimeLeft = Math.max(0, Number(msg.turnTimeLeft) || 0);
@@ -2008,6 +2018,9 @@
     let turnSnapshot = null;
     let gameLoopTimer = null;
     let botActionTimer = null;
+    let remoteTimeoutGraceTimer = null;
+    let awaitingRemoteTimeoutPlayerId = null;
+    let isSubmittingTimeoutResolve = false;
     let masterDeckCatalog = new Map();
 
     function getTargetRackSlotCount(tileCount) {
@@ -3012,6 +3025,8 @@
 
       onlineState.hasActiveMatch = true;
       onlineState.unreadChatCount = 0;
+      awaitingRemoteTimeoutPlayerId = null;
+      isSubmittingTimeoutResolve = false;
       updateUnreadChatBadge();
       rackSlots = new Array(20).fill(null);
       selectedRackTileIds.clear();
@@ -3036,6 +3051,10 @@
 
       gameLoopTimer = setInterval(() => {
         if (!gameState || gameState.winnerId || !onlineState.isHost) return;
+        const cur = gameState.players?.[gameState.currentTurnIdx];
+        if (cur && awaitingRemoteTimeoutPlayerId === cur.id) {
+          return;
+        }
         gameState.turnTimeLeft = Math.max(0, (Number(gameState.turnTimeLeft) || 0) - 1);
         updateTimerBadge();
 
@@ -3135,6 +3154,13 @@
 
     function advanceToNextTurn() {
       if (!gameState) return;
+      if (remoteTimeoutGraceTimer) {
+        clearTimeout(remoteTimeoutGraceTimer);
+        remoteTimeoutGraceTimer = null;
+      }
+      awaitingRemoteTimeoutPlayerId = null;
+      isSubmittingTimeoutResolve = false;
+
       (gameState.tableMelds || []).forEach(m => { m.isNewThisTurn = false; });
       gameState.turnOwnedTableTileIds = [];
       gameState.currentTurnIdx = (gameState.currentTurnIdx + 1) % gameState.players.length;
@@ -3159,12 +3185,21 @@
       if (!cur) return;
 
       if (cur.id === deviceProfile.deviceId) {
+        if (isSubmittingTimeoutResolve) return;
+        isSubmittingTimeoutResolve = true;
+
         const ownedCount = (gameState.turnOwnedTableTileIds || []).length;
-        if (cur.hasIcebroken && ownedCount > 0 && isTableCompletelyValid()) {
-          showToast('⏰ 時間到！已自動為你結算並送出合法出牌', 'success');
+        const boardValid = isTableCompletelyValid();
+        const canAutoCommit = ownedCount > 0 && boardValid && (
+          cur.hasIcebroken || getCurrentTurnIcebreakSummary().valid
+        );
+
+        if (canAutoCommit) {
+          showToast('⏰ 時間到！牌組合法，已自動為你結算並送出出牌', 'success');
           commitCurrentTurnPlay(true);
           return;
         }
+
         if (turnSnapshot) {
           gameState.tableMelds = JSON.parse(JSON.stringify(turnSnapshot.tableMelds));
           cur.rack = JSON.parse(JSON.stringify(turnSnapshot.myRack));
@@ -3174,15 +3209,39 @@
           selectedRackTileIds.clear();
           selectedTableTileIds.clear();
         }
-        showToast('⏰ 回合時間到，已還原並自動抽牌', 'warning');
+        showToast(
+          ownedCount > 0
+            ? '⏰ 時間到！牌組未合法（或未達30分破冰），已還原並抽 1 張牌'
+            : '⏰ 回合時間到，已自動抽 1 張牌',
+          'warning'
+        );
         drawOneTileAndEndTurn(true);
       } else if (onlineState.isHost) {
-        if (gameState.pool.length > 0) {
-          cur.rack.push(gameState.pool.pop());
-        }
-        cur.lastActionText = `${cur.rack.length}張 · 超時抽牌`;
-        gameState.lastPlaySummary = `${cur.name} 回合超時抽牌`;
-        advanceToNextTurn();
+        if (awaitingRemoteTimeoutPlayerId === cur.id) return;
+        awaitingRemoteTimeoutPlayerId = cur.id;
+        cur.lastActionText = '⏰ 結算中...';
+        renderPlayersBar();
+
+        broadcastToGuests({
+          type: 'FORCE_TIMEOUT_RESOLVE',
+          targetDeviceId: cur.id
+        });
+
+        if (remoteTimeoutGraceTimer) clearTimeout(remoteTimeoutGraceTimer);
+        remoteTimeoutGraceTimer = setTimeout(() => {
+          remoteTimeoutGraceTimer = null;
+          if (!gameState || gameState.winnerId || !onlineState.isHost) return;
+          const activeCur = gameState.players[gameState.currentTurnIdx];
+          if (!activeCur || activeCur.id !== cur.id) return;
+
+          awaitingRemoteTimeoutPlayerId = null;
+          if (gameState.pool.length > 0) {
+            activeCur.rack.push(gameState.pool.pop());
+          }
+          activeCur.lastActionText = `${activeCur.rack.length}張 · 超時抽牌`;
+          gameState.lastPlaySummary = `${activeCur.name} 回合超時抽牌`;
+          advanceToNextTurn();
+        }, 1800);
       }
     }
 
@@ -3208,6 +3267,7 @@
       }
 
       if (!isTableCompletelyValid()) {
+        isSubmittingTimeoutResolve = false;
         showToast('牌桌上仍有未完成或不合法的牌組（紅框提示），請調整後再確認！', 'error');
         return;
       }
@@ -3215,16 +3275,20 @@
       if (!me.hasIcebroken) {
         const iceInfo = getCurrentTurnIcebreakSummary();
         if (iceInfo.touchedOld) {
+          isSubmittingTimeoutResolve = false;
           showToast('破冰前只能用自己手牌組成新牌組（滿 30 分），不可合併原本桌面牌組！', 'warning');
           return;
         }
         if (iceInfo.points < 30) {
+          isSubmittingTimeoutResolve = false;
           showToast(`破冰需要至少 30 分（目前桌面新牌組僅 ${iceInfo.points} 分）`, 'warning');
           return;
         }
         me.hasIcebroken = true;
         playTileSound('icebreak');
-        showToast(`🔥 恭喜以 ${iceInfo.points} 分成功破冰！`, 'success');
+        if (!isAutoTimeout) {
+          showToast(`🔥 恭喜以 ${iceInfo.points} 分成功破冰！`, 'success');
+        }
       } else {
         playTileSound('place');
       }
@@ -3233,7 +3297,7 @@
       (me.rack || []).forEach(t => { delete t.isNewlyDrawn; });
       const prevCount = turnSnapshot ? turnSnapshot.myRack.length : (me.rack.length + ownedCount);
       me.lastActionText = `${prevCount}→${me.rack.length}張 · 出${ownedCount}張`;
-      gameState.lastPlaySummary = `${me.name} 打出 ${ownedCount} 張牌`;
+      gameState.lastPlaySummary = `${me.name}${isAutoTimeout ? '（倒數自動結算）' : ''} 打出 ${ownedCount} 張牌`;
       selectedRackTileIds.clear();
       selectedTableTileIds.clear();
 
@@ -3328,6 +3392,12 @@
       const cur = gameState.players[gameState.currentTurnIdx];
       if (!cur || cur.id !== msg.deviceId) return;
 
+      if (remoteTimeoutGraceTimer) {
+        clearTimeout(remoteTimeoutGraceTimer);
+        remoteTimeoutGraceTimer = null;
+      }
+      awaitingRemoteTimeoutPlayerId = null;
+
       if (msg.action === 'SUBMIT_TURN') {
         gameState.tableMelds = Array.isArray(msg.tableMelds) ? msg.tableMelds : gameState.tableMelds;
         cur.rack = Array.isArray(msg.myRack) ? msg.myRack : cur.rack;
@@ -3357,6 +3427,9 @@
       if (!gameState || !gameState.winnerId) return;
       if (gameLoopTimer) { clearInterval(gameLoopTimer); gameLoopTimer = null; }
       if (botActionTimer) { clearTimeout(botActionTimer); botActionTimer = null; }
+      if (remoteTimeoutGraceTimer) { clearTimeout(remoteTimeoutGraceTimer); remoteTimeoutGraceTimer = null; }
+      awaitingRemoteTimeoutPlayerId = null;
+      isSubmittingTimeoutResolve = false;
       onlineState.hasActiveMatch = false;
       disableInGameBackGuard();
 
@@ -3429,6 +3502,9 @@
     function confirmExitGame() {
       if (gameLoopTimer) { clearInterval(gameLoopTimer); gameLoopTimer = null; }
       if (botActionTimer) { clearTimeout(botActionTimer); botActionTimer = null; }
+      if (remoteTimeoutGraceTimer) { clearTimeout(remoteTimeoutGraceTimer); remoteTimeoutGraceTimer = null; }
+      awaitingRemoteTimeoutPlayerId = null;
+      isSubmittingTimeoutResolve = false;
       gameState = null;
       disableInGameBackGuard();
       leaveOnlineRoom();
