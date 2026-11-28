@@ -920,7 +920,10 @@
       if (onlineState.roomCode) {
         if (onlineState.isHost) {
           const me = onlineState.players.find(p => p.deviceId === deviceProfile.deviceId);
-          if (me) me.name = cleaned;
+          if (me) {
+            me.name = cleaned;
+            me.chips = deviceProfile.chips;
+          }
           renderWaitingRoom();
           broadcastRoomState();
         } else {
@@ -943,6 +946,22 @@
       saveProfile();
       playTileSound('icebreak');
       showToast('已領取 +500 救濟籌碼！', 'success');
+
+      if (onlineState.roomCode) {
+        if (onlineState.isHost) {
+          const me = onlineState.players.find(p => p.deviceId === deviceProfile.deviceId);
+          if (me) me.chips = deviceProfile.chips;
+          renderWaitingRoom();
+          broadcastRoomState();
+        } else {
+          sendToHostTransport({
+            type: 'HELLO',
+            deviceId: deviceProfile.deviceId,
+            name: deviceProfile.nickname,
+            chips: deviceProfile.chips
+          });
+        }
+      }
     }
 
     function renderLobbyHeader() {
@@ -1326,7 +1345,7 @@
       if (msg.type === 'HELLO') {
         const devId = msg.deviceId;
         const name = (msg.name || '好友').slice(0, 12);
-        const chips = Number(msg.chips) || 1000;
+        const chips = Number.isFinite(Number(msg.chips)) ? Number(msg.chips) : 1000;
 
         const humanCount = onlineState.players.filter(p => !p.isBot && p.deviceId !== devId).length;
         if (humanCount >= 4) {
@@ -1366,6 +1385,7 @@
           const gp = gameState.players.find(p => p.id === devId);
           if (gp) {
             gp.name = name;
+            gp.chips = chips;
             gp.connected = true;
             if (gp.lastActionText === '🟡 重連中...') {
               gp.lastActionText = '🟢 已連回';
@@ -1462,6 +1482,16 @@
 
         onlineState.players = Array.isArray(msg.players) ? msg.players : [];
         onlineState.chatHistory = incomingChat;
+
+        const meInRoom = onlineState.players.find(p => p.deviceId === deviceProfile.deviceId);
+        if (meInRoom && Number(meInRoom.chips) !== Number(deviceProfile.chips)) {
+          sendToHostTransport({
+            type: 'HELLO',
+            deviceId: deviceProfile.deviceId,
+            name: deviceProfile.nickname,
+            chips: deviceProfile.chips
+          });
+        }
 
         const chatPanel = document.getElementById('ingame-chat-panel');
         if (gameState && gameState.mode === 'online' && newlyAdded.length > 0 && chatPanel && chatPanel.classList.contains('hidden')) {
@@ -1782,6 +1812,12 @@
       if (!onlineState.roomCode) return;
       const code = onlineState.roomCode;
       if (onlineState.isHost) {
+        const me = onlineState.players.find(p => p.deviceId === deviceProfile.deviceId);
+        if (me) {
+          me.name = deviceProfile.nickname;
+          me.chips = deviceProfile.chips;
+        }
+        renderWaitingRoom();
         broadcastRoomState();
         showToast(`已刷新房間 ${code} 廣播狀態`, 'success');
       } else {
@@ -1813,8 +1849,19 @@
       switchView('lobby');
     }
 
+    const persistentBotPool = [
+      { deviceId: 'BOT_1', name: '🤖 AI_凱文', chips: 2400, isBot: true, persona: 'run_master' },
+      { deviceId: 'BOT_2', name: '🤖 AI_艾莉絲', chips: 3100, isBot: true, persona: 'set_master' },
+      { deviceId: 'BOT_3', name: '🤖 AI_馬可仕', chips: 2850, isBot: true, persona: 'balanced_pro' }
+    ];
+
     function buildWaitingRoomRoster() {
-      const basePlayers = onlineState.players.filter(p => !p.isBot).slice(0, 4);
+      const basePlayers = onlineState.players.filter(p => !p.isBot).slice(0, 4).map(p => {
+        if (p.deviceId === deviceProfile.deviceId) {
+          return { ...p, name: deviceProfile.nickname, chips: deviceProfile.chips };
+        }
+        return p;
+      });
       const includeBotsEl = document.getElementById('online-include-bots');
       const includeBots = onlineState.isHost
         ? Boolean(includeBotsEl?.checked)
@@ -1822,16 +1869,17 @@
 
       const roster = [...basePlayers];
       if (includeBots) {
-        const botSpecs = [
-          { deviceId: 'BOT_1', name: '🤖 AI_凱文', chips: 2400, isBot: true, persona: 'run_master' },
-          { deviceId: 'BOT_2', name: '🤖 AI_艾莉絲', chips: 3100, isBot: true, persona: 'set_master' },
-          { deviceId: 'BOT_3', name: '🤖 AI_馬可仕', chips: 2850, isBot: true, persona: 'balanced_pro' }
-        ];
         let bIdx = 0;
-        while (roster.length < 4 && bIdx < botSpecs.length) {
-          const spec = botSpecs[bIdx++];
+        while (roster.length < 4 && bIdx < persistentBotPool.length) {
+          const spec = persistentBotPool[bIdx++];
           if (!roster.some(r => r.deviceId === spec.deviceId)) {
-            roster.push({ ...spec, isHost: false, connected: true });
+            const existingBot = onlineState.players.find(pl => pl.deviceId === spec.deviceId);
+            roster.push({
+              ...spec,
+              chips: existingBot ? existingBot.chips : spec.chips,
+              isHost: false,
+              connected: true
+            });
           }
         }
       }
@@ -1847,6 +1895,9 @@
       for (let i = 0; i < 4; i++) {
         const p = roster[i];
         if (p) {
+          const displayChips = p.deviceId === deviceProfile.deviceId
+            ? deviceProfile.chips
+            : (Number.isFinite(Number(p.chips)) ? Number(p.chips) : 1000);
           const statusDot = p.isBot
             ? '<span class="text-[10px] text-indigo-300 font-bold">🤖 陪打</span>'
             : p.connected === false
@@ -1861,7 +1912,7 @@
                 <div class="text-xs font-black text-white truncate">${escapeHtml(p.name)}${p.isHost ? ' 👑' : ''}</div>
                 <div class="flex items-center justify-between gap-1 mt-0.5">
                   ${statusDot}
-                  <span class="text-[10px] text-slate-400 tabular-nums">💎${p.chips}</span>
+                  <span class="text-[10px] text-slate-400 tabular-nums">💎${displayChips.toLocaleString()}</span>
                 </div>
               </div>
             </div>
@@ -2987,12 +3038,25 @@
       masterDeckCatalog.clear();
       deck.forEach(t => masterDeckCatalog.set(t.id, { ...t }));
 
+      if (deviceProfile.chips >= 100) {
+        deviceProfile.chips -= 100;
+        saveProfile();
+      }
+
       const players = roster.map(r => {
         const hand = deck.splice(0, 14);
+        const startChips = r.deviceId === deviceProfile.deviceId
+          ? deviceProfile.chips
+          : Math.max(0, (Number(r.chips) || 1000) - 100);
+        const roomPl = onlineState.players.find(pl => pl.deviceId === r.deviceId);
+        if (roomPl) roomPl.chips = startChips;
+        const botSpec = persistentBotPool.find(b => b.deviceId === r.deviceId);
+        if (botSpec) botSpec.chips = startChips;
+
         return {
           id: r.deviceId,
           name: r.name,
-          chips: r.chips,
+          chips: startChips,
           isBot: Boolean(r.isBot),
           persona: r.persona || 'balanced_pro',
           connected: r.connected !== false,
@@ -3001,11 +3065,6 @@
           lastActionText: '14張 · 準備就緒'
         };
       });
-
-      if (deviceProfile.chips >= 100) {
-        deviceProfile.chips -= 100;
-        saveProfile();
-      }
 
       gameState = {
         mode: 'online',
@@ -3449,6 +3508,29 @@
           deviceProfile.chips += prize;
           saveProfile();
         }
+
+        if (onlineState.isHost) {
+          scored.forEach((sp, idx) => {
+            const prize = rewards[idx] || 40;
+            const updatedChips = sp.id === deviceProfile.deviceId
+              ? deviceProfile.chips
+              : (Number(sp.chips) || 0) + prize;
+            const gp = gameState.players.find(pl => pl.id === sp.id);
+            if (gp) gp.chips = updatedChips;
+            const roomPl = onlineState.players.find(pl => pl.deviceId === sp.id);
+            if (roomPl) roomPl.chips = updatedChips;
+            const botSpec = persistentBotPool.find(b => b.deviceId === sp.id);
+            if (botSpec) botSpec.chips = updatedChips;
+          });
+          broadcastRoomState();
+        } else {
+          sendToHostTransport({
+            type: 'HELLO',
+            deviceId: deviceProfile.deviceId,
+            name: deviceProfile.nickname,
+            chips: deviceProfile.chips
+          });
+        }
       }
 
       playTileSound('win');
@@ -3494,8 +3576,23 @@
       if (onlineState.roomCode) {
         document.getElementById('online-entry-card')?.classList.add('hidden');
         document.getElementById('online-waiting-card')?.classList.remove('hidden');
-        renderWaitingRoom();
-        if (onlineState.isHost) broadcastRoomState();
+        if (onlineState.isHost) {
+          const me = onlineState.players.find(p => p.deviceId === deviceProfile.deviceId);
+          if (me) {
+            me.name = deviceProfile.nickname;
+            me.chips = deviceProfile.chips;
+          }
+          renderWaitingRoom();
+          broadcastRoomState();
+        } else {
+          renderWaitingRoom();
+          sendToHostTransport({
+            type: 'HELLO',
+            deviceId: deviceProfile.deviceId,
+            name: deviceProfile.nickname,
+            chips: deviceProfile.chips
+          });
+        }
       }
     }
 
