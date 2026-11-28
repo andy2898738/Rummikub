@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta id="app-viewport-meta" name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
   <title>RUMMIKUB // 線上拉密對戰</title>
@@ -42,6 +42,15 @@
       margin: 0;
       padding: 0;
       overscroll-behavior: none;
+      overscroll-behavior-y: none;
+    }
+
+    html.match-locked,
+    html.match-locked body {
+      touch-action: manipulation;
+      overscroll-behavior: none;
+      overscroll-behavior-x: none;
+      overscroll-behavior-y: none;
     }
 
     html.pseudo-fullscreen,
@@ -678,33 +687,122 @@
     let audioCtx = null;
 
     // =========================================================
-    // MOBILE BACK-BUTTON GUARD DURING ACTIVE MATCH
+    // IN-GAME BROWSER NAVIGATION, REFRESH & ZOOM LOCK GUARD
     // =========================================================
-    let isBackGuardArmed = false;
+    let isMatchBrowserLocked = false;
+    let lastTouchTapTs = 0;
+
+    function isActiveMatchLockOn() {
+      return Boolean(isMatchBrowserLocked && gameState && !gameState.winnerId);
+    }
 
     function enableInGameBackGuard() {
+      isMatchBrowserLocked = true;
+      document.documentElement.classList.add('match-locked');
+      const vp = document.getElementById('app-viewport-meta');
+      if (vp) {
+        vp.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover');
+      }
       try {
-        if (!isBackGuardArmed) {
-          window.history.pushState({ rummiInGameGuard: true }, '', window.location.href);
-          isBackGuardArmed = true;
-        }
+        window.history.pushState({ rummiInGameGuard: 1 }, '', window.location.href);
+        window.history.pushState({ rummiInGameGuard: 2 }, '', window.location.href);
       } catch (e) {}
     }
 
     function disableInGameBackGuard() {
-      isBackGuardArmed = false;
+      isMatchBrowserLocked = false;
+      document.documentElement.classList.remove('match-locked');
     }
 
     window.addEventListener('popstate', () => {
-      if (gameState && !gameState.winnerId) {
+      if (isActiveMatchLockOn()) {
         try {
-          window.history.pushState({ rummiInGameGuard: true }, '', window.location.href);
+          window.history.pushState({ rummiInGameGuard: Date.now() }, '', window.location.href);
         } catch (e) {}
-        showToast('🛡️ 對局進行中已攔截返回鍵，若要退出請點左上角「← 離開」', 'warning');
+        showToast('🛡️ 對局進行中已鎖住返回上一頁，若要退出請點左上角「← 離開」', 'warning');
       } else {
-        isBackGuardArmed = false;
+        isMatchBrowserLocked = false;
+        document.documentElement.classList.remove('match-locked');
       }
     });
+
+    window.addEventListener('beforeunload', (e) => {
+      if (isActiveMatchLockOn()) {
+        e.preventDefault();
+        e.returnValue = '對局尚在進行中，確定要重新整理或離開頁面嗎？';
+        return e.returnValue;
+      }
+    });
+
+    window.addEventListener('keydown', (e) => {
+      if (!isActiveMatchLockOn()) return;
+      const key = (e.key || '').toLowerCase();
+      const isCtrlOrMeta = e.ctrlKey || e.metaKey;
+      const isInputFocused = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName || '');
+
+      // 鎖住重新整理 (F5 / Ctrl+R / Cmd+R / Ctrl+Shift+R)
+      if (e.key === 'F5' || (isCtrlOrMeta && key === 'r')) {
+        e.preventDefault();
+        e.stopPropagation();
+        showToast('🛡️ 對局進行中已鎖住重新整理功能', 'warning');
+        return;
+      }
+
+      // 鎖住放大縮小檢視 (Ctrl/Cmd + +, -, =, 0)
+      if (isCtrlOrMeta && (key === '+' || key === '=' || key === '-' || key === '_' || key === '0')) {
+        e.preventDefault();
+        e.stopPropagation();
+        showToast('🛡️ 對局進行中已鎖住畫面縮放功能', 'warning');
+        return;
+      }
+
+      // 鎖住快速鍵返回上一頁 (Alt + ArrowLeft / 非輸入框按 Backspace)
+      if ((e.altKey && e.key === 'ArrowLeft') || (!isInputFocused && e.key === 'Backspace')) {
+        e.preventDefault();
+        e.stopPropagation();
+        showToast('🛡️ 對局進行中已鎖住返回上一頁功能', 'warning');
+      }
+    }, { capture: true });
+
+    // 鎖住桌面版 Ctrl/Cmd + 滑鼠滾輪縮放
+    window.addEventListener('wheel', (e) => {
+      if (isActiveMatchLockOn() && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+      }
+    }, { passive: false, capture: true });
+
+    // 鎖住 iOS / Safari 雙指捏合縮放手勢
+    ['gesturestart', 'gesturechange', 'gestureend'].forEach((evtName) => {
+      document.addEventListener(evtName, (e) => {
+        if (isActiveMatchLockOn()) {
+          e.preventDefault();
+        }
+      }, { passive: false });
+    });
+
+    // 鎖住手機多指縮放與快速雙擊放大檢視
+    document.addEventListener('touchstart', (e) => {
+      if (!isActiveMatchLockOn()) return;
+      if (e.touches && e.touches.length > 1) {
+        e.preventDefault();
+      }
+    }, { passive: false });
+
+    document.addEventListener('touchmove', (e) => {
+      if (!isActiveMatchLockOn()) return;
+      if (e.touches && e.touches.length > 1) {
+        e.preventDefault();
+      }
+    }, { passive: false });
+
+    document.addEventListener('touchend', (e) => {
+      if (!isActiveMatchLockOn()) return;
+      const now = Date.now();
+      if (now - lastTouchTapTs < 280) {
+        if (e.cancelable) e.preventDefault();
+      }
+      lastTouchTapTs = now;
+    }, { passive: false });
 
     function playTileSound(type = 'tap') {
       if (deviceProfile.muted) return;
